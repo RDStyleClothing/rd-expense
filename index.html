@@ -378,7 +378,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v1.5.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v1.5.1</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -402,7 +402,7 @@ tr.trc:active td{background:var(--bg)}
    See SETUP.md for full step-by-step instructions
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v1.5.0',
+  APP_VERSION:    'v1.5.1',
   APP_RELEASED:   'April 2026',
   // SmartScan API key is stored securely in your browser's localStorage
   // — it is never in this code file. Enter it via Settings in the app.
@@ -1001,7 +1001,7 @@ async function doSmartScan(imgData, rid) {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-5',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 400,
         messages: [{
           role: 'user',
@@ -1013,13 +1013,24 @@ async function doSmartScan(imgData, rid) {
       })
     });
 
+    // Check HTTP status first — a 4xx/5xx means the API rejected the request
+    if (!resp.ok) {
+      const errBody = await resp.json().catch(()=>({error:{message:'HTTP '+resp.status}}));
+      const errMsg = errBody?.error?.message || ('HTTP ' + resp.status);
+      throw new Error(errMsg);
+    }
+
     const data = await resp.json();
+
+    // Check for API-level error in the response body
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+
     const raw = data.content?.[0]?.text || '{}';
     let parsed;
-    try { parsed = JSON.parse(raw.replace(/```json|```/g,'')); } catch(e) { parsed = {}; }
+    try { parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); } catch(e) { parsed = {}; }
 
+    // If we got an empty or invalid parse, still open the form with the image
     closeM();
-    // Open expense form pre-filled with scanned data
     mAE(rid, imgData, parsed);
 
   } catch(err) {
@@ -1092,16 +1103,18 @@ async function startBatch(files, rid) {
           'anthropic-dangerous-direct-browser-access': 'true'
         },
         body:JSON.stringify({
-          model:'claude-opus-4-5', max_tokens:400,
+          model:'claude-haiku-4-5-20251001', max_tokens:400,
           messages:[{role:'user',content:[
             {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
             {type:'text',text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Airfare|Hotel|Meals|Ground Transport|Office Supplies|Marketing|Samples|Shipping|Other","notes":"brief description","taxIncluded":true}'}
           ]}]
         })
       });
+      if(!resp.ok){const eb=await resp.json().catch(()=>({error:{message:'HTTP '+resp.status}}));throw new Error(eb?.error?.message||'HTTP '+resp.status);}
       const rdata = await resp.json();
+      if(rdata.error) throw new Error(rdata.error.message||JSON.stringify(rdata.error));
       let parsed;
-      try { parsed = JSON.parse((rdata.content?.[0]?.text||'{}').replace(/```json|```/g,'')); } catch(e){parsed={};}
+      try { parsed = JSON.parse((rdata.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim()); } catch(e){parsed={};}
       const today = new Date().toISOString().slice(0,10);
       const e = {
         id:uid('E'), reportId:rid,
@@ -1117,7 +1130,8 @@ async function startBatch(files, rid) {
       S.expenses.push(e); added++;
       if(logEl) logEl.innerHTML += '<div style="padding:2px 0">&#10003; '+esc(e.merchant)+' &mdash; '+fmt(e.amount)+'</div>';
     } catch(err) {
-      if(logEl) logEl.innerHTML += '<div style="padding:2px 0;color:var(--rd)">&#10007; '+esc(file.name)+' (scan failed)</div>';
+      console.error('Batch scan item failed', err);
+      if(logEl) logEl.innerHTML += '<div style="padding:2px 0;color:var(--rd)">&#10007; '+esc(file.name)+': '+(err.message||'scan failed')+'</div>';
     }
 
     done++;
