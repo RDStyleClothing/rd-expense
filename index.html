@@ -263,10 +263,11 @@ tr.trc:active td{background:var(--bg)}
   .utx{display:none}
   .uca{display:none}
   .bnn{display:flex;flex-direction:column}
-  .vbar{display:none}
+  .vbar{font-size:10px;padding:0 12px;justify-content:center;gap:8px}
+  .vbar-right{display:none}
   .fw{bottom:calc(var(--bn) + var(--safe) + 14px);right:16px}
   .toast{bottom:calc(var(--bn) + var(--safe) + var(--fab) + 22px)}
-  .main{padding:14px 12px;padding-bottom:calc(var(--bn) + var(--fab) + 52px + var(--safe))}
+  .main{padding:14px 12px;padding-bottom:calc(var(--bn) + var(--fab) + 78px + var(--safe))}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .dt{display:none!important}
   .xc{display:flex}
@@ -306,6 +307,10 @@ tr.trc:active td{background:var(--bg)}
         <div class="umi" onclick="openSt()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><ellipse cx="7" cy="4" rx="5" ry="2"/><path d="M2 4v2c0 1.1 2.24 2 5 2s5-.9 5-2V4"/><path d="M2 8v2c0 1.1 2.24 2 5 2s5-.9 5-2V8"/></svg>
           Storage Settings
+        </div>
+        <div class="umi" onclick="openApiKeySettings()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M5.5 8.5a3 3 0 100-6 3 3 0 000 6zM8 7.5l4 4M10.5 9.5l1.5 1.5" stroke-linecap="round"/></svg>
+          SmartScan API Key
         </div>
         <div class="umi" onclick="doSync()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 7a5 5 0 009.9-1M12 7a5 5 0 01-9.9 1" stroke-linecap="round"/></svg>
@@ -373,8 +378,8 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v1.4.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
-    <div id="vUsr" style="color:var(--tx3)">RD International</div>
+    <div><span class="vb" id="vBdg">v1.5.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
 </div><!-- /#app -->
@@ -397,8 +402,10 @@ tr.trc:active td{background:var(--bg)}
    See SETUP.md for full step-by-step instructions
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v1.4.0',
+  APP_VERSION:    'v1.5.0',
   APP_RELEASED:   'April 2026',
+  // SmartScan API key is stored securely in your browser's localStorage
+  // — it is never in this code file. Enter it via Settings in the app.
   MSAL_CLIENT_ID: 'YOUR_AZURE_CLIENT_ID',
   MSAL_TENANT:    'common',
   GAPI_CLIENT_ID: 'YOUR_GOOGLE_CLIENT_ID',
@@ -474,8 +481,74 @@ function load() {
 }
 
 /* ══════════════════════════════════════════════════════
-   BOOT — opens directly, no login required
+   API KEY — stored only in localStorage, never in code
+   Never synced to cloud storage or included in exports.
 ══════════════════════════════════════════════════════ */
+function getApiKey()      { try { return localStorage.getItem('rdex_ak')||''; } catch(e){ return ''; } }
+function setApiKey(k)     { try { localStorage.setItem('rdex_ak', k.trim()); } catch(e){} }
+function clearApiKey()    { try { localStorage.removeItem('rdex_ak'); } catch(e){} }
+function hasApiKey()      { return !!getApiKey(); }
+
+function openApiKeySettings() {
+  $('uMenu').classList.remove('open');
+  const current = getApiKey();
+  const masked  = current ? current.slice(0,8)+'••••••••••••••••••••'+current.slice(-4) : '';
+  mR.innerHTML = '<div class="mbg" onclick="if(event.target===this)closeM()">'+
+  '<div class="modal"><div class="mh2"></div>'+
+  '<div class="mhd"><h2>&#129302; SmartScan API Key</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
+  '<div class="mb">'+
+    '<div class="info gn" style="font-size:12px;line-height:1.6">'+
+      '<strong>Your key is stored only on this device</strong> &mdash; in your browser\'s localStorage. '+
+      'It is never written into the app code, never uploaded to GitHub, and never included in exports or cloud sync. '+
+      'Clearing your browser data will remove it.'+
+    '</div>'+
+    (current
+      ? '<div style="background:var(--gbg);border:1px solid #9FE1CB;border-radius:var(--rsm);padding:10px 13px;font-size:12px;color:var(--gdk)">'+
+          '&#10003; Key saved &mdash; <code>'+masked+'</code>'+
+        '</div>'
+      : '<div class="info am" style="font-size:12px">No API key saved yet. Enter your key below to enable SmartScan.</div>')+
+    '<div class="fld">'+
+      '<label>Anthropic API Key</label>'+
+      '<input class="fi2" id="akInput" type="password" placeholder="sk-ant-api03-..." autocomplete="off" autocorrect="off" spellcheck="false" style="font-family:monospace;letter-spacing:.05em"/>'+
+      '<div style="font-size:11px;color:var(--tx3);margin-top:4px">Get your key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--bl)">console.anthropic.com</a> &rarr; API Keys</div>'+
+    '</div>'+
+    '<div style="display:flex;align-items:center;gap:8px">'+
+      '<input type="checkbox" id="akShow" onchange="toggleKeyVis()" style="width:14px;height:14px;accent-color:var(--g);cursor:pointer"/>'+
+      '<label for="akShow" style="font-size:12px;color:var(--tx2);cursor:pointer">Show key while typing</label>'+
+    '</div>'+
+  '</div>'+
+  '<div class="mf">'+
+    '<button class="btn" onclick="closeM()">Cancel</button>'+
+    (current ? '<button class="btn" style="color:var(--rd)" onclick="confirmClearKey()">Remove Key</button>' : '')+
+    '<button class="btn p" onclick="saveApiKey()">Save Key</button>'+
+  '</div>'+
+  '</div></div>';
+}
+
+function toggleKeyVis() {
+  const inp = $('akInput');
+  if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function saveApiKey() {
+  const val = ($('akInput')?.value||'').trim();
+  if (!val) { toast('Please enter your API key first', '#BA7517'); return; }
+  if (!val.startsWith('sk-ant-')) {
+    if (!confirm('This doesn\'t look like an Anthropic key (should start with sk-ant-). Save anyway?')) return;
+  }
+  setApiKey(val);
+  closeM();
+  toast('API key saved securely to this device ✓');
+}
+
+function confirmClearKey() {
+  if (!confirm('Remove the saved API key from this device? SmartScan will stop working until you add a new key.')) return;
+  clearApiKey();
+  closeM();
+  toast('API key removed from this device');
+}
+
+
 function boot() {
   load();
   $('vBdg').textContent = CFG.APP_VERSION;
@@ -821,10 +894,17 @@ function ensureReport(cb) {
 function fabSnap(){
   closeFab();
   // Show SmartScan vs Manual choice
+  const keySet = hasApiKey();
+  const keyBanner = keySet ? '' :
+    '<div style="background:var(--ambg);border:1px solid #FAC775;border-radius:var(--rsm);padding:9px 12px;font-size:12px;color:var(--amdk);margin-bottom:4px">'+
+    '&#9888; <strong>No API key saved</strong> &mdash; SmartScan will prompt you for your key. '+
+    'Or go to <strong>&#8942; menu &rarr; SmartScan API Key</strong> to save it now.'+
+    '</div>';
   mR.innerHTML = '<div class="mbg" onclick="if(event.target===this)closeM()">'+
   '<div class="modal"><div class="mh2"></div>'+
   '<div class="mhd"><h2>Add Receipt</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
   '<div class="mb" style="gap:12px">'+
+    keyBanner+
     '<div onclick="fabDoSnap(\'smart\')" style="padding:16px 14px;border:2px solid var(--g);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px;background:var(--gbg)">'+
       '<div style="font-size:28px">&#129302;</div>'+
       '<div><div style="font-weight:700;font-size:14px;color:var(--gdk)">SmartScan</div><div style="font-size:12px;color:var(--gdk);margin-top:2px">AI reads your receipt &mdash; auto-fills merchant, date &amp; amount</div></div>'+
@@ -880,14 +960,48 @@ async function doSmartScan(imgData, rid) {
   '</div></div></div>';
 
   try {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      closeM();
+      // Prompt user to enter their key, then retry
+      mR.innerHTML = '<div class="mbg" onclick="if(event.target===this)closeM()">'+
+      '<div class="modal"><div class="mh2"></div>'+
+      '<div class="mhd"><h2>&#129302; SmartScan</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
+      '<div class="mb">'+
+        '<div class="info am" style="font-size:12px;line-height:1.6">SmartScan needs your Anthropic API key to read receipts. Your key is stored <strong>only on this device</strong> &mdash; never in the code or synced anywhere.</div>'+
+        '<div class="fld">'+
+          '<label>Anthropic API Key</label>'+
+          '<input class="fi2" id="akQuick" type="password" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false" style="font-family:monospace"/>'+
+          '<div style="font-size:11px;color:var(--tx3);margin-top:4px">Get it at <a href="https://console.anthropic.com" target="_blank" style="color:var(--bl)">console.anthropic.com</a> &rarr; API Keys</div>'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<input type="checkbox" id="akQShow" onchange="var i=$$(\'akQuick\');if(i)i.type=i.type===\'password\'?\'text\':\'password\'" style="width:14px;height:14px;accent-color:var(--g);cursor:pointer"/>'+
+          '<label for="akQShow" style="font-size:12px;color:var(--tx2);cursor:pointer">Show key</label>'+
+        '</div>'+
+      '</div>'+
+      '<div class="mf">'+
+        '<button class="btn" onclick="closeM()">Cancel</button>'+
+        '<button class="btn p" onclick="saveQuickKey(\''+rid+'\',\''+imgData.slice(0,20)+'\')">Save &amp; Scan</button>'+
+      '</div>'+
+      '</div></div>';
+      // Store imgData for after key entry
+      window._pendingScanImg = imgData;
+      window._pendingScanRid = rid;
+      return;
+    }
     const base64 = imgData.split(',')[1];
     const mediaType = imgData.split(';')[0].split(':')[1] || 'image/jpeg';
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-opus-4-5',
         max_tokens: 400,
         messages: [{
           role: 'user',
@@ -911,12 +1025,24 @@ async function doSmartScan(imgData, rid) {
   } catch(err) {
     console.error('SmartScan failed', err);
     closeM();
-    toast('SmartScan unavailable — opening manual form', '#BA7517');
+    const msg = err.message||String(err);
+    toast('SmartScan failed: '+msg.slice(0,80)+' — opening manual form', '#A32D2D');
     mAE(rid, imgData);
   }
 }
 
-/* ── BATCH SMARTSCAN ─────────────────────────────────── */
+/* Save key from inline prompt then immediately retry scan */
+function saveQuickKey() {
+  const val = ($('akQuick')?.value||'').trim();
+  if (!val) { toast('Please enter your API key','#BA7517'); return; }
+  setApiKey(val);
+  closeM();
+  const img = window._pendingScanImg;
+  const rid = window._pendingScanRid;
+  window._pendingScanImg = null;
+  window._pendingScanRid = null;
+  if (img && rid) doSmartScan(img, rid);
+}
 function fabBatch() {
   closeM();
   const inp = document.createElement('input');
@@ -955,11 +1081,18 @@ async function startBatch(files, rid) {
     try {
       const base64 = imgData.split(',')[1];
       const mediaType = imgData.split(';')[0].split(':')[1] || 'image/jpeg';
+      const apiKey = getApiKey();
+      if (!apiKey) { if(logEl) logEl.innerHTML += '<div style="padding:2px 0;color:var(--rd)">&#10007; No API key — open Settings &rarr; SmartScan API Key</div>'; done++; continue; }
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers:{
+          'Content-Type':'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
         body:JSON.stringify({
-          model:'claude-sonnet-4-20250514', max_tokens:400,
+          model:'claude-opus-4-5', max_tokens:400,
           messages:[{role:'user',content:[
             {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
             {type:'text',text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Airfare|Hotel|Meals|Ground Transport|Office Supplies|Marketing|Samples|Shipping|Other","notes":"brief description","taxIncluded":true}'}
