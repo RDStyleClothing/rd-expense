@@ -243,6 +243,13 @@ tr.trc:active td{background:var(--bg)}
 .sbdg{font-size:10px;padding:2px 7px;border-radius:10px;background:var(--gbg);color:var(--gdk);font-weight:600}
 .sbdg.nd{background:var(--ambg);color:var(--amdk)}
 
+/* ── SPIN ANIMATION ── */
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ── BATCH PROGRESS ── */
+.bprog{width:100%;background:var(--s2);border-radius:20px;height:8px;overflow:hidden;margin-top:4px}
+.bprog-bar{height:100%;background:var(--g);border-radius:20px;width:0%;transition:width .4s}
+
 /* ── TOAST ── */
 .toast{position:fixed;bottom:calc(var(--fab) + 52px);right:16px;z-index:999;background:#1a1917;color:#fff;font-size:13px;padding:10px 15px;border-radius:var(--rsm);opacity:0;transition:opacity .22s;pointer-events:none;max-width:300px;line-height:1.4}
 .toast.show{opacity:1}
@@ -366,7 +373,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v1.3.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v1.4.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -390,7 +397,7 @@ tr.trc:active td{background:var(--bg)}
    See SETUP.md for full step-by-step instructions
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v1.3.0',
+  APP_VERSION:    'v1.4.0',
   APP_RELEASED:   'April 2026',
   MSAL_CLIENT_ID: 'YOUR_AZURE_CLIENT_ID',
   MSAL_TENANT:    'common',
@@ -788,46 +795,240 @@ function openFab(){
   const locked=r&&r.status!=='Open';
   let opts='';
   if(onDet&&!locked) opts+=fo('📋','Add to "'+r.name.slice(0,20)+(r.name.length>20?'…':'')+'"',"mAE('"+r.id+"');closeFab()");
-  opts+=fo('📷','Snap receipt','fabSnap()');
-  opts+=fo('➕','Add expense','fabAdd()');
+  opts+=fo('🤖','SmartScan receipt','fabSnap();');
+  opts+=fo('📄','Batch scan receipts','fabSnap();'); // fabSnap now shows the 3-option modal
+  opts+=fo('➕','Manual expense entry','fabAdd()');
   opts+=fo('📁','New report','mNR();closeFab()');
   const m=$('fabM'); m.innerHTML=opts; m.style.display='flex';
 }
 function closeFab(){S.fabOpen=false;$('fabB').classList.remove('open');$('fabM').style.display='none';}
 function fo(ico,lbl,act){return'<div class="fo" onclick="'+act+'"><div class="fl">'+lbl+'</div><div class="fi3">'+ico+'</div></div>';}
 
+/* Auto-create a report if none exist, then run callback(reportId) */
+function ensureReport(cb) {
+  const op = S.reports.filter(r=>r.status==='Open');
+  if (op.length === 1) { cb(op[0].id); return; }
+  if (op.length > 1)   { window._afterReport = cb; pickR(); return; }
+  // No open reports — auto-create one with today's date
+  const today = new Date().toISOString().slice(0,10);
+  const month = new Date().toLocaleDateString('en-CA',{month:'long',year:'numeric'});
+  const r = {id:uid('R'), name:'Expenses — '+month, category:'Other', startDate:today, endDate:today, notes:'', status:'Open', _ts:Date.now()};
+  S.reports.push(r); save(); render();
+  toast('Report "'+r.name+'" created automatically');
+  cb(r.id);
+}
+
 function fabSnap(){
   closeFab();
-  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.capture='environment';
-  inp.onchange=e=>{
-    if(!e.target.files[0])return;
-    const fr=new FileReader();
-    fr.onload=ev=>{
-      if(!S.reports.filter(r=>r.status==='Open').length){toast('Create a report first!','#BA7517');return;}
-      window._snap=ev.target.result; pickR();
+  // Show SmartScan vs Manual choice
+  mR.innerHTML = '<div class="mbg" onclick="if(event.target===this)closeM()">'+
+  '<div class="modal"><div class="mh2"></div>'+
+  '<div class="mhd"><h2>Add Receipt</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
+  '<div class="mb" style="gap:12px">'+
+    '<div onclick="fabDoSnap(\'smart\')" style="padding:16px 14px;border:2px solid var(--g);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px;background:var(--gbg)">'+
+      '<div style="font-size:28px">&#129302;</div>'+
+      '<div><div style="font-weight:700;font-size:14px;color:var(--gdk)">SmartScan</div><div style="font-size:12px;color:var(--gdk);margin-top:2px">AI reads your receipt &mdash; auto-fills merchant, date &amp; amount</div></div>'+
+    '</div>'+
+    '<div onclick="fabDoSnap(\'manual\')" style="padding:16px 14px;border:1px solid var(--bd2);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px">'+
+      '<div style="font-size:28px">&#9997;</div>'+
+      '<div><div style="font-weight:700;font-size:14px">Manual Entry</div><div style="font-size:12px;color:var(--tx2);margin-top:2px">Upload receipt image and fill in fields yourself</div></div>'+
+    '</div>'+
+    '<div onclick="fabBatch()" style="padding:16px 14px;border:1px solid var(--bd2);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px">'+
+      '<div style="font-size:28px">&#128196;</div>'+
+      '<div><div style="font-weight:700;font-size:14px">Batch SmartScan</div><div style="font-size:12px;color:var(--tx2);margin-top:2px">Upload multiple receipts at once &mdash; each auto-scanned &amp; added</div></div>'+
+    '</div>'+
+  '</div></div></div>';
+}
+
+function fabDoSnap(mode) {
+  closeM();
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*'; inp.capture='environment';
+  inp.onchange = e => {
+    if (!e.target.files[0]) return;
+    const fr = new FileReader();
+    fr.onload = ev => {
+      const imgData = ev.target.result;
+      ensureReport(rid => {
+        if (mode === 'smart') {
+          doSmartScan(imgData, rid);
+        } else {
+          window._snap = imgData;
+          mAE(rid, imgData);
+        }
+      });
     };
     fr.readAsDataURL(e.target.files[0]);
   };
   inp.click();
 }
+
 function fabAdd(){
   closeFab();
-  const op=S.reports.filter(r=>r.status==='Open');
-  if(!op.length){toast('Create a report first','#BA7517');return;}
-  if(op.length===1){mAE(op[0].id);return;}
-  pickR();
+  ensureReport(rid => mAE(rid));
+}
+
+/* ── SMARTSCAN — uses Claude API to read receipt ─────── */
+async function doSmartScan(imgData, rid) {
+  // Show scanning overlay
+  mR.innerHTML = '<div class="mbg"><div class="modal"><div class="mh2"></div>'+
+  '<div class="mhd"><h2>&#129302; SmartScan</h2></div>'+
+  '<div class="mb" style="align-items:center;text-align:center;gap:16px;padding:32px 18px">'+
+    '<img src="'+imgData+'" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1px solid var(--bd)"/>'+
+    '<div class="spin" style="width:32px;height:32px;border:3px solid var(--bd2);border-top-color:var(--g);border-radius:50%;animation:sp .7s linear infinite;margin:0 auto"></div>'+
+    '<div style="font-size:13px;color:var(--tx2)" id="scanStatus">Reading receipt&hellip;</div>'+
+  '</div></div></div>';
+
+  try {
+    const base64 = imgData.split(',')[1];
+    const mediaType = imgData.split(';')[0].split(':')[1] || 'image/jpeg';
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: [
+            { type:'image', source:{ type:'base64', media_type:mediaType, data:base64 } },
+            { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Airfare|Hotel|Meals|Ground Transport|Office Supplies|Marketing|Samples|Shipping|Other","notes":"brief description","taxIncluded":true}' }
+          ]
+        }]
+      })
+    });
+
+    const data = await resp.json();
+    const raw = data.content?.[0]?.text || '{}';
+    let parsed;
+    try { parsed = JSON.parse(raw.replace(/```json|```/g,'')); } catch(e) { parsed = {}; }
+
+    closeM();
+    // Open expense form pre-filled with scanned data
+    mAE(rid, imgData, parsed);
+
+  } catch(err) {
+    console.error('SmartScan failed', err);
+    closeM();
+    toast('SmartScan unavailable — opening manual form', '#BA7517');
+    mAE(rid, imgData);
+  }
+}
+
+/* ── BATCH SMARTSCAN ─────────────────────────────────── */
+function fabBatch() {
+  closeM();
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+  inp.onchange = e => {
+    if (!e.target.files.length) return;
+    ensureReport(rid => startBatch(e.target.files, rid));
+  };
+  inp.click();
+}
+
+async function startBatch(files, rid) {
+  const fileArr = Array.from(files);
+  const total = fileArr.length;
+  let done = 0, added = 0;
+
+  mR.innerHTML = '<div class="mbg">'+
+  '<div class="modal"><div class="mh2"></div>'+
+  '<div class="mhd"><h2>&#128196; Batch SmartScan</h2></div>'+
+  '<div class="mb" style="align-items:center;text-align:center;gap:16px;padding:28px 18px">'+
+    '<div class="spin" style="width:36px;height:36px;border:3px solid var(--bd2);border-top-color:var(--g);border-radius:50%;animation:sp .7s linear infinite;margin:0 auto"></div>'+
+    '<div style="font-size:14px;font-weight:600" id="batchTitle">Scanning receipts&hellip;</div>'+
+    '<div style="font-size:13px;color:var(--tx2)" id="batchSub">0 of '+total+' complete</div>'+
+    '<div style="width:100%;background:var(--s2);border-radius:20px;height:8px;overflow:hidden">'+
+      '<div id="batchBar" style="height:100%;background:var(--g);border-radius:20px;width:0%;transition:width .4s"></div>'+
+    '</div>'+
+    '<div id="batchLog" style="font-size:11px;color:var(--tx3);max-height:120px;overflow-y:auto;width:100%;text-align:left"></div>'+
+  '</div></div></div>';
+
+  for (const file of fileArr) {
+    const imgData = await new Promise(res => {
+      const fr = new FileReader(); fr.onload=ev=>res(ev.target.result); fr.readAsDataURL(file);
+    });
+    const logEl = $('batchLog');
+
+    try {
+      const base64 = imgData.split(',')[1];
+      const mediaType = imgData.split(';')[0].split(':')[1] || 'image/jpeg';
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514', max_tokens:400,
+          messages:[{role:'user',content:[
+            {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
+            {type:'text',text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Airfare|Hotel|Meals|Ground Transport|Office Supplies|Marketing|Samples|Shipping|Other","notes":"brief description","taxIncluded":true}'}
+          ]}]
+        })
+      });
+      const rdata = await resp.json();
+      let parsed;
+      try { parsed = JSON.parse((rdata.content?.[0]?.text||'{}').replace(/```json|```/g,'')); } catch(e){parsed={};}
+      const today = new Date().toISOString().slice(0,10);
+      const e = {
+        id:uid('E'), reportId:rid,
+        merchant:parsed.merchant||file.name.replace(/\.[^.]+$/,''),
+        date:parsed.date||today,
+        amount:parseFloat(parsed.amount)||0,
+        category:parsed.category||'Other',
+        notes:parsed.notes||'',
+        taxIncluded:!!parsed.taxIncluded,
+        receipts:[imgData],
+        _ts:Date.now()
+      };
+      S.expenses.push(e); added++;
+      if(logEl) logEl.innerHTML += '<div style="padding:2px 0">&#10003; '+esc(e.merchant)+' &mdash; '+fmt(e.amount)+'</div>';
+    } catch(err) {
+      if(logEl) logEl.innerHTML += '<div style="padding:2px 0;color:var(--rd)">&#10007; '+esc(file.name)+' (scan failed)</div>';
+    }
+
+    done++;
+    const pct = Math.round(done/total*100);
+    const bar=$('batchBar'), sub=$('batchSub');
+    if(bar) bar.style.width=pct+'%';
+    if(sub) sub.textContent=done+' of '+total+' complete';
+  }
+
+  save();
+  if(S.storage.connected&&S.storage.provider!=='local') doSync(rid);
+
+  // Done — show summary
+  const title=$('batchTitle'), sub=$('batchSub');
+  if(title) title.textContent='&#10003; Batch complete';
+  if(sub)   sub.textContent=added+' expenses added to report';
+
+  setTimeout(()=>{
+    closeM();
+    render();
+    showView('report-detail', rid);
+    toast(added+' receipts scanned and added ✓');
+  }, 1800);
 }
 function pickR(){
   const op=S.reports.filter(r=>r.status==='Open'), sn=window._snap;
-  mR.innerHTML='<div class="mbg" onclick="if(event.target===this){closeM();window._snap=null}">'+
+  const cb=window._afterReport;
+  mR.innerHTML='<div class="mbg" onclick="if(event.target===this){closeM();window._snap=null;window._afterReport=null}">'+
   '<div class="modal"><div class="mh2"></div>'+
-  '<div class="mhd"><h2>'+(sn?'📷 Add Snap':'Choose Report')+'</h2><button class="ib" onclick="closeM();window._snap=null">&#10005;</button></div>'+
+  '<div class="mhd"><h2>'+(sn?'📷 Add Snap':'Choose Report')+'</h2><button class="ib" onclick="closeM();window._snap=null;window._afterReport=null">&#10005;</button></div>'+
   '<div class="mb" style="gap:10px">'+
   (sn?'<img src="'+sn+'" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;border:1px solid var(--bd)"/>'  :'')+
   '<p style="font-size:13px;color:var(--tx2)">Which report?</p>'+
-  op.map(r=>'<div onclick="closeM();mAE(\''+r.id+'\',window._snap);window._snap=null" style="padding:13px 14px;border:1px solid var(--bd);border-radius:var(--rsm);cursor:pointer;display:flex;align-items:center;gap:10px"><div style="flex:1"><div style="font-weight:600;font-size:14px">'+esc(r.name)+'</div><div style="font-size:12px;color:var(--tx2)">'+esc(r.category)+'</div></div><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 11l4-4-4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>').join('')+
-  '<button class="btn" style="width:100%;justify-content:center" onclick="closeM();window._snap=null;mNR()">+ New Report</button>'+
+  op.map(r=>'<div onclick="pickRSelect(\''+r.id+'\')" style="padding:13px 14px;border:1px solid var(--bd);border-radius:var(--rsm);cursor:pointer;display:flex;align-items:center;gap:10px"><div style="flex:1"><div style="font-weight:600;font-size:14px">'+esc(r.name)+'</div><div style="font-size:12px;color:var(--tx2)">'+esc(r.category)+'</div></div><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 11l4-4-4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>').join('')+
+  '<button class="btn" style="width:100%;justify-content:center" onclick="closeM();window._snap=null;window._afterReport=null;mNR()">+ New Report</button>'+
   '</div></div></div>';
+}
+
+function pickRSelect(rid) {
+  const sn=window._snap, cb=window._afterReport;
+  window._snap=null; window._afterReport=null;
+  closeM();
+  if(cb) { cb(rid); return; }
+  mAE(rid, sn);
 }
 
 /* ══════════════════════════════════════════════════════ VIEWS */
@@ -891,7 +1092,7 @@ function vDash(){
 
 /* REPORTS */
 function vRep(){
-  return '<div class="ph"><div class="pt">Reports</div><div class="phs"></div><div class="pa"><button class="btn p" onclick="mNR()">+ New Report</button></div></div>'+
+  return '<div class="ph"><div class="pt">Reports</div><div class="phs"></div><div class="pa"><button class="btn" onclick="importExcel()">&#128196; Import</button><button class="btn p" onclick="mNR()">+ New Report</button></div></div>'+
   '<div class="card">'+
   (S.reports.length===0?'<div class="empty"><div class="eic">&#128193;</div>No reports yet.</div>'
   :'<table class="dt"><thead><tr><th>Name</th><th>Category</th><th>Period</th><th>Lines</th><th>Subtotal</th><th>Total+tax</th><th>Status</th><th></th></tr></thead><tbody>'+
@@ -1016,15 +1217,21 @@ function saveR(){
   showView('report-detail',r.id);
 }
 
-function mAE(rid,preImg){
+function mAE(rid, preImg, scanned) {
   closeFab(); window._rec=preImg?[preImg]:[];
+  const today=new Date().toISOString().slice(0,10);
+  const sc=scanned||{};
+  const cats=['Airfare','Hotel','Meals','Ground Transport','Office Supplies','Marketing','Samples','Shipping','Other'];
+  const catOpts=cats.map(c=>'<option'+(sc.category===c?' selected':'')+'>'+c+'</option>').join('');
+  const scanBadge=scanned?'<div style="background:var(--gbg);color:var(--gdk);border-radius:var(--rsm);padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:7px"><span style="font-size:16px">&#129302;</span><span><strong>SmartScan complete</strong> &mdash; review and confirm below</span></div>':'';
   mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal wide"><div class="mh2"></div>'+
-  '<div class="mhd"><h2>Add Expense</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
+  '<div class="mhd"><h2>'+(scanned?'&#129302; SmartScan Result':'Add Expense')+'</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
   '<div class="mb">'+
-    '<div class="r2"><div class="fld"><label>Merchant *</label><input class="fi2" id="eM" placeholder="e.g. Air France" autocomplete="off"/></div><div class="fld"><label>Date *</label><input class="fi2" type="date" id="eD"/></div></div>'+
-    '<div class="r2"><div class="fld"><label>Amount (CAD) *</label><input class="fi2" type="number" id="eA" placeholder="0.00" min="0" step="0.01" inputmode="decimal" oninput="updT()"/></div>'+
-    '<div class="fld"><label>Category</label><select class="fse" id="eCt" onchange="updT()"><option>Airfare</option><option>Hotel</option><option>Meals</option><option>Ground Transport</option><option>Office Supplies</option><option>Marketing</option><option>Samples</option><option>Shipping</option><option>Other</option></select></div></div>'+
-    '<div class="ckr"><input type="checkbox" id="tI" onchange="updT()"/><label for="tI">Amount already includes GST + QST</label></div>'+
+    scanBadge+
+    '<div class="r2"><div class="fld"><label>Merchant *</label><input class="fi2" id="eM" placeholder="e.g. Air France" autocomplete="off" value="'+esc(sc.merchant||'')+'"/></div><div class="fld"><label>Date *</label><input class="fi2" type="date" id="eD" value="'+(sc.date||today)+'"/></div></div>'+
+    '<div class="r2"><div class="fld"><label>Amount (CAD) *</label><input class="fi2" type="number" id="eA" placeholder="0.00" min="0" step="0.01" inputmode="decimal" value="'+(sc.amount||'')+'" oninput="updT()"/></div>'+
+    '<div class="fld"><label>Category</label><select class="fse" id="eCt" onchange="updT()">'+catOpts+'</select></div></div>'+
+    '<div class="ckr"><input type="checkbox" id="tI" onchange="updT()"'+(sc.taxIncluded?' checked':'')+'/><label for="tI">Amount already includes GST + QST</label></div>'+
     '<div class="tp" id="tPr" style="display:none">'+
       '<div style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Qu&eacute;bec Tax Breakdown</div>'+
       '<div class="tpr"><span>Subtotal (pre-tax)</span><span id="tp1">&mdash;</span></div>'+
@@ -1035,7 +1242,7 @@ function mAE(rid,preImg){
       '<div class="tpr rec"><span>GST recoverable (ITC)</span><span id="tp5">&mdash;</span></div>'+
       '<div class="tpr rec"><span>QST recoverable (ITR)</span><span id="tp6">&mdash;</span></div>'+
     '</div>'+
-    '<div class="fld"><label>Notes</label><input class="fi2" id="eNo" placeholder="Optional&hellip;"/></div>'+
+    '<div class="fld"><label>Notes</label><input class="fi2" id="eNo" placeholder="Optional&hellip;" value="'+esc(sc.notes||'')+'"/></div>'+
     '<div class="fld"><label>Receipts</label>'+
       '<div class="dz" id="dz" onclick="$(\'fi4\').click()" ondragover="event.preventDefault();this.classList.add(\'ov\')" ondragleave="this.classList.remove(\'ov\')" ondrop="onDp(event)">'+
         '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="display:block;margin:0 auto;color:var(--tx2)"><path d="M12 16V8M12 8l-3 3M12 8l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.4"/></svg>'+
@@ -1047,7 +1254,7 @@ function mAE(rid,preImg){
   '</div>'+
   '<div class="mf"><button class="btn" onclick="closeM()">Cancel</button><button class="btn p" onclick="saveE(\''+rid+'\')">Add Expense</button></div>'+
   '</div></div>';
-  setTimeout(()=>$('eM')?.focus(),100);
+  setTimeout(()=>{ if(sc.amount) updT(); if(!sc.merchant) $('eM')?.focus(); }, 100);
   if(preImg) renderT();
 }
 
@@ -1194,6 +1401,126 @@ function rcptModal(r,lines,fn,sp){
   '</div>'+
   '<div class="mf"><button class="btn p" onclick="closeM()">Done</button></div>'+
   '</div></div>';
+}
+
+/* ══════════════════════════════════════════════════════
+   IMPORT EXCEL — re-import a previously exported report
+   Reads the "Expenses" sheet rows 11+ (after header block)
+   and merges/replaces expenses for the matched report.
+══════════════════════════════════════════════════════ */
+function importExcel() {
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='.xlsx,.xls';
+  inp.onchange=async e=>{
+    const file=e.target.files[0]; if(!file)return;
+    if(typeof XLSX==='undefined'){toast('Excel library not loaded yet — try again','#BA7517');return;}
+    try {
+      const ab=await file.arrayBuffer();
+      const wb=XLSX.read(ab,{type:'array'});
+      const ws=wb.Sheets['Expenses'];
+      if(!ws){toast('Could not find an "Expenses" sheet in this file','#rd');return;}
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+
+      // Find report name from row 3 (index 2): ['Report', name]
+      let reportName='', reportCat='Other', startDate='', endDate='';
+      for(let i=0;i<rows.length;i++){
+        if(String(rows[i][0]).trim()==='Report')   { reportName=String(rows[i][1]||'').trim(); }
+        if(String(rows[i][0]).trim()==='Category')  { reportCat=String(rows[i][1]||'Other').trim(); }
+        if(String(rows[i][0]).trim()==='Period'){
+          const p=String(rows[i][1]||'');
+          const parts=p.split(' to ');
+          startDate=parts[0]?.trim()||''; endDate=parts[1]?.trim()||'';
+        }
+      }
+      if(!reportName){toast('Could not read Report name from the file','#A32D2D');return;}
+
+      // Find header row — look for row with '#' in col A and 'Merchant' in col C
+      let hdrIdx=-1;
+      for(let i=0;i<rows.length;i++){
+        if(String(rows[i][0]).trim()==='#'&&String(rows[i][2]).trim()==='Merchant'){hdrIdx=i;break;}
+      }
+      if(hdrIdx===-1){toast('Could not find expense rows in the file','#A32D2D');return;}
+
+      // Parse expense rows
+      const newExps=[];
+      const today=new Date().toISOString().slice(0,10);
+      for(let i=hdrIdx+1;i<rows.length;i++){
+        const row=rows[i];
+        const num=row[0];
+        if(!num||String(num).trim()===''||String(num).trim()==='TOTALS') break;
+        const dateVal=row[1]; let dateStr=today;
+        if(dateVal){
+          if(typeof dateVal==='number'){ // Excel serial date
+            const d=new Date(Math.round((dateVal-25569)*86400*1000)); dateStr=d.toISOString().slice(0,10);
+          } else { dateStr=String(dateVal).trim()||today; }
+        }
+        const merchant=String(row[2]||'Unknown').trim();
+        const cat=String(row[3]||'Other').trim();
+        const notes=String(row[4]||'').trim();
+        const amt=parseFloat(row[5])||0;
+        const taxInc=String(row[6]||'').trim().toLowerCase()==='yes';
+        newExps.push({id:uid('E'),merchant,date:dateStr,amount:amt,category:cat,notes,taxIncluded:taxInc,receipts:[],_ts:Date.now()});
+      }
+      if(!newExps.length){toast('No expense rows found in the file','#BA7517');return;}
+
+      // Show preview modal
+      mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal wide"><div class="mh2"></div>'+
+      '<div class="mhd"><h2>&#128196; Import Excel</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
+      '<div class="mb">'+
+        '<div class="info bl" style="font-size:12px">Review the imported data below. Choosing <strong>Replace</strong> will remove existing expenses for this report and re-import from the file. <strong>Merge</strong> will add as new lines without removing anything.</div>'+
+        '<div style="background:var(--bg);border-radius:var(--rsm);padding:12px 14px;font-size:13px">'+
+          '<div style="font-weight:600;margin-bottom:4px">'+esc(reportName)+'</div>'+
+          '<div style="font-size:12px;color:var(--tx2)">'+esc(reportCat)+' &middot; '+esc(startDate)+' &ndash; '+esc(endDate)+'</div>'+
+          '<div style="font-size:12px;color:var(--tx2);margin-top:4px">'+newExps.length+' expense lines found</div>'+
+        '</div>'+
+        '<div style="max-height:220px;overflow-y:auto;font-size:12px">'+
+          '<table style="width:100%;border-collapse:collapse">'+
+            '<thead><tr style="background:var(--bg)"><th style="padding:6px 10px;text-align:left;font-weight:700;color:var(--tx3);font-size:10px;text-transform:uppercase">Merchant</th><th style="padding:6px 10px;text-align:left;font-weight:700;color:var(--tx3);font-size:10px;text-transform:uppercase">Date</th><th style="padding:6px 10px;text-align:left;font-weight:700;color:var(--tx3);font-size:10px;text-transform:uppercase">Amount</th><th style="padding:6px 10px;text-align:left;font-weight:700;color:var(--tx3);font-size:10px;text-transform:uppercase">Category</th></tr></thead>'+
+            '<tbody>'+newExps.map(e=>'<tr style="border-top:1px solid var(--bd)"><td style="padding:6px 10px">'+esc(e.merchant)+'</td><td style="padding:6px 10px">'+fd(e.date)+'</td><td style="padding:6px 10px">'+fmt(e.amount)+'</td><td style="padding:6px 10px;color:var(--tx2)">'+esc(e.category)+'</td></tr>').join('')+
+            '</tbody>'+
+          '</table>'+
+        '</div>'+
+      '</div>'+
+      '<div class="mf">'+
+        '<button class="btn" onclick="closeM()">Cancel</button>'+
+        '<button class="btn" onclick="doImport('+JSON.stringify(reportName)+','+JSON.stringify(reportCat)+','+JSON.stringify(startDate)+','+JSON.stringify(endDate)+',false)">Merge</button>'+
+        '<button class="btn p" onclick="doImport('+JSON.stringify(reportName)+','+JSON.stringify(reportCat)+','+JSON.stringify(startDate)+','+JSON.stringify(endDate)+',true)">Replace</button>'+
+      '</div>'+
+      '</div></div>';
+
+      // Store parsed expenses temporarily
+      window._importExps=newExps;
+
+    } catch(err) {
+      console.error('Import error',err);
+      toast('Import failed: '+(err.message||err),'#A32D2D');
+    }
+  };
+  inp.click();
+}
+
+function doImport(reportName, reportCat, startDate, endDate, replace) {
+  const exps=window._importExps||[]; window._importExps=null;
+  if(!exps.length){closeM();return;}
+
+  // Find or create the matching report
+  let r=S.reports.find(r=>r.name.trim()===reportName.trim());
+  if(!r){
+    r={id:uid('R'),name:reportName,category:reportCat||'Other',startDate,endDate,notes:'Imported',status:'Open',_ts:Date.now()};
+    S.reports.push(r);
+  }
+
+  if(replace){
+    S.expenses=S.expenses.filter(e=>e.reportId!==r.id);
+  }
+
+  // Assign report ID to all imported expenses
+  exps.forEach(e=>{ e.reportId=r.id; });
+  S.expenses.push(...exps);
+  save(); closeM(); render();
+  showView('report-detail',r.id);
+  if(S.storage.connected&&S.storage.provider!=='local')doSync(r.id);
+  toast(exps.length+' expenses imported into "'+reportName+'"');
 }
 
 /* ══════════════════════════════════════════════════════ INIT */
