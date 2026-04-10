@@ -378,7 +378,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v1.5.3</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v1.5.4</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -402,7 +402,7 @@ tr.trc:active td{background:var(--bg)}
    See SETUP.md for full step-by-step instructions
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v1.5.3',
+  APP_VERSION:    'v1.5.4',
   APP_RELEASED:   'April 2026',
   // SmartScan API key is stored securely in your browser's localStorage
   // — it is never in this code file. Enter it via Settings in the app.
@@ -1298,7 +1298,9 @@ function vDet(rid){
   const tx=TAX.sum(exps);
   const locked=r.status!=='Open';
   const flow={Open:['Close & Approve','Approved'],Approved:['Mark Awaiting Payment','Awaiting Payment'],'Awaiting Payment':['Mark as Paid','Paid']};
+  const revert={Approved:'Open','Awaiting Payment':'Approved',Paid:'Awaiting Payment'};
   const ns=flow[r.status];
+  const prev=revert[r.status];
   return'<div class="back" onclick="showView(\'reports\')"><svg viewBox="0 0 14 14" fill="none"><path d="M9 11L5 7l4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Reports</div>'+
   '<div class="ph" style="margin-top:6px">'+
     '<div style="min-width:0;flex:1">'+
@@ -1312,6 +1314,7 @@ function vDet(rid){
     '</div>'+
     '<div class="phs"></div>'+
     '<div class="pa">'+badge(r.status)+
+      (prev?'<button class="btn" title="Revert to '+prev+'" onclick="revertSt(\''+r.id+'\',\''+prev+'\')" style="color:var(--tx2)">&#8617; Revert to '+prev+'</button>':'')+
       (ns?'<button class="btn p" onclick="advSt(\''+r.id+'\',\''+ns[1]+'\')">'+ns[0]+'</button>':'')+
       '<button class="btn" onclick="expR(\''+r.id+'\')">&#11015; Export</button>'+
       (!locked?'<button class="btn p" onclick="mAE(\''+r.id+'\')">+ Add</button>':'')+
@@ -1496,6 +1499,13 @@ function saveE(rid){
 function delE(id){if(!confirm('Remove this expense?'))return;S.expenses=S.expenses.filter(e=>e.id!==id);save();toast('Removed');render();}
 function delR(id){if(!confirm('Delete report and all its expenses?'))return;S.reports=S.reports.filter(r=>r.id!==id);S.expenses=S.expenses.filter(e=>e.reportId!==id);save();toast('Deleted');render();}
 function advSt(rid,ns){const r=S.reports.find(r=>r.id===rid);if(!r)return;r.status=ns;save();toast('Status → '+ns);if(S.storage.connected&&S.storage.provider!=='local')doSync();render();}
+function revertSt(rid,ps){
+  const r=S.reports.find(r=>r.id===rid);if(!r)return;
+  if(!confirm('Revert "'+r.name+'" back to '+ps+'?\n\nThis will re-open the report for editing.'))return;
+  r.status=ps;save();toast('Reverted to '+ps);
+  if(S.storage.connected&&S.storage.provider!=='local')doSync();
+  render();
+}
 function pRec(src){mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div><div class="mhd"><h2>Receipt</h2><button class="ib" onclick="closeM()">&#10005;</button></div><div style="padding:14px;text-align:center;max-height:80vh;overflow:auto"><img src="'+src+'" style="max-width:100%;border-radius:8px"/></div></div></div>';}
 
 /* ══════════════════════════════════════════════════════
