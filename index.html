@@ -378,7 +378,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v1.5.2</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v1.5.3</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -402,7 +402,7 @@ tr.trc:active td{background:var(--bg)}
    See SETUP.md for full step-by-step instructions
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v1.5.2',
+  APP_VERSION:    'v1.5.3',
   APP_RELEASED:   'April 2026',
   // SmartScan API key is stored securely in your browser's localStorage
   // — it is never in this code file. Enter it via Settings in the app.
@@ -1007,7 +1007,7 @@ async function doSmartScan(imgData, rid) {
           role: 'user',
           content: [
             { type:'image', source:{ type:'base64', media_type:mediaType, data:base64 } },
-            { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Airfare|Hotel|Meals|Ground Transport|Office Supplies|Marketing|Samples|Shipping|Other","notes":"brief description","taxIncluded":true}' }
+            { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Airfare|Hotel|Meals|Car|Ground Transport|Office Supplies|Marketing|Samples|Shipping|Other","notes":"brief description","taxIncluded":true}' }
           ]
         }]
       })
@@ -1106,7 +1106,7 @@ async function startBatch(files, rid) {
           model:'claude-haiku-4-5-20251001', max_tokens:400,
           messages:[{role:'user',content:[
             {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
-            {type:'text',text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Airfare|Hotel|Meals|Ground Transport|Office Supplies|Marketing|Samples|Shipping|Other","notes":"brief description","taxIncluded":true}'}
+            {type:'text',text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Airfare|Hotel|Meals|Car|Ground Transport|Office Supplies|Marketing|Samples|Shipping|Other","notes":"brief description","taxIncluded":true}'}
           ]}]
         })
       });
@@ -1323,10 +1323,12 @@ function vDet(rid){
     '<div class="stat"><div class="slbl">Tax Recoverable</div><div class="sval cg">'+fmt(r2(tx.gR+tx.qR))+'</div></div>'+
   '</div>'+
   taxBox(exps)+
-  '<div class="card"><div class="chd"><div class="ctl">Expense Lines</div></div>'+
+  '<div class="card" style="overflow:visible">'+
+  '<div class="chd"><div class="ctl">Expense Lines</div></div>'+
+  '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'+
   (exps.length===0
     ?'<div class="empty">'+(locked?'No expenses on this report.':'Tap &ldquo;+ Add&rdquo; or the green button to add an expense.')+'</div>'
-    :'<table class="dt"><thead><tr><th>#</th><th>Date</th><th>Merchant</th><th>Cat.</th><th>Entered</th><th>Inc?</th><th>Subtotal</th><th>GST</th><th>QST</th><th>Total</th><th>Rcpt</th>'+(locked?'':'<th></th>')+'</tr></thead><tbody>'+
+    :'<table class="dt" style="min-width:700px"><thead><tr><th>#</th><th>Date</th><th>Merchant</th><th>Cat.</th><th>Entered</th><th>Inc?</th><th>Subtotal</th><th>GST</th><th>QST</th><th>Total</th><th>Rcpt</th>'+(locked?'':'<th></th>')+'</tr></thead><tbody>'+
       exps.map((e,i)=>{const et=TAX.calc(e.amount,e.category,e.taxIncluded||false);return'<tr>'+
         '<td style="color:var(--tx3)">'+(i+1)+'</td><td>'+fd(e.date)+'</td><td style="font-weight:600">'+esc(e.merchant)+'</td>'+
         '<td style="color:var(--tx2)">'+esc(e.category)+'</td><td>'+fmt(e.amount)+'</td>'+
@@ -1336,12 +1338,13 @@ function vDet(rid){
         '<td><div style="display:flex;gap:4px">'+(e.receipts?.length?e.receipts.map(rc=>'<img src="'+rc+'" style="width:34px;height:34px;object-fit:cover;border-radius:4px;border:1px solid var(--bd);cursor:pointer" onclick="pRec(\''+rc+'\')" />').join(''):'&mdash;')+'</div></td>'+
         (locked?'':'<td><button class="ib" onclick="delE(\''+e.id+'\')">&#128465;</button></td>')+
       '</tr>';}).join('')+
-    '</tbody></table>'+
+    '</tbody></table>')+
+  '</div>'+
     '<div class="xc">'+exps.map((e,i)=>{const et=TAX.calc(e.amount,e.category,e.taxIncluded||false);const img=e.receipts?.[0];
       return'<div class="xcd">'+(img?'<img class="xcth" src="'+img+'" onclick="pRec(\''+img+'\')"/>'  :'<div class="xcic">&#128179;</div>')+
       '<div class="xcb"><div class="xcn">'+esc(e.merchant)+'</div><div class="xcm">'+fd(e.date)+' &middot; '+esc(e.category)+'</div>'+
       '<div style="font-size:11px;color:var(--tx2);margin-top:2px">Sub: '+fmt(et.sub)+' &middot; GST: '+(et.xmt?'exempt':fmt(et.gst))+' &middot; QST: '+(et.xmt?'exempt':fmt(et.qst))+(et.meal?' &middot; 50% rule':'')+'</div></div>'+
-      '<div style="text-align:right"><div class="xca">'+fmt(et.tot)+'</div>'+(locked?'':'<button class="ib" style="font-size:12px;margin-top:3px" onclick="delE(\''+e.id+'\')">&#128465;</button>')+'</div></div>';}).join('')+'</div>')+
+      '<div style="text-align:right"><div class="xca">'+fmt(et.tot)+'</div>'+(locked?'':'<button class="ib" style="font-size:12px;margin-top:3px" onclick="delE(\''+e.id+'\')">&#128465;</button>')+'</div></div>';}).join('')+'</div>'+
   '</div>'+
   (r.notes?'<div class="card" style="padding:14px 16px"><div style="font-size:11px;color:var(--tx2);font-weight:700;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">Notes</div><div style="font-size:13px">'+esc(r.notes)+'</div></div>':'');
 }
@@ -1412,7 +1415,7 @@ function mAE(rid, preImg, scanned) {
   closeFab(); window._rec=preImg?[preImg]:[];
   const today=new Date().toISOString().slice(0,10);
   const sc=scanned||{};
-  const cats=['Airfare','Hotel','Meals','Ground Transport','Office Supplies','Marketing','Samples','Shipping','Other'];
+  const cats=['Airfare','Hotel','Meals','Car','Ground Transport','Office Supplies','Marketing','Samples','Shipping','Other'];
   const catOpts=cats.map(c=>'<option'+(sc.category===c?' selected':'')+'>'+c+'</option>').join('');
   const scanBadge=scanned?'<div style="background:var(--gbg);color:var(--gdk);border-radius:var(--rsm);padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:7px"><span style="font-size:16px">&#129302;</span><span><strong>SmartScan complete</strong> &mdash; review and confirm below</span></div>':'';
   mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal wide"><div class="mh2"></div>'+
@@ -1505,6 +1508,7 @@ function expR(rid){
   const fn=r.name.replace(/[^a-z0-9]/gi,'_')+'_Receipts';
   const sp={onedrive:'/'+S.storage.folder+'/'+fn+'/',google:'My Drive/'+S.storage.folder+'/'+fn+'/',local:'Downloads/'+fn+'/'}[S.storage.provider]||'(local)';
   const stx=TAX.sum(exps);
+  const fname=r.name.replace(/[^a-z0-9]/gi,'_')+'_'+CFG.APP_VERSION+'_Report.xlsx';
   const wb=XLSX.utils.book_new();
 
   // Sheet 1: Expenses
@@ -1562,16 +1566,142 @@ function expR(rid){
     ['Exported',new Date().toLocaleString()]
   ]),'Summary');
 
-  XLSX.writeFile(wb,r.name.replace(/[^a-z0-9]/gi,'_')+'_'+CFG.APP_VERSION+'_Report.xlsx');
-  toast('Exported ✓ — 3 sheets: Expenses, Tax Summary, Summary');
+  // Generate the xlsx as a blob/base64 so we can share or download it
+  const wbArray = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+  const blob = new Blob([wbArray], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 
+  // Collect receipt lines
   const lines=[];
   exps.forEach((e,i)=>(e.receipts||[]).forEach((src,ri)=>{
     if(!src.startsWith('pdf::')&&src.startsWith('data:'))
       lines.push({src,name:r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(ri+1)+'.jpg',path:sp});
   }));
-  if(lines.length>0) setTimeout(()=>rcptModal(r,lines,fn,sp),500);
-  if(S.storage.connected&&S.storage.provider!=='local') doSync(rid);
+
+  // On mobile show choice modal; on desktop just download
+  const isMobile = window.innerWidth <= 700 || 'ontouchstart' in window;
+  if (isMobile) {
+    showExportModal(r, fname, blob, lines, fn, sp, rid);
+  } else {
+    doDownloadXlsx(blob, fname);
+    toast('Exported ✓ — 3 sheets: Expenses, Tax Summary, Summary');
+    if(lines.length>0) setTimeout(()=>rcptModal(r,lines,fn,sp),500);
+    if(S.storage.connected&&S.storage.provider!=='local') doSync(rid);
+  }
+}
+
+function doDownloadXlsx(blob, fname) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=fname; a.style.display='none';
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
+}
+
+function showExportModal(r, fname, blob, lines, fn, sp, rid) {
+  const hasCloud = S.storage.connected && S.storage.provider !== 'local';
+  const hasShare = !!navigator.share;
+  mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()">'+
+  '<div class="modal"><div class="mh2"></div>'+
+  '<div class="mhd"><h2>&#11015; Export Report</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
+  '<div class="mb" style="gap:12px">'+
+    '<div style="font-size:13px;color:var(--tx2)"><strong style="color:var(--tx)">'+esc(r.name)+'</strong> &mdash; choose how to export:</div>'+
+
+    // Share / Email via native share sheet
+    (hasShare
+      ? '<div onclick="doShareExport()" style="padding:15px 14px;border:2px solid var(--g);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px;background:var(--gbg)">'+
+          '<div style="font-size:26px">&#128279;</div>'+
+          '<div><div style="font-weight:700;font-size:14px;color:var(--gdk)">Share / Email</div><div style="font-size:12px;color:var(--gdk);margin-top:2px">Opens your share sheet — send by email, AirDrop, Messages or any app</div></div>'+
+        '</div>'
+      : '<div onclick="doEmailExport()" style="padding:15px 14px;border:1px solid var(--bd2);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px">'+
+          '<div style="font-size:26px">&#128140;</div>'+
+          '<div><div style="font-weight:700;font-size:14px">Email</div><div style="font-size:12px;color:var(--tx2);margin-top:2px">Opens your email app with the report attached</div></div>'+
+        '</div>')+
+
+    // Cloud sync
+    (hasCloud
+      ? '<div onclick="doCloudExport()" style="padding:15px 14px;border:1px solid var(--bd2);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px">'+
+          '<div style="font-size:26px">'+(S.storage.provider==='google'?'&#128196;':'&#9729;')+'</div>'+
+          '<div><div style="font-weight:700;font-size:14px">Save to '+{onedrive:'OneDrive',google:'Google Drive'}[S.storage.provider]+'</div><div style="font-size:12px;color:var(--tx2);margin-top:2px">Upload report + receipts to your connected cloud folder</div></div>'+
+        '</div>'
+      : '')+
+
+    // Download to device
+    '<div onclick="doDownloadExport()" style="padding:15px 14px;border:1px solid var(--bd2);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px">'+
+      '<div style="font-size:26px">&#128229;</div>'+
+      '<div><div style="font-weight:700;font-size:14px">Save to Device</div><div style="font-size:12px;color:var(--tx2);margin-top:2px">Download .xlsx file to your Downloads folder</div></div>'+
+    '</div>'+
+  '</div>'+
+  '<div class="mf"><button class="btn" onclick="closeM()">Cancel</button></div>'+
+  '</div></div>';
+
+  // Stash for the action handlers
+  window._expBlob = blob;
+  window._expFname = fname;
+  window._expLines = lines;
+  window._expFn = fn;
+  window._expSp = sp;
+  window._expRid = rid;
+  window._expR = r;
+}
+
+async function doShareExport() {
+  const blob=window._expBlob, fname=window._expFname;
+  closeM();
+  try {
+    const file = new File([blob], fname, {type: blob.type});
+    if (navigator.canShare && navigator.canShare({files:[file]})) {
+      await navigator.share({
+        title: 'RD Expense Report — ' + window._expR.name,
+        text:  'Expense report attached.',
+        files: [file]
+      });
+    } else {
+      // Fallback: share without file (just text + download)
+      await navigator.share({ title:'RD Expense Report', text: window._expR.name });
+      doDownloadXlsx(blob, fname);
+    }
+  } catch(err) {
+    if (err.name !== 'AbortError') {
+      doDownloadXlsx(blob, fname);
+      toast('File saved to Downloads', '#1a1917');
+    }
+  }
+  _afterExport();
+}
+
+function doEmailExport() {
+  const r=window._expR, fname=window._expFname, blob=window._expBlob;
+  closeM();
+  // Build mailto — file attachment not supported via mailto, so download + open mail
+  doDownloadXlsx(blob, fname);
+  const subject = encodeURIComponent('Expense Report — '+r.name);
+  const body = encodeURIComponent(
+    'Please find attached the expense report: '+r.name+
+    '\n\nTotal: '+fmt(TAX.sum(S.expenses.filter(e=>e.reportId===r.id)).tot)+
+    '\nExported from RD Expense '+CFG.APP_VERSION
+  );
+  setTimeout(()=>{ window.location.href = 'mailto:?subject='+subject+'&body='+body; }, 600);
+  toast('Report downloaded — attach it to your email');
+  _afterExport();
+}
+
+function doCloudExport() {
+  closeM();
+  toast('Syncing to '+{onedrive:'OneDrive',google:'Google Drive'}[S.storage.provider]+'…');
+  doSync(window._expRid);
+  if(window._expLines?.length>0) setTimeout(()=>rcptModal(window._expR, window._expLines, window._expFn, window._expSp), 500);
+}
+
+function doDownloadExport() {
+  closeM();
+  doDownloadXlsx(window._expBlob, window._expFname);
+  toast('Exported ✓');
+  _afterExport();
+}
+
+function _afterExport() {
+  if(window._expLines?.length>0) setTimeout(()=>rcptModal(window._expR, window._expLines, window._expFn, window._expSp), 500);
+  if(S.storage.connected&&S.storage.provider!=='local') doSync(window._expRid);
 }
 
 function rcptModal(r,lines,fn,sp){
