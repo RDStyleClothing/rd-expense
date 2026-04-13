@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <meta name="theme-color" content="#ffffff"/>
 <title>RD Expense</title>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -378,7 +379,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v1.5.6</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v1.5.7</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -402,7 +403,7 @@ tr.trc:active td{background:var(--bg)}
    See SETUP.md for full step-by-step instructions
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v1.5.6',
+  APP_VERSION:    'v1.5.7',
   APP_RELEASED:   'April 2026',
   // SmartScan API key is stored securely in your browser's localStorage
   // — it is never in this code file. Enter it via Settings in the app.
@@ -1509,319 +1510,475 @@ function revertSt(rid,ps){
 function pRec(src){mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div><div class="mhd"><h2>Receipt</h2><button class="ib" onclick="closeM()">&#10005;</button></div><div style="padding:14px;text-align:center;max-height:80vh;overflow:auto"><img src="'+src+'" style="max-width:100%;border-radius:8px"/></div></div></div>';}
 
 /* ══════════════════════════════════════════════════════
-   EXCEL EXPORT — v1.5.5
-   Sheet 1 : Expenses  (grouped by category, subtotals, GST/QST split, styled)
-   Sheet 2 : Tax Summary (GST / QST / ITC / ITR breakdown)
+   EXCEL EXPORT — v1.5.7
+   Pure Office Open XML (SpreadsheetML) builder — no library needed.
+   Full cell formatting: fills, fonts, borders, number formats.
+   Sheet 1 : Expenses  (grouped by category, subtotals, GST/QST split)
+   Sheet 2 : Tax Summary
    Sheet 3 : Summary
 ══════════════════════════════════════════════════════ */
 
-/* ── style helpers ── */
-function xlCell(v, s){ return {v, s, t: typeof v==='number'?'n':'s'}; }
+/* ── OOXML helpers ── */
+function xEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-/* Palette */
-const XC = {
-  headerBg  : '1D6B4A',   // deep green  — main title row
-  headerFg  : 'FFFFFF',
-  subHdrBg  : '2E8B63',   // mid green   — column header row
-  subHdrFg  : 'FFFFFF',
-  catBg     : 'D6EFE4',   // light mint  — category group header
-  catFg     : '0F5C3A',
-  subTotBg  : 'E8F5EE',   // pale green  — category subtotal
-  subTotFg  : '0F5C3A',
-  grandBg   : '1D6B4A',   // deep green  — grand total
-  grandFg   : 'FFFFFF',
-  metaLbl   : '444444',
-  metaVal   : '1A1917',
-  altRow    : 'F7FBF9',   // very light green tint for even rows
-  border    : 'CCCCCC',
-  taxHdrBg  : '185FA5',   // blue        — tax section headers
-  taxHdrFg  : 'FFFFFF',
-  recoverBg : 'DCEEFF',   // light blue  — recoverable rows
-  recoverFg : '0B3D6B',
-  netBg     : 'FFF3CD',   // amber       — net cost
-  netFg     : '6D4000',
+/* Build shared-strings table and return index map */
+function buildSST(strings){
+  const map={}, arr=[];
+  strings.forEach(s=>{ if(!(s in map)){ map[s]=arr.length; arr.push(s); } });
+  const xml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    +'<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="'+arr.length+'" uniqueCount="'+arr.length+'">'
+    +arr.map(s=>'<si><t xml:space="preserve">'+xEsc(s)+'</t></si>').join('')
+    +'</sst>';
+  return {map, xml};
+}
+
+/* Style index constants — order must match buildStyles() arrays */
+const XST = {
+  DEFAULT:0, TITLE:1, META_LBL:2, META_VAL:3,
+  COL_HDR:4, COL_HDR_R:5,
+  CAT_HDR:6, CAT_SUB:7, CAT_SUB_R:8,
+  GRAND:9, GRAND_R:10,
+  ROW_L:11, ROW_R:12, ROW_ALT_L:13, ROW_ALT_R:14,
+  MEAL_TAG:15, MEAL_TAG_A:16,
+  SEC_HDR:17, TX_ROW_L:18, TX_ROW_R:19, TX_ALT_L:20, TX_ALT_R:21,
+  TX_GRAND_L:22, TX_GRAND_R:23,
+  RECOV_L:24, RECOV_R:25, NET_L:26, NET_R:27,
+  SUM_HDR:28, SUM_LBL:29, SUM_VAL:30, SUM_VAL_R:31,
 };
 
-function xlBorder(){
-  const s={style:'thin',color:{rgb:'CCCCCC'}};
-  return {top:s,bottom:s,left:s,right:s};
+function buildStyles(){
+  // numFmts
+  const numFmts=`<numFmts count="2">
+    <numFmt numFmtId="164" formatCode='"$"#,##0.00'/>
+    <numFmt numFmtId="165" formatCode="yyyy-mm-dd"/>
+  </numFmts>`;
+
+  // fonts  0=default 1=title 2=metaLbl 3=metaVal 4=colHdr 5=catHdr 6=catSub 7=grand 8=row 9=mealTag 10=secHdr 11=txRow 12=recov 13=net 14=sumHdr 15=sumLbl 16=sumVal
+  const fonts=`<fonts count="17">
+    <font><sz val="10"/><name val="Calibri"/></font>
+    <font><b/><sz val="13"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF555555"/><name val="Calibri"/></font>
+    <font><sz val="10"/><color rgb="FF1A1917"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0F5C3A"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0F5C3A"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><sz val="10"/><color rgb="FF1A1917"/><name val="Calibri"/></font>
+    <font><i/><sz val="9"/><color rgb="FF854F0B"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><sz val="10"/><color rgb="FF1A1917"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0B3D6B"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><color rgb="FF6D4000"/><name val="Calibri"/></font>
+    <font><b/><sz val="13"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF333333"/><name val="Calibri"/></font>
+    <font><sz val="10"/><color rgb="FF1A1917"/><name val="Calibri"/></font>
+  </fonts>`;
+
+  // fills  0=none 1=gray(required) 2=titleGreen 3=colHdrGreen 4=catMint 5=catSubPale 6=grandGreen 7=white 8=altGreen 9=mealAmber 10=secBlue 11=txAlt 12=recovBlue 13=netAmber 14=sumHdrGreen
+  const fills=`<fills count="15">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF1D6B4A"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF2E8B63"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFD6EFE4"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFE8F5EE"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF1D6B4A"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF7FBF9"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFAEEDA"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF185FA5"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF0F7FF"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFDCEEFF"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFF3CD"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF1D9E75"/></patternFill></fill>
+  </fills>`;
+
+  const thinBorder='<left style="thin"><color rgb="FFCCCCCC"/></left><right style="thin"><color rgb="FFCCCCCC"/></right><top style="thin"><color rgb="FFCCCCCC"/></top><bottom style="thin"><color rgb="FFCCCCCC"/></bottom>';
+  const medBot='<left style="thin"><color rgb="FFCCCCCC"/></left><right style="thin"><color rgb="FFCCCCCC"/></right><top style="thin"><color rgb="FFCCCCCC"/></top><bottom style="medium"><color rgb="FF1D6B4A"/></bottom>';
+  const borders=`<borders count="3">
+    <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border>${thinBorder}<diagonal/></border>
+    <border>${medBot}<diagonal/></border>
+  </borders>`;
+
+  // cellStyleXfs (required)
+  const cellStyleXfs=`<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>`;
+
+  // xf: numFmtId fontId fillId borderId applyFont applyFill applyBorder applyAlignment + alignment
+  const L='<alignment horizontal="left" wrapText="1"/>',
+        R='<alignment horizontal="right" wrapText="1"/>',
+        C='<alignment horizontal="center" wrapText="1"/>',
+        NF_CAD='numFmtId="164"', NF_0='numFmtId="0"', NF_DATE='numFmtId="165"';
+  function xf(nf,fi,fill,bord,al){ return `<xf ${nf} fontId="${fi}" fillId="${fill}" borderId="${bord}" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">${al}</xf>`; }
+
+  const cellXfs=[
+    xf(NF_0,  0, 0,0,L),           // 0  DEFAULT
+    xf(NF_0,  1, 2,1,L),           // 1  TITLE
+    xf(NF_0,  2, 0,1,L),           // 2  META_LBL
+    xf(NF_0,  3, 0,1,L),           // 3  META_VAL
+    xf(NF_0,  4, 3,2,C),           // 4  COL_HDR
+    xf(NF_CAD,4, 3,2,R),           // 5  COL_HDR_R
+    xf(NF_0,  5, 4,1,L),           // 6  CAT_HDR
+    xf(NF_0,  6, 5,1,L),           // 7  CAT_SUB
+    xf(NF_CAD,6, 5,1,R),           // 8  CAT_SUB_R
+    xf(NF_0,  7, 6,1,L),           // 9  GRAND
+    xf(NF_CAD,7, 6,1,R),           // 10 GRAND_R
+    xf(NF_0,  8, 7,1,L),           // 11 ROW_L
+    xf(NF_CAD,8, 7,1,R),           // 12 ROW_R
+    xf(NF_0,  8, 8,1,L),           // 13 ROW_ALT_L
+    xf(NF_CAD,8, 8,1,R),           // 14 ROW_ALT_R
+    xf(NF_0,  9, 9,1,C),           // 15 MEAL_TAG
+    xf(NF_0,  9, 9,1,C),           // 16 MEAL_TAG_A
+    xf(NF_0, 10,10,1,L),           // 17 SEC_HDR
+    xf(NF_0, 11, 7,1,L),           // 18 TX_ROW_L
+    xf(NF_CAD,11,7,1,R),           // 19 TX_ROW_R
+    xf(NF_0, 11,11,1,L),           // 20 TX_ALT_L
+    xf(NF_CAD,11,11,1,R),          // 21 TX_ALT_R
+    xf(NF_0,  7, 6,1,L),           // 22 TX_GRAND_L
+    xf(NF_CAD,7, 6,1,R),           // 23 TX_GRAND_R
+    xf(NF_0, 12,12,1,L),           // 24 RECOV_L
+    xf(NF_CAD,12,12,1,R),          // 25 RECOV_R
+    xf(NF_0, 13,13,1,L),           // 26 NET_L
+    xf(NF_CAD,13,13,1,R),          // 27 NET_R
+    xf(NF_0, 14,14,1,L),           // 28 SUM_HDR
+    xf(NF_0, 15, 0,1,L),           // 29 SUM_LBL
+    xf(NF_0, 16, 0,1,L),           // 30 SUM_VAL
+    xf(NF_CAD,16,0,1,R),           // 31 SUM_VAL_R
+  ];
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+${numFmts}${fonts}${fills}${borders}${cellStyleXfs}
+<cellXfs count="${cellXfs.length}">${cellXfs.join('')}</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
 }
 
-function xlS(bold,bg,fg,sz,italic,hAlign){
-  const f={bold:!!bold,sz:sz||11,color:{rgb:fg||'FF000000'}};
-  if(italic) f.italic=true;
-  const s={font:f,border:xlBorder()};
-  if(bg) s.fill={fgColor:{rgb:bg},patternType:'solid'};
-  if(hAlign) s.alignment={horizontal:hAlign,wrapText:true};
-  else s.alignment={wrapText:true};
-  return s;
-}
+/* Build a worksheet XML from a rows array.
+   Each row is an array of cell objects: {v, s, t} where
+   t = 's' (shared string index), 'n' (number), 'b' (blank)
+   s = style index from XST */
+function buildSheet(rows, colWidths, merges){
+  const colsXml = colWidths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('');
+  const mergesXml = merges && merges.length
+    ? '<mergeCells count="'+merges.length+'">'+merges.map(m=>`<mergeCell ref="${m}"/>`).join('')+'</mergeCells>'
+    : '';
 
-/* Apply styles to a sheet by address */
-function applyStyles(ws, styleMap){
-  Object.entries(styleMap).forEach(([addr, style])=>{
-    if(!ws[addr]) ws[addr]={t:'s',v:''};
-    ws[addr].s = style;
+  let rowsXml='';
+  rows.forEach((row,ri)=>{
+    let cellsXml='';
+    row.forEach((cell,ci)=>{
+      if(cell==null) return;
+      const addr = String.fromCharCode(65+ci)+(ri+1);
+      const s = cell.s!=null?cell.s:0;
+      if(cell.t==='n'){
+        cellsXml+=`<c r="${addr}" s="${s}" t="n"><v>${cell.v}</v></c>`;
+      } else if(cell.t==='s'){
+        cellsXml+=`<c r="${addr}" s="${s}" t="s"><v>${cell.v}</v></c>`;
+      } else {
+        cellsXml+=`<c r="${addr}" s="${s}"/>`;
+      }
+    });
+    if(cellsXml) rowsXml+=`<row r="${ri+1}">${cellsXml}</row>`;
   });
+
+  // Compute ref
+  const maxC = Math.max(...rows.map(r=>r.length))-1;
+  const lastCol = maxC<26?String.fromCharCode(65+maxC):'A'; // simple — enough for our cols
+  const ref=`A1:${String.fromCharCode(65+maxC)}${rows.length}`;
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<sheetViews><sheetView workbookViewId="0"><selection activeCell="A1" sqref="A1"/></sheetView></sheetViews>
+<sheetFormatPr defaultRowHeight="15"/>
+<cols>${colsXml}</cols>
+<sheetData>${rowsXml}</sheetData>
+${mergesXml}
+</worksheet>`;
 }
 
-/* Set a range of column styles */
-function styleRow(ws, row, cols, style, startCol){
-  const base = startCol||0;
-  cols.forEach((c,i)=>{
-    const addr = XLSX.utils.encode_cell({r:row, c:base+i});
-    if(!ws[addr]) ws[addr]={t:'s',v:''};
-    ws[addr].s = style;
+/* ZIP builder — minimal Deflate-store (no compression, just stored) */
+function buildXlsx(sheets, sst, styles){
+  // sheets: [{name, xml}]
+  const enc = new TextEncoder();
+
+  function crc32(bytes){
+    let c=0xFFFFFFFF;
+    for(let i=0;i<bytes.length;i++){
+      c^=bytes[i];
+      for(let j=0;j<8;j++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);
+    }
+    return (c^0xFFFFFFFF)>>>0;
+  }
+
+  function u32le(n){ const b=new Uint8Array(4); new DataView(b.buffer).setUint32(0,n,true); return b; }
+  function u16le(n){ const b=new Uint8Array(2); new DataView(b.buffer).setUint16(0,n,true); return b; }
+
+  function localEntry(name, data){
+    const nb=enc.encode(name), crc=crc32(data), sz=data.length;
+    const lh=new Uint8Array([
+      0x50,0x4B,0x03,0x04, // sig
+      20,0,               // version
+      0,0,               // flags
+      0,0,               // compression: store
+      0,0,0,0,           // mod time/date
+      ...u32le(crc), ...u32le(sz), ...u32le(sz),
+      ...u16le(nb.length), 0,0
+    ]);
+    return {lh, nb, data, crc, sz};
+  }
+
+  function concat(...arrays){
+    const total=arrays.reduce((a,b)=>a+b.length,0);
+    const out=new Uint8Array(total); let off=0;
+    arrays.forEach(a=>{out.set(a,off);off+=a.length;});
+    return out;
+  }
+
+  const files = [
+    {name:'[Content_Types].xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`},
+    {name:'_rels/.rels', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
+    {name:'xl/workbook.xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s,i)=>`<sheet name="${xEsc(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`},
+    {name:'xl/_rels/workbook.xml.rels', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/><Relationship Id="rId${sheets.length+2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+    {name:'xl/styles.xml', data:styles},
+    {name:'xl/sharedStrings.xml', data:sst},
+    ...sheets.map((s,i)=>({name:`xl/worksheets/sheet${i+1}.xml`, data:s.xml})),
+  ];
+
+  const entries=[]; let offset=0;
+  files.forEach(f=>{
+    const data=enc.encode(f.data);
+    const e=localEntry(f.name, data);
+    const localBytes=concat(e.lh, e.nb, e.data);
+    entries.push({...e, offset, localBytes});
+    offset+=localBytes.length;
   });
+
+  // Central directory
+  const cdEntries=entries.map(e=>{
+    const nb=e.nb;
+    const cd=new Uint8Array([
+      0x50,0x4B,0x01,0x02,
+      20,0,20,0,
+      0,0,0,0,0,0,0,0,
+      ...u32le(e.crc),...u32le(e.sz),...u32le(e.sz),
+      ...u16le(nb.length),0,0,0,0,0,0,
+      0,0,0,0,
+      ...u32le(e.offset)
+    ]);
+    return concat(cd, nb);
+  });
+  const cdBytes=concat(...cdEntries);
+  const cdOffset=offset;
+  const eocd=new Uint8Array([
+    0x50,0x4B,0x05,0x06,0,0,0,0,
+    ...u16le(entries.length),...u16le(entries.length),
+    ...u32le(cdBytes.length),...u32le(cdOffset),
+    0,0
+  ]);
+
+  return concat(...entries.map(e=>e.localBytes), cdBytes, eocd);
 }
 
+/* ── Main export function ── */
 function expR(rid){
   const r=S.reports.find(r=>r.id===rid); if(!r)return;
-  if(typeof XLSX==='undefined'){toast('Export library loading…','#BA7517');return;}
   const exps=S.expenses.filter(e=>e.reportId===rid);
   const fn=r.name.replace(/[^a-z0-9]/gi,'_')+'_Receipts';
   const sp={onedrive:'/'+S.storage.folder+'/'+fn+'/',google:'My Drive/'+S.storage.folder+'/'+fn+'/',local:'Downloads/'+fn+'/'}[S.storage.provider]||'(local)';
   const stx=TAX.sum(exps);
   const fname=r.name.replace(/[^a-z0-9]/gi,'_')+'_'+CFG.APP_VERSION+'_Report.xlsx';
-  const wb=XLSX.utils.book_new();
+
+  // All shared strings collected here
+  const allStrings=[];
+  function si(s){ const str=String(s==null?'':s); if(!allStrings.includes(str))allStrings.push(str); return str; }
+
+  // Helper: string cell
+  function sc(v,s){ const str=si(v); return {t:'s',_str:str,s}; }
+  // Helper: number cell
+  function nc(v,s){ return {t:'n',v:Number(v)||0,s}; }
+  // Helper: blank cell
+  function bc(s){ return {t:'b',s:s||XST.DEFAULT}; }
 
   /* ══ SHEET 1: EXPENSES ══ */
-  const COLS = ['#','Date','Merchant','Notes','Amount','Tax Incl.?','Subtotal','GST (5%)','QST (9.975%)','Total','ITC (GST)','ITR (QST)','Meals Rule','Receipt(s)'];
-  const NC = COLS.length; // 14
+  const sheet1rows=[];
+  const s1merges=[];
+  const NC=14; // columns
+  let row=0;
 
-  const aoa = [];
-  const styles = {};  // addr → style
+  // Title
+  sheet1rows.push([sc('RD International — Expense Report · Québec, Canada',XST.TITLE),...Array(NC-1).fill(bc(XST.TITLE))]);
+  s1merges.push(`A1:N1`); row++;
 
-  let ROW = 0; // 0-based row tracker
-
-  /* — Title row — */
-  aoa.push(['RD International — Expense Report · Québec, Canada', ...Array(NC-1).fill('')]);
-  const titleSt = xlS(true, XC.headerBg, XC.headerFg, 14, false, 'left');
-  for(let c=0;c<NC;c++) styles[XLSX.utils.encode_cell({r:ROW,c})] = titleSt;
-  ROW++;
-
-  /* — Meta block — */
-  const meta = [
-    ['Report',r.name], ['Category',r.category],
-    ['Period', (r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
-    ['Status', r.status], ['Jurisdiction','Québec, Canada (GST 5% · QST 9.975%)'],
-    ['Exported', new Date().toLocaleString('en-CA')], ['App Version', CFG.APP_VERSION]
+  // Meta
+  const meta=[
+    ['Report',r.name],['Category',r.category],
+    ['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
+    ['Status',r.status],['Jurisdiction','Québec, Canada — GST 5% + QST 9.975%'],
+    ['Exported',new Date().toLocaleString('en-CA')],['App Version',CFG.APP_VERSION]
   ];
-  meta.forEach(([lbl,val])=>{
-    aoa.push([lbl, val, ...Array(NC-2).fill('')]);
-    styles[XLSX.utils.encode_cell({r:ROW,c:0})] = xlS(true, null, XC.metaLbl, 10, false, 'left');
-    styles[XLSX.utils.encode_cell({r:ROW,c:1})] = xlS(false, null, XC.metaVal, 10, false, 'left');
-    ROW++;
+  meta.forEach(([l,v])=>{
+    sheet1rows.push([sc(l,XST.META_LBL),sc(v,XST.META_VAL),...Array(NC-2).fill(bc(XST.META_VAL))]);
+    s1merges.push(`B${row+2}:N${row+2}`);
+    row++;
   });
 
-  /* — Blank spacer — */
-  aoa.push(Array(NC).fill('')); ROW++;
+  // Blank
+  sheet1rows.push(Array(NC).fill(bc())); row++;
 
-  /* — Column header row — */
-  aoa.push(COLS);
-  const colHdrSt = xlS(true, XC.subHdrBg, XC.subHdrFg, 10, false, 'center');
-  for(let c=0;c<NC;c++) styles[XLSX.utils.encode_cell({r:ROW,c})] = colHdrSt;
-  const COL_HDR_ROW = ROW;
-  ROW++;
+  // Column headers
+  const COLS=['#','Date','Merchant','Notes','Amount (entered)','Tax Incl.?','Subtotal','GST (5%)','QST (9.975%)','Total','ITC (GST)','ITR (QST)','Meals Rule','Receipt(s)'];
+  sheet1rows.push(COLS.map((h,i)=>sc(h,i>=4?XST.COL_HDR_R:XST.COL_HDR))); row++;
 
-  /* — Group expenses by category, sorted — */
-  const cats = [...new Set(exps.map(e=>e.category||'Other'))].sort();
-  let globalIdx = 1;
+  // Category groups
+  const cats=[...new Set(exps.map(e=>e.category||'Other'))].sort();
+  let gIdx=1;
 
   cats.forEach(cat=>{
-    const catExps = exps.filter(e=>(e.category||'Other')===cat);
-    const catTx   = TAX.sum(catExps);
+    const catExps=exps.filter(e=>(e.category||'Other')===cat);
+    const catTx=TAX.sum(catExps);
 
-    /* Category header band */
-    aoa.push([cat.toUpperCase(), ...Array(NC-1).fill('')]);
-    const catHdrSt = xlS(true, XC.catBg, XC.catFg, 10, false, 'left');
-    for(let c=0;c<NC;c++) styles[XLSX.utils.encode_cell({r:ROW,c})] = catHdrSt;
-    ROW++;
+    // Category header
+    sheet1rows.push([sc('▸  '+cat.toUpperCase()+'  ('+catExps.length+' item'+(catExps.length>1?'s':'')+')',XST.CAT_HDR),...Array(NC-1).fill(bc(XST.CAT_HDR))]);
+    s1merges.push(`A${row+2}:N${row+2}`); row++;
 
-    /* Expense rows */
-    catExps.forEach((e, li)=>{
-      const et = TAX.calc(Number(e.amount), e.category, e.taxIncluded||false);
-      const isAlt = li%2===1;
-      const rowBg = isAlt ? XC.altRow : null;
-      const rSt   = xlS(false, rowBg, XC.metaVal, 10, false, 'left');
-      const rStR  = xlS(false, rowBg, XC.metaVal, 10, false, 'right');
-      const rcpNames = (e.receipts&&e.receipts.length)
-        ? e.receipts.map((_,ri)=>r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+globalIdx+'_Receipt'+(ri+1)+'.jpg').join(', ')
-        : 'None';
-      aoa.push([
-        globalIdx, e.date, e.merchant, e.notes||'',
-        Number(e.amount), e.taxIncluded?'Yes':'No',
-        et.sub, et.xmt?0:et.gst, et.xmt?0:et.qst, et.tot,
-        et.gR, et.qR, et.meal?'50% only':'Full', rcpNames
+    catExps.forEach((e,li)=>{
+      const et=TAX.calc(Number(e.amount),e.category,e.taxIncluded||false);
+      const alt=li%2===1;
+      const L=alt?XST.ROW_ALT_L:XST.ROW_L, R=alt?XST.ROW_ALT_R:XST.ROW_R;
+      const M=alt?XST.MEAL_TAG_A:XST.MEAL_TAG;
+      const rcpNames=(e.receipts&&e.receipts.length)?e.receipts.map((_,ri)=>r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+gIdx+'_R'+(ri+1)+'.jpg').join(', '):'None';
+      sheet1rows.push([
+        nc(gIdx,L),sc(e.date,L),sc(e.merchant||'',L),sc(e.notes||'',L),
+        nc(Number(e.amount),R),sc(e.taxIncluded?'Yes':'No',L),
+        nc(et.sub,R),nc(et.xmt?0:et.gst,R),nc(et.xmt?0:et.qst,R),nc(et.tot,R),
+        nc(et.gR,R),nc(et.qR,R),
+        sc(et.meal?'50% only':'Full',et.meal?M:L),
+        sc(rcpNames,L)
       ]);
-      // Style each cell
-      [rSt,rSt,rSt,rSt, rStR,rSt, rStR,rStR,rStR,rStR, rStR,rStR,rSt,rSt]
-        .forEach((s,c)=>{ styles[XLSX.utils.encode_cell({r:ROW,c})] = s; });
-      ROW++; globalIdx++;
+      row++; gIdx++;
     });
 
-    /* Category subtotal row */
-    const subSt  = xlS(true, XC.subTotBg, XC.subTotFg, 10, false, 'left');
-    const subStR = xlS(true, XC.subTotBg, XC.subTotFg, 10, false, 'right');
-    aoa.push([
-      '', '', cat+' Subtotal', '', catTx.sub, '',
-      catTx.sub, catTx.gst, catTx.qst, catTx.tot,
-      catTx.gR, catTx.qR, '', ''
+    // Category subtotal
+    sheet1rows.push([
+      bc(XST.CAT_SUB),bc(XST.CAT_SUB),sc(cat+' Subtotal',XST.CAT_SUB),bc(XST.CAT_SUB),bc(XST.CAT_SUB_R),bc(XST.CAT_SUB),
+      nc(catTx.sub,XST.CAT_SUB_R),nc(catTx.gst,XST.CAT_SUB_R),nc(catTx.qst,XST.CAT_SUB_R),nc(catTx.tot,XST.CAT_SUB_R),
+      nc(catTx.gR,XST.CAT_SUB_R),nc(catTx.qR,XST.CAT_SUB_R),bc(XST.CAT_SUB),bc(XST.CAT_SUB)
     ]);
-    [subSt,subSt,subSt,subSt, subStR,subSt, subStR,subStR,subStR,subStR, subStR,subStR,subSt,subSt]
-      .forEach((s,c)=>{ styles[XLSX.utils.encode_cell({r:ROW,c})] = s; });
-    ROW++;
+    s1merges.push(`A${row+2}:E${row+2}`); row++;
 
-    /* Blank row between categories */
-    aoa.push(Array(NC).fill('')); ROW++;
+    // Spacer
+    sheet1rows.push(Array(NC).fill(bc())); row++;
   });
 
-  /* — Grand total row — */
-  const gtSt  = xlS(true, XC.grandBg, XC.grandFg, 11, false, 'left');
-  const gtStR = xlS(true, XC.grandBg, XC.grandFg, 11, false, 'right');
-  aoa.push([
-    '', '', 'GRAND TOTAL', '', stx.sub, '',
-    stx.sub, stx.gst, stx.qst, stx.tot,
-    stx.gR, stx.qR, '', ''
+  // Grand total
+  sheet1rows.push([
+    bc(XST.GRAND),bc(XST.GRAND),sc('GRAND TOTAL',XST.GRAND),bc(XST.GRAND),bc(XST.GRAND_R),bc(XST.GRAND),
+    nc(stx.sub,XST.GRAND_R),nc(stx.gst,XST.GRAND_R),nc(stx.qst,XST.GRAND_R),nc(stx.tot,XST.GRAND_R),
+    nc(stx.gR,XST.GRAND_R),nc(stx.qR,XST.GRAND_R),bc(XST.GRAND),bc(XST.GRAND)
   ]);
-  [gtSt,gtSt,gtSt,gtSt, gtStR,gtSt, gtStR,gtStR,gtStR,gtStR, gtStR,gtStR,gtSt,gtSt]
-    .forEach((s,c)=>{ styles[XLSX.utils.encode_cell({r:ROW,c})] = s; });
-  ROW++;
-
-  const ws1 = XLSX.utils.aoa_to_sheet(aoa);
-  ws1['!cols'] = [{wch:5},{wch:12},{wch:24},{wch:22},{wch:12},{wch:10},{wch:12},{wch:11},{wch:13},{wch:12},{wch:12},{wch:12},{wch:11},{wch:34}];
-  /* Merge title cell across all columns */
-  ws1['!merges'] = [{s:{r:0,c:0},e:{r:0,c:NC-1}}];
-  /* Apply all styles */
-  Object.entries(styles).forEach(([addr,s])=>{ if(!ws1[addr]) ws1[addr]={t:'s',v:''}; ws1[addr].s=s; });
-  XLSX.utils.book_append_sheet(wb, ws1, 'Expenses');
+  s1merges.push(`A${row+2}:E${row+2}`);
 
   /* ══ SHEET 2: TAX SUMMARY ══ */
-  const ts_aoa = [];
-  const ts_st  = {};
-  let TR = 0;
+  const sheet2rows=[];
+  const s2merges=[];
+  let tr=0;
 
-  const tsTitle = xlS(true, XC.taxHdrBg, XC.taxHdrFg, 13, false, 'left');
-  ts_aoa.push(['Québec Tax Summary', '']); ts_st[XLSX.utils.encode_cell({r:TR,c:0})]=tsTitle; ts_st[XLSX.utils.encode_cell({r:TR,c:1})]=tsTitle; TR++;
-  ts_aoa.push(['Report', r.name]); ts_st[XLSX.utils.encode_cell({r:TR,c:0})]=xlS(true,null,XC.metaLbl,10); ts_st[XLSX.utils.encode_cell({r:TR,c:1})]=xlS(false,null,XC.metaVal,10); TR++;
-  ts_aoa.push(['Status', r.status]); ts_st[XLSX.utils.encode_cell({r:TR,c:0})]=xlS(true,null,XC.metaLbl,10); ts_st[XLSX.utils.encode_cell({r:TR,c:1})]=xlS(false,null,XC.metaVal,10); TR++;
-  ts_aoa.push(['','']), TR++;
+  function tsHdr(label, ncols){
+    sheet2rows.push([sc(label,XST.SEC_HDR),...Array(ncols-1).fill(bc(XST.SEC_HDR))]);
+    if(ncols>1) s2merges.push(`A${tr+2}:${String.fromCharCode(64+ncols)}${tr+2}`);
+    tr++;
+  }
+  function tsRow(lbl,val,stL,stR){
+    sheet2rows.push([sc(lbl,stL),nc(val,stR)]);tr++;
+  }
+  function tsBlank(){ sheet2rows.push([bc(),bc()]); tr++; }
 
-  /* Section: Tax Breakdown */
-  const secSt = xlS(true, XC.subHdrBg, XC.subHdrFg, 10, false, 'left');
-  ts_aoa.push(['TAX BREAKDOWN','AMOUNT (CAD)']); ts_st[XLSX.utils.encode_cell({r:TR,c:0})]=secSt; ts_st[XLSX.utils.encode_cell({r:TR,c:1})]=secSt; TR++;
-
-  const tsRows1 = [
-    ['Subtotal (before tax)', stx.sub, null],
-    ['GST — 5% (federal)', stx.gst, XC.catBg],
-    ['QST — 9.975% (provincial)', stx.qst, 'FFDCE8FF'],
-    ['Total including taxes', stx.tot, XC.grandBg],
-  ];
-  tsRows1.forEach(([lbl,val,bg])=>{
-    const isTot = lbl.startsWith('Total incl');
-    ts_aoa.push([lbl, val]);
-    ts_st[XLSX.utils.encode_cell({r:TR,c:0})] = xlS(isTot, bg, isTot?XC.grandFg:XC.metaVal, 10, false, 'left');
-    ts_st[XLSX.utils.encode_cell({r:TR,c:1})] = xlS(isTot, bg, isTot?XC.grandFg:XC.metaVal, 10, false, 'right');
-    TR++;
+  // Title
+  sheet2rows.push([sc('Québec Tax Summary — GST 5% + QST 9.975%',XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR)]);
+  s2merges.push('A1:G1'); tr++;
+  [[r.name,'Report'],[r.status,'Status'],[(r.startDate||'')+(r.endDate?' to '+r.endDate:''),'Period'],[exps.length,'Items']].forEach(([v,l])=>{
+    sheet2rows.push([sc(l,XST.META_LBL),sc(String(v),XST.META_VAL),bc(),bc(),bc(),bc(),bc()]);
+    s2merges.push(`B${tr+2}:G${tr+2}`); tr++;
   });
+  tsBlank();
 
-  ts_aoa.push(['','']), TR++;
+  tsHdr('TAX BREAKDOWN',2);
+  sheet2rows.push([sc('Item',XST.COL_HDR),sc('Amount (CAD)',XST.COL_HDR_R)]);tr++;
+  [[' Subtotal (before tax)',stx.sub,XST.TX_ROW_L,XST.TX_ROW_R],
+   [' GST — 5% (federal)',stx.gst,XST.TX_ALT_L,XST.TX_ALT_R],
+   [' QST — 9.975% (provincial)',stx.qst,XST.TX_ROW_L,XST.TX_ROW_R]
+  ].forEach(([l,v,sL,sR])=>tsRow(l,v,sL,sR));
+  sheet2rows.push([sc('Total including taxes',XST.TX_GRAND_L),nc(stx.tot,XST.TX_GRAND_R)]);tr++;
+  tsBlank();
 
-  /* Section: Input Tax Credits */
-  ts_aoa.push(['INPUT TAX CREDITS / REFUNDS','']); ts_st[XLSX.utils.encode_cell({r:TR,c:0})]=secSt; ts_st[XLSX.utils.encode_cell({r:TR,c:1})]=secSt; TR++;
+  tsHdr('INPUT TAX CREDITS / REFUNDS',2);
+  sheet2rows.push([sc('Item',XST.COL_HDR),sc('Recoverable (CAD)',XST.COL_HDR_R)]);tr++;
+  tsRow(' GST recoverable (ITC — federal)',stx.gR,XST.RECOV_L,XST.RECOV_R);
+  tsRow(' QST recoverable (ITR — provincial)',stx.qR,XST.RECOV_L,XST.RECOV_R);
+  sheet2rows.push([sc('Total recoverable',XST.TX_GRAND_L),nc(r2(stx.gR+stx.qR),XST.TX_GRAND_R)]);tr++;
+  tsBlank();
 
-  const tsRows2 = [
-    ['GST recoverable (ITC — federal)', stx.gR, XC.recoverBg, XC.recoverFg],
-    ['QST recoverable (ITR — provincial)', stx.qR, XC.recoverBg, XC.recoverFg],
-    ['Total recoverable', r2(stx.gR+stx.qR), XC.recoverBg, XC.recoverFg],
-  ];
-  tsRows2.forEach(([lbl,val,bg,fg])=>{
-    ts_aoa.push([lbl, val]);
-    ts_st[XLSX.utils.encode_cell({r:TR,c:0})] = xlS(lbl.startsWith('Total'), bg, fg, 10, false, 'left');
-    ts_st[XLSX.utils.encode_cell({r:TR,c:1})] = xlS(lbl.startsWith('Total'), bg, fg, 10, false, 'right');
-    TR++;
-  });
+  tsHdr('NET COST AFTER RECOVERY',2);
+  sheet2rows.push([sc('Net cost (after ITC/ITR)',XST.NET_L),nc(r2(stx.tot-stx.gR-stx.qR),XST.NET_R)]);tr++;
+  tsBlank();
 
-  ts_aoa.push(['','']), TR++;
-
-  /* Net cost */
-  const netCost = r2(stx.tot - stx.gR - stx.qR);
-  ts_aoa.push(['Net Cost (after tax recovery)', netCost]);
-  ts_st[XLSX.utils.encode_cell({r:TR,c:0})] = xlS(true, XC.netBg, XC.netFg, 11, false, 'left');
-  ts_st[XLSX.utils.encode_cell({r:TR,c:1})] = xlS(true, XC.netBg, XC.netFg, 11, false, 'right');
-  TR++;
-
-  ts_aoa.push(['','']), TR++;
-
-  /* Category tax breakdown table */
-  ts_aoa.push(['BY CATEGORY','Subtotal','GST (5%)','QST (9.975%)','Total','ITC','ITR']);
-  for(let c=0;c<7;c++) ts_st[XLSX.utils.encode_cell({r:TR,c})] = secSt;
-  TR++;
+  tsHdr('BREAKDOWN BY CATEGORY',7);
+  sheet2rows.push(['Category','Lines','Total','GST (5%)','QST (9.975%)','ITC','ITR'].map((h,i)=>sc(h,i===0?XST.COL_HDR:XST.COL_HDR_R)));tr++;
   cats.forEach((cat,ci)=>{
-    const ce = exps.filter(e=>(e.category||'Other')===cat);
-    const ct = TAX.sum(ce);
-    const bg = ci%2===1 ? XC.altRow : null;
-    ts_aoa.push([cat, ct.sub, ct.gst, ct.qst, ct.tot, ct.gR, ct.qR]);
-    const cst = xlS(false, bg, XC.metaVal, 10, false, 'left');
-    const cstR= xlS(false, bg, XC.metaVal, 10, false, 'right');
-    [cst,cstR,cstR,cstR,cstR,cstR,cstR].forEach((s,c)=>{ ts_st[XLSX.utils.encode_cell({r:TR,c})]=s; });
-    TR++;
+    const ce=exps.filter(e=>(e.category||'Other')===cat), ct=TAX.sum(ce);
+    const alt=ci%2===1;
+    const L=alt?XST.TX_ALT_L:XST.TX_ROW_L, R=alt?XST.TX_ALT_R:XST.TX_ROW_R;
+    sheet2rows.push([sc(cat,L),nc(ce.length,R),nc(ct.tot,R),nc(ct.gst,R),nc(ct.qst,R),nc(ct.gR,R),nc(ct.qR,R)]);tr++;
   });
-  /* Category total row */
-  ts_aoa.push(['ALL CATEGORIES', stx.sub, stx.gst, stx.qst, stx.tot, stx.gR, stx.qR]);
-  for(let c=0;c<7;c++) ts_st[XLSX.utils.encode_cell({r:TR,c})] = xlS(true, XC.grandBg, XC.grandFg, 10, false, c===0?'left':'right');
-  TR++;
+  sheet2rows.push([sc('ALL CATEGORIES',XST.TX_GRAND_L),nc(exps.length,XST.TX_GRAND_R),nc(stx.tot,XST.TX_GRAND_R),nc(stx.gst,XST.TX_GRAND_R),nc(stx.qst,XST.TX_GRAND_R),nc(stx.gR,XST.TX_GRAND_R),nc(stx.qR,XST.TX_GRAND_R)]);tr++;
+  tsBlank();
 
-  ts_aoa.push(['','']), TR++;
-
-  /* Notes */
-  ts_aoa.push(['NOTES','']); ts_st[XLSX.utils.encode_cell({r:TR,c:0})]=secSt; ts_st[XLSX.utils.encode_cell({r:TR,c:1})]=secSt; TR++;
-  const noteRows=[
-    ['Meals & Entertainment','50% ITC/ITR — CRA & Revenu Québec (ARQ)'],
-    ['GST rate','5% federal — administered by CRA'],
-    ['QST rate','9.975% provincial — administered by ARQ'],
-    ['App Version', CFG.APP_VERSION],
-  ];
-  noteRows.forEach(([l,v])=>{
-    ts_aoa.push([l,v]);
-    ts_st[XLSX.utils.encode_cell({r:TR,c:0})] = xlS(true, null, XC.metaLbl, 9, true, 'left');
-    ts_st[XLSX.utils.encode_cell({r:TR,c:1})] = xlS(false, null, XC.metaVal, 9, false, 'left');
-    TR++;
-  });
-
-  const ws2 = XLSX.utils.aoa_to_sheet(ts_aoa);
-  ws2['!cols'] = [{wch:36},{wch:14},{wch:13},{wch:15},{wch:14},{wch:13},{wch:13}];
-  ws2['!merges'] = [{s:{r:0,c:0},e:{r:0,c:6}}];
-  Object.entries(ts_st).forEach(([addr,s])=>{ if(!ws2[addr]) ws2[addr]={t:'s',v:''}; ws2[addr].s=s; });
-  XLSX.utils.book_append_sheet(wb, ws2, 'Tax Summary');
+  tsHdr('NOTES',2);
+  [['Meals & Entertainment','50% ITC/ITR — CRA & Revenu Québec (ARQ)'],
+   ['GST rate','5% federal — administered by CRA'],
+   ['QST rate','9.975% provincial — administered by ARQ'],
+   ['App Version',CFG.APP_VERSION],['Exported',new Date().toLocaleString('en-CA')]
+  ].forEach(([l,v])=>{ sheet2rows.push([sc(l,XST.META_LBL),sc(v,XST.META_VAL)]); tr++; });
 
   /* ══ SHEET 3: SUMMARY ══ */
-  const smSt = xlS(true, XC.headerBg, XC.headerFg, 13, false, 'left');
-  const ws3 = XLSX.utils.aoa_to_sheet([
-    ['Report Summary',''],
-    ['Report', r.name], ['Category', r.category],
-    ['Period', (r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
-    ['Status', r.status], ['Line Items', exps.length],
-    ['',''],
-    ['Subtotal (before tax)', stx.sub],
-    ['GST (5%)', stx.gst], ['QST (9.975%)', stx.qst],
-    ['Total incl. tax', stx.tot],
-    ['GST Recoverable (ITC)', stx.gR], ['QST Recoverable (ITR)', stx.qR],
-    ['Total Recoverable', r2(stx.gR+stx.qR)],
-    ['Net Cost (after recovery)', r2(stx.tot-stx.gR-stx.qR)],
-    ['',''],
-    ['Storage', {onedrive:'OneDrive',google:'Google Drive',local:'Local'}[S.storage.provider]||'—'],
-    ['Receipt Folder', sp],
-    ['App Version', CFG.APP_VERSION],
-    ['Exported', new Date().toLocaleString('en-CA')]
-  ]);
-  ws3['!cols'] = [{wch:30},{wch:36}];
-  ws3['A1'].s = smSt; ws3['B1'].s = smSt;
-  XLSX.utils.book_append_sheet(wb, ws3, 'Summary');
+  const sheet3rows=[];
+  sheet3rows.push([sc('Report Summary',XST.SUM_HDR),bc(XST.SUM_HDR)]);
+  [['Report',r.name],['Category',r.category],['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
+   ['Status',r.status],['Line Items',String(exps.length)]
+  ].forEach(([l,v])=>sheet3rows.push([sc(l,XST.SUM_LBL),sc(v,XST.SUM_VAL)]));
+  sheet3rows.push([bc(),bc()]);
+  [['Subtotal (before tax)',stx.sub],['GST (5%)',stx.gst],['QST (9.975%)',stx.qst],
+   ['Total incl. tax',stx.tot],['GST Recoverable (ITC)',stx.gR],['QST Recoverable (ITR)',stx.qR],
+   ['Total Recoverable',r2(stx.gR+stx.qR)],['Net Cost (after recovery)',r2(stx.tot-stx.gR-stx.qR)]
+  ].forEach(([l,v])=>sheet3rows.push([sc(l,XST.SUM_LBL),nc(v,XST.SUM_VAL_R)]));
+  sheet3rows.push([bc(),bc()]);
+  [['Storage',{onedrive:'OneDrive',google:'Google Drive',local:'Local'}[S.storage.provider]||'—'],
+   ['Receipt Folder',sp],['App Version',CFG.APP_VERSION],['Exported',new Date().toLocaleString('en-CA')]
+  ].forEach(([l,v])=>sheet3rows.push([sc(l,XST.SUM_LBL),sc(v,XST.SUM_VAL)]));
 
-  // Generate the xlsx as a blob/base64 so we can share or download it
-  const wbArray = XLSX.write(wb, {bookType:'xlsx', type:'array', cellStyles:true});
-  const blob = new Blob([wbArray], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  // Resolve shared string indices now that all strings are collected
+  const sstObj=buildSST(allStrings);
+  function resolveSheet(rows){
+    return rows.map(row=>row.map(cell=>{
+      if(!cell||cell.t!=='s') return cell;
+      return {...cell, v:sstObj.map[cell._str]};
+    }));
+  }
+
+  const s1xml=buildSheet(resolveSheet(sheet1rows),
+    [5,12,26,22,13,9,12,11,13,12,12,12,11,32], s1merges);
+  const s2xml=buildSheet(resolveSheet(sheet2rows),
+    [36,16,14,14,14,13,13],[]);
+  const s3xml=buildSheet(resolveSheet(sheet3rows),
+    [30,38],[]);
+
+  const stylesXml=buildStyles();
+  const xlsxBytes=buildXlsx(
+    [{name:'Expenses',xml:s1xml},{name:'Tax Summary',xml:s2xml},{name:'Summary',xml:s3xml}],
+    sstObj.xml, stylesXml
+  );
+  const blob=new Blob([xlsxBytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 
   // Collect receipt lines
   const lines=[];
@@ -1987,7 +2144,7 @@ function importExcel() {
   inp.type='file'; inp.accept='.xlsx,.xls';
   inp.onchange=async e=>{
     const file=e.target.files[0]; if(!file)return;
-    if(typeof XLSX==='undefined'){toast('Excel library not loaded yet — try again','#BA7517');return;}
+    if(typeof XLSX==='undefined'){toast('Parser library loading — try again in a moment','#BA7517');return;}
     try {
       const ab=await file.arrayBuffer();
       const wb=XLSX.read(ab,{type:'array'});
