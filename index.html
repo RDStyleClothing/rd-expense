@@ -378,7 +378,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v1.5.4</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v1.5.6</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -402,7 +402,7 @@ tr.trc:active td{background:var(--bg)}
    See SETUP.md for full step-by-step instructions
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v1.5.4',
+  APP_VERSION:    'v1.5.6',
   APP_RELEASED:   'April 2026',
   // SmartScan API key is stored securely in your browser's localStorage
   // — it is never in this code file. Enter it via Settings in the app.
@@ -418,7 +418,7 @@ const CFG = {
 ══════════════════════════════════════════════════════ */
 const TAX = {
   GST: 0.05, QST: 0.09975,
-  MEALS: ['Meals'], EXEMPT: [],
+  MEALS: ['Meals & Entertainment'], EXEMPT: [],
   calc(amt, cat, inc) {
     const a = Number(amt)||0, c = cat||'Other';
     const meal = this.MEALS.includes(c), xmt = this.EXEMPT.includes(c);
@@ -1007,7 +1007,7 @@ async function doSmartScan(imgData, rid) {
           role: 'user',
           content: [
             { type:'image', source:{ type:'base64', media_type:mediaType, data:base64 } },
-            { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Airfare|Hotel|Meals|Car|Ground Transport|Office Supplies|Marketing|Samples|Shipping|Other","notes":"brief description","taxIncluded":true}' }
+            { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true}' }
           ]
         }]
       })
@@ -1106,7 +1106,7 @@ async function startBatch(files, rid) {
           model:'claude-haiku-4-5-20251001', max_tokens:400,
           messages:[{role:'user',content:[
             {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
-            {type:'text',text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Airfare|Hotel|Meals|Car|Ground Transport|Office Supplies|Marketing|Samples|Shipping|Other","notes":"brief description","taxIncluded":true}'}
+            {type:'text',text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true}'}
           ]}]
         })
       });
@@ -1362,7 +1362,7 @@ function mNR(){
   '<div class="mhd"><h2>New Report</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
   '<div class="mb">'+
     '<div class="fld"><label>Report Name *</label><input class="fi2" id="rN" placeholder="e.g. Q2 Travel &mdash; Paris Showroom"/></div>'+
-    '<div class="fld"><label>Category</label><select class="fse" id="rC"><option>Travel</option><option>Meals &amp; Entertainment</option><option>Office Supplies</option><option>Marketing</option><option>Samples &amp; Showroom</option><option>Shipping &amp; Logistics</option><option>Other</option></select></div>'+
+    '<div class="fld"><label>Category</label><select class="fse" id="rC"><option>Auto Expense</option><option>Travel &amp; Buying</option><option>Travel &amp; Selling</option><option>Samples</option><option>Mobile</option><option>Meals &amp; Entertainment</option><option>Office</option><option>Computer</option><option>Other</option></select></div>'+
     '<div class="r2"><div class="fld"><label>Start Date</label><input class="fi2" type="date" id="rS"/></div><div class="fld"><label>End Date</label><input class="fi2" type="date" id="rE"/></div></div>'+
     '<div class="fld"><label>Notes</label><textarea class="fta" id="rNt" placeholder="Optional&hellip;"></textarea></div>'+
   '</div>'+
@@ -1380,7 +1380,7 @@ function mRenameReport(rid) {
       '<input class="fi2" id="rnInput" value="'+esc(r.name)+'" placeholder="Report name"/></div>'+
     '<div class="fld"><label>Category</label>'+
       '<select class="fse" id="rnCat">'+
-        ['Travel','Meals & Entertainment','Office Supplies','Marketing','Samples & Showroom','Shipping & Logistics','Other']
+        ['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Other']
           .map(c=>'<option'+(r.category===c?' selected':'')+'>'+c+'</option>').join('')+
       '</select></div>'+
     '<div class="r2">'+
@@ -1418,7 +1418,7 @@ function mAE(rid, preImg, scanned) {
   closeFab(); window._rec=preImg?[preImg]:[];
   const today=new Date().toISOString().slice(0,10);
   const sc=scanned||{};
-  const cats=['Airfare','Hotel','Meals','Car','Ground Transport','Office Supplies','Marketing','Samples','Shipping','Other'];
+  const cats=['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Other'];
   const catOpts=cats.map(c=>'<option'+(sc.category===c?' selected':'')+'>'+c+'</option>').join('');
   const scanBadge=scanned?'<div style="background:var(--gbg);color:var(--gdk);border-radius:var(--rsm);padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:7px"><span style="font-size:16px">&#129302;</span><span><strong>SmartScan complete</strong> &mdash; review and confirm below</span></div>':'';
   mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal wide"><div class="mh2"></div>'+
@@ -1434,7 +1434,7 @@ function mAE(rid, preImg, scanned) {
       '<div class="tpr"><span>Subtotal (pre-tax)</span><span id="tp1">&mdash;</span></div>'+
       '<div class="tpr"><span>GST 5%</span><span id="tp2">&mdash;</span></div>'+
       '<div class="tpr"><span>QST 9.975%</span><span id="tp3">&mdash;</span></div>'+
-      '<div class="tpr" id="tpM" style="display:none"><span style="color:var(--am)">&#9888; Meals &mdash; 50% ITC/ITR only</span><span></span></div>'+
+      '<div class="tpr" id="tpM" style="display:none"><span style="color:var(--am)">&#9888; Meals &amp; Entertainment &mdash; 50% ITC/ITR only</span><span></span></div>'+
       '<div class="tpr bold"><span>Total incl. tax</span><span id="tp4">&mdash;</span></div>'+
       '<div class="tpr rec"><span>GST recoverable (ITC)</span><span id="tp5">&mdash;</span></div>'+
       '<div class="tpr rec"><span>QST recoverable (ITR)</span><span id="tp6">&mdash;</span></div>'+
@@ -1509,8 +1509,72 @@ function revertSt(rid,ps){
 function pRec(src){mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div><div class="mhd"><h2>Receipt</h2><button class="ib" onclick="closeM()">&#10005;</button></div><div style="padding:14px;text-align:center;max-height:80vh;overflow:auto"><img src="'+src+'" style="max-width:100%;border-radius:8px"/></div></div></div>';}
 
 /* ══════════════════════════════════════════════════════
-   EXCEL EXPORT — 3 sheets: Expenses, Tax Summary, Summary
+   EXCEL EXPORT — v1.5.5
+   Sheet 1 : Expenses  (grouped by category, subtotals, GST/QST split, styled)
+   Sheet 2 : Tax Summary (GST / QST / ITC / ITR breakdown)
+   Sheet 3 : Summary
 ══════════════════════════════════════════════════════ */
+
+/* ── style helpers ── */
+function xlCell(v, s){ return {v, s, t: typeof v==='number'?'n':'s'}; }
+
+/* Palette */
+const XC = {
+  headerBg  : '1D6B4A',   // deep green  — main title row
+  headerFg  : 'FFFFFF',
+  subHdrBg  : '2E8B63',   // mid green   — column header row
+  subHdrFg  : 'FFFFFF',
+  catBg     : 'D6EFE4',   // light mint  — category group header
+  catFg     : '0F5C3A',
+  subTotBg  : 'E8F5EE',   // pale green  — category subtotal
+  subTotFg  : '0F5C3A',
+  grandBg   : '1D6B4A',   // deep green  — grand total
+  grandFg   : 'FFFFFF',
+  metaLbl   : '444444',
+  metaVal   : '1A1917',
+  altRow    : 'F7FBF9',   // very light green tint for even rows
+  border    : 'CCCCCC',
+  taxHdrBg  : '185FA5',   // blue        — tax section headers
+  taxHdrFg  : 'FFFFFF',
+  recoverBg : 'DCEEFF',   // light blue  — recoverable rows
+  recoverFg : '0B3D6B',
+  netBg     : 'FFF3CD',   // amber       — net cost
+  netFg     : '6D4000',
+};
+
+function xlBorder(){
+  const s={style:'thin',color:{rgb:'CCCCCC'}};
+  return {top:s,bottom:s,left:s,right:s};
+}
+
+function xlS(bold,bg,fg,sz,italic,hAlign){
+  const f={bold:!!bold,sz:sz||11,color:{rgb:fg||'FF000000'}};
+  if(italic) f.italic=true;
+  const s={font:f,border:xlBorder()};
+  if(bg) s.fill={fgColor:{rgb:bg},patternType:'solid'};
+  if(hAlign) s.alignment={horizontal:hAlign,wrapText:true};
+  else s.alignment={wrapText:true};
+  return s;
+}
+
+/* Apply styles to a sheet by address */
+function applyStyles(ws, styleMap){
+  Object.entries(styleMap).forEach(([addr, style])=>{
+    if(!ws[addr]) ws[addr]={t:'s',v:''};
+    ws[addr].s = style;
+  });
+}
+
+/* Set a range of column styles */
+function styleRow(ws, row, cols, style, startCol){
+  const base = startCol||0;
+  cols.forEach((c,i)=>{
+    const addr = XLSX.utils.encode_cell({r:row, c:base+i});
+    if(!ws[addr]) ws[addr]={t:'s',v:''};
+    ws[addr].s = style;
+  });
+}
+
 function expR(rid){
   const r=S.reports.find(r=>r.id===rid); if(!r)return;
   if(typeof XLSX==='undefined'){toast('Export library loading…','#BA7517');return;}
@@ -1521,63 +1585,242 @@ function expR(rid){
   const fname=r.name.replace(/[^a-z0-9]/gi,'_')+'_'+CFG.APP_VERSION+'_Report.xlsx';
   const wb=XLSX.utils.book_new();
 
-  // Sheet 1: Expenses
-  const ws=XLSX.utils.aoa_to_sheet([
-    ['RD International — Expense Report · Québec, Canada'],[],
-    ['Report',r.name],['Category',r.category],['Period',r.startDate+' to '+r.endDate],
-    ['Status',r.status],['App Version',CFG.APP_VERSION],
-    ['Jurisdiction','Québec, Canada (GST 5% + QST 9.975%)'],
-    [],
-    ['#','Date','Merchant','Category','Notes','Amount Entered','Tax Inclusive?','Subtotal','GST (5%)','QST (9.975%)','Total incl. tax','GST Recoverable (ITC)','QST Recoverable (ITR)','Meals 50% rule','Receipt File(s)','Storage Path'],
-    ...exps.map((e,i)=>{
-      const et=TAX.calc(Number(e.amount),e.category,e.taxIncluded||false);
-      return[i+1,e.date,e.merchant,e.category,e.notes||'',Number(e.amount),e.taxIncluded?'Yes':'No',
-        et.sub,et.xmt?0:et.gst,et.xmt?0:et.qst,et.tot,et.gR,et.qR,et.meal?'50% only':'Full',
-        (e.receipts&&e.receipts.length)?e.receipts.map((_,ri)=>r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(ri+1)+'.jpg').join(', '):'None',sp];
-    }),
-    [],[,'','','','','TOTALS','',stx.sub,stx.gst,stx.qst,stx.tot,stx.gR,stx.qR]
+  /* ══ SHEET 1: EXPENSES ══ */
+  const COLS = ['#','Date','Merchant','Notes','Amount','Tax Incl.?','Subtotal','GST (5%)','QST (9.975%)','Total','ITC (GST)','ITR (QST)','Meals Rule','Receipt(s)'];
+  const NC = COLS.length; // 14
+
+  const aoa = [];
+  const styles = {};  // addr → style
+
+  let ROW = 0; // 0-based row tracker
+
+  /* — Title row — */
+  aoa.push(['RD International — Expense Report · Québec, Canada', ...Array(NC-1).fill('')]);
+  const titleSt = xlS(true, XC.headerBg, XC.headerFg, 14, false, 'left');
+  for(let c=0;c<NC;c++) styles[XLSX.utils.encode_cell({r:ROW,c})] = titleSt;
+  ROW++;
+
+  /* — Meta block — */
+  const meta = [
+    ['Report',r.name], ['Category',r.category],
+    ['Period', (r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
+    ['Status', r.status], ['Jurisdiction','Québec, Canada (GST 5% · QST 9.975%)'],
+    ['Exported', new Date().toLocaleString('en-CA')], ['App Version', CFG.APP_VERSION]
+  ];
+  meta.forEach(([lbl,val])=>{
+    aoa.push([lbl, val, ...Array(NC-2).fill('')]);
+    styles[XLSX.utils.encode_cell({r:ROW,c:0})] = xlS(true, null, XC.metaLbl, 10, false, 'left');
+    styles[XLSX.utils.encode_cell({r:ROW,c:1})] = xlS(false, null, XC.metaVal, 10, false, 'left');
+    ROW++;
+  });
+
+  /* — Blank spacer — */
+  aoa.push(Array(NC).fill('')); ROW++;
+
+  /* — Column header row — */
+  aoa.push(COLS);
+  const colHdrSt = xlS(true, XC.subHdrBg, XC.subHdrFg, 10, false, 'center');
+  for(let c=0;c<NC;c++) styles[XLSX.utils.encode_cell({r:ROW,c})] = colHdrSt;
+  const COL_HDR_ROW = ROW;
+  ROW++;
+
+  /* — Group expenses by category, sorted — */
+  const cats = [...new Set(exps.map(e=>e.category||'Other'))].sort();
+  let globalIdx = 1;
+
+  cats.forEach(cat=>{
+    const catExps = exps.filter(e=>(e.category||'Other')===cat);
+    const catTx   = TAX.sum(catExps);
+
+    /* Category header band */
+    aoa.push([cat.toUpperCase(), ...Array(NC-1).fill('')]);
+    const catHdrSt = xlS(true, XC.catBg, XC.catFg, 10, false, 'left');
+    for(let c=0;c<NC;c++) styles[XLSX.utils.encode_cell({r:ROW,c})] = catHdrSt;
+    ROW++;
+
+    /* Expense rows */
+    catExps.forEach((e, li)=>{
+      const et = TAX.calc(Number(e.amount), e.category, e.taxIncluded||false);
+      const isAlt = li%2===1;
+      const rowBg = isAlt ? XC.altRow : null;
+      const rSt   = xlS(false, rowBg, XC.metaVal, 10, false, 'left');
+      const rStR  = xlS(false, rowBg, XC.metaVal, 10, false, 'right');
+      const rcpNames = (e.receipts&&e.receipts.length)
+        ? e.receipts.map((_,ri)=>r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+globalIdx+'_Receipt'+(ri+1)+'.jpg').join(', ')
+        : 'None';
+      aoa.push([
+        globalIdx, e.date, e.merchant, e.notes||'',
+        Number(e.amount), e.taxIncluded?'Yes':'No',
+        et.sub, et.xmt?0:et.gst, et.xmt?0:et.qst, et.tot,
+        et.gR, et.qR, et.meal?'50% only':'Full', rcpNames
+      ]);
+      // Style each cell
+      [rSt,rSt,rSt,rSt, rStR,rSt, rStR,rStR,rStR,rStR, rStR,rStR,rSt,rSt]
+        .forEach((s,c)=>{ styles[XLSX.utils.encode_cell({r:ROW,c})] = s; });
+      ROW++; globalIdx++;
+    });
+
+    /* Category subtotal row */
+    const subSt  = xlS(true, XC.subTotBg, XC.subTotFg, 10, false, 'left');
+    const subStR = xlS(true, XC.subTotBg, XC.subTotFg, 10, false, 'right');
+    aoa.push([
+      '', '', cat+' Subtotal', '', catTx.sub, '',
+      catTx.sub, catTx.gst, catTx.qst, catTx.tot,
+      catTx.gR, catTx.qR, '', ''
+    ]);
+    [subSt,subSt,subSt,subSt, subStR,subSt, subStR,subStR,subStR,subStR, subStR,subStR,subSt,subSt]
+      .forEach((s,c)=>{ styles[XLSX.utils.encode_cell({r:ROW,c})] = s; });
+    ROW++;
+
+    /* Blank row between categories */
+    aoa.push(Array(NC).fill('')); ROW++;
+  });
+
+  /* — Grand total row — */
+  const gtSt  = xlS(true, XC.grandBg, XC.grandFg, 11, false, 'left');
+  const gtStR = xlS(true, XC.grandBg, XC.grandFg, 11, false, 'right');
+  aoa.push([
+    '', '', 'GRAND TOTAL', '', stx.sub, '',
+    stx.sub, stx.gst, stx.qst, stx.tot,
+    stx.gR, stx.qR, '', ''
   ]);
-  ws['!cols']=[{wch:4},{wch:12},{wch:22},{wch:18},{wch:20},{wch:14},{wch:13},{wch:12},{wch:10},{wch:12},{wch:14},{wch:18},{wch:18},{wch:12},{wch:36},{wch:30}];
-  XLSX.utils.book_append_sheet(wb,ws,'Expenses');
+  [gtSt,gtSt,gtSt,gtSt, gtStR,gtSt, gtStR,gtStR,gtStR,gtStR, gtStR,gtStR,gtSt,gtSt]
+    .forEach((s,c)=>{ styles[XLSX.utils.encode_cell({r:ROW,c})] = s; });
+  ROW++;
 
-  // Sheet 2: Tax Summary
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-    ['Québec Tax Summary — GST 5% + QST 9.975%'],[],
-    ['Report',r.name],['Status',r.status],[],
-    ['ITEM','AMOUNT (CAD)'],
-    ['Subtotal (before tax)',stx.sub],
-    ['GST — 5% federal',stx.gst],
-    ['QST — 9.975% provincial',stx.qst],
-    ['Total including taxes',stx.tot],[],
-    ['INPUT TAX CREDITS / REFUNDS',''],
-    ['GST recoverable (ITC)',stx.gR],
-    ['QST recoverable (ITR)',stx.qR],
-    ['Total recoverable',r2(stx.gR+stx.qR)],[],
-    ['Net cost (after recovery)',r2(stx.tot-stx.gR-stx.qR)],[],
-    ['NOTES',''],
-    ['Meals & Entertainment','50% ITC/ITR rule per CRA / Revenu Québec (ARQ)'],
-    ['GST rate','5% — Revenu Canada (CRA)'],
-    ['QST rate','9.975% — Revenu Québec (ARQ)'],
-    ['App Version',CFG.APP_VERSION],
-    ['Exported',new Date().toLocaleString()]
-  ]),'Tax Summary');
+  const ws1 = XLSX.utils.aoa_to_sheet(aoa);
+  ws1['!cols'] = [{wch:5},{wch:12},{wch:24},{wch:22},{wch:12},{wch:10},{wch:12},{wch:11},{wch:13},{wch:12},{wch:12},{wch:12},{wch:11},{wch:34}];
+  /* Merge title cell across all columns */
+  ws1['!merges'] = [{s:{r:0,c:0},e:{r:0,c:NC-1}}];
+  /* Apply all styles */
+  Object.entries(styles).forEach(([addr,s])=>{ if(!ws1[addr]) ws1[addr]={t:'s',v:''}; ws1[addr].s=s; });
+  XLSX.utils.book_append_sheet(wb, ws1, 'Expenses');
 
-  // Sheet 3: Summary
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-    ['Report Summary'],[],
-    ['Report',r.name],['Category',r.category],
-    ['Period',r.startDate+' to '+r.endDate],
-    ['Status',r.status],['Line Items',exps.length],
-    ['Subtotal',stx.sub],['GST',stx.gst],['QST',stx.qst],
-    ['Total',stx.tot],['Tax Recoverable',r2(stx.gR+stx.qR)],[],
-    ['Storage',{onedrive:'OneDrive',google:'Google Drive',local:'Local'}[S.storage.provider]||'—'],
-    ['Receipt Folder',sp],[],
-    ['App Version',CFG.APP_VERSION],
-    ['Exported',new Date().toLocaleString()]
-  ]),'Summary');
+  /* ══ SHEET 2: TAX SUMMARY ══ */
+  const ts_aoa = [];
+  const ts_st  = {};
+  let TR = 0;
+
+  const tsTitle = xlS(true, XC.taxHdrBg, XC.taxHdrFg, 13, false, 'left');
+  ts_aoa.push(['Québec Tax Summary', '']); ts_st[XLSX.utils.encode_cell({r:TR,c:0})]=tsTitle; ts_st[XLSX.utils.encode_cell({r:TR,c:1})]=tsTitle; TR++;
+  ts_aoa.push(['Report', r.name]); ts_st[XLSX.utils.encode_cell({r:TR,c:0})]=xlS(true,null,XC.metaLbl,10); ts_st[XLSX.utils.encode_cell({r:TR,c:1})]=xlS(false,null,XC.metaVal,10); TR++;
+  ts_aoa.push(['Status', r.status]); ts_st[XLSX.utils.encode_cell({r:TR,c:0})]=xlS(true,null,XC.metaLbl,10); ts_st[XLSX.utils.encode_cell({r:TR,c:1})]=xlS(false,null,XC.metaVal,10); TR++;
+  ts_aoa.push(['','']), TR++;
+
+  /* Section: Tax Breakdown */
+  const secSt = xlS(true, XC.subHdrBg, XC.subHdrFg, 10, false, 'left');
+  ts_aoa.push(['TAX BREAKDOWN','AMOUNT (CAD)']); ts_st[XLSX.utils.encode_cell({r:TR,c:0})]=secSt; ts_st[XLSX.utils.encode_cell({r:TR,c:1})]=secSt; TR++;
+
+  const tsRows1 = [
+    ['Subtotal (before tax)', stx.sub, null],
+    ['GST — 5% (federal)', stx.gst, XC.catBg],
+    ['QST — 9.975% (provincial)', stx.qst, 'FFDCE8FF'],
+    ['Total including taxes', stx.tot, XC.grandBg],
+  ];
+  tsRows1.forEach(([lbl,val,bg])=>{
+    const isTot = lbl.startsWith('Total incl');
+    ts_aoa.push([lbl, val]);
+    ts_st[XLSX.utils.encode_cell({r:TR,c:0})] = xlS(isTot, bg, isTot?XC.grandFg:XC.metaVal, 10, false, 'left');
+    ts_st[XLSX.utils.encode_cell({r:TR,c:1})] = xlS(isTot, bg, isTot?XC.grandFg:XC.metaVal, 10, false, 'right');
+    TR++;
+  });
+
+  ts_aoa.push(['','']), TR++;
+
+  /* Section: Input Tax Credits */
+  ts_aoa.push(['INPUT TAX CREDITS / REFUNDS','']); ts_st[XLSX.utils.encode_cell({r:TR,c:0})]=secSt; ts_st[XLSX.utils.encode_cell({r:TR,c:1})]=secSt; TR++;
+
+  const tsRows2 = [
+    ['GST recoverable (ITC — federal)', stx.gR, XC.recoverBg, XC.recoverFg],
+    ['QST recoverable (ITR — provincial)', stx.qR, XC.recoverBg, XC.recoverFg],
+    ['Total recoverable', r2(stx.gR+stx.qR), XC.recoverBg, XC.recoverFg],
+  ];
+  tsRows2.forEach(([lbl,val,bg,fg])=>{
+    ts_aoa.push([lbl, val]);
+    ts_st[XLSX.utils.encode_cell({r:TR,c:0})] = xlS(lbl.startsWith('Total'), bg, fg, 10, false, 'left');
+    ts_st[XLSX.utils.encode_cell({r:TR,c:1})] = xlS(lbl.startsWith('Total'), bg, fg, 10, false, 'right');
+    TR++;
+  });
+
+  ts_aoa.push(['','']), TR++;
+
+  /* Net cost */
+  const netCost = r2(stx.tot - stx.gR - stx.qR);
+  ts_aoa.push(['Net Cost (after tax recovery)', netCost]);
+  ts_st[XLSX.utils.encode_cell({r:TR,c:0})] = xlS(true, XC.netBg, XC.netFg, 11, false, 'left');
+  ts_st[XLSX.utils.encode_cell({r:TR,c:1})] = xlS(true, XC.netBg, XC.netFg, 11, false, 'right');
+  TR++;
+
+  ts_aoa.push(['','']), TR++;
+
+  /* Category tax breakdown table */
+  ts_aoa.push(['BY CATEGORY','Subtotal','GST (5%)','QST (9.975%)','Total','ITC','ITR']);
+  for(let c=0;c<7;c++) ts_st[XLSX.utils.encode_cell({r:TR,c})] = secSt;
+  TR++;
+  cats.forEach((cat,ci)=>{
+    const ce = exps.filter(e=>(e.category||'Other')===cat);
+    const ct = TAX.sum(ce);
+    const bg = ci%2===1 ? XC.altRow : null;
+    ts_aoa.push([cat, ct.sub, ct.gst, ct.qst, ct.tot, ct.gR, ct.qR]);
+    const cst = xlS(false, bg, XC.metaVal, 10, false, 'left');
+    const cstR= xlS(false, bg, XC.metaVal, 10, false, 'right');
+    [cst,cstR,cstR,cstR,cstR,cstR,cstR].forEach((s,c)=>{ ts_st[XLSX.utils.encode_cell({r:TR,c})]=s; });
+    TR++;
+  });
+  /* Category total row */
+  ts_aoa.push(['ALL CATEGORIES', stx.sub, stx.gst, stx.qst, stx.tot, stx.gR, stx.qR]);
+  for(let c=0;c<7;c++) ts_st[XLSX.utils.encode_cell({r:TR,c})] = xlS(true, XC.grandBg, XC.grandFg, 10, false, c===0?'left':'right');
+  TR++;
+
+  ts_aoa.push(['','']), TR++;
+
+  /* Notes */
+  ts_aoa.push(['NOTES','']); ts_st[XLSX.utils.encode_cell({r:TR,c:0})]=secSt; ts_st[XLSX.utils.encode_cell({r:TR,c:1})]=secSt; TR++;
+  const noteRows=[
+    ['Meals & Entertainment','50% ITC/ITR — CRA & Revenu Québec (ARQ)'],
+    ['GST rate','5% federal — administered by CRA'],
+    ['QST rate','9.975% provincial — administered by ARQ'],
+    ['App Version', CFG.APP_VERSION],
+  ];
+  noteRows.forEach(([l,v])=>{
+    ts_aoa.push([l,v]);
+    ts_st[XLSX.utils.encode_cell({r:TR,c:0})] = xlS(true, null, XC.metaLbl, 9, true, 'left');
+    ts_st[XLSX.utils.encode_cell({r:TR,c:1})] = xlS(false, null, XC.metaVal, 9, false, 'left');
+    TR++;
+  });
+
+  const ws2 = XLSX.utils.aoa_to_sheet(ts_aoa);
+  ws2['!cols'] = [{wch:36},{wch:14},{wch:13},{wch:15},{wch:14},{wch:13},{wch:13}];
+  ws2['!merges'] = [{s:{r:0,c:0},e:{r:0,c:6}}];
+  Object.entries(ts_st).forEach(([addr,s])=>{ if(!ws2[addr]) ws2[addr]={t:'s',v:''}; ws2[addr].s=s; });
+  XLSX.utils.book_append_sheet(wb, ws2, 'Tax Summary');
+
+  /* ══ SHEET 3: SUMMARY ══ */
+  const smSt = xlS(true, XC.headerBg, XC.headerFg, 13, false, 'left');
+  const ws3 = XLSX.utils.aoa_to_sheet([
+    ['Report Summary',''],
+    ['Report', r.name], ['Category', r.category],
+    ['Period', (r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
+    ['Status', r.status], ['Line Items', exps.length],
+    ['',''],
+    ['Subtotal (before tax)', stx.sub],
+    ['GST (5%)', stx.gst], ['QST (9.975%)', stx.qst],
+    ['Total incl. tax', stx.tot],
+    ['GST Recoverable (ITC)', stx.gR], ['QST Recoverable (ITR)', stx.qR],
+    ['Total Recoverable', r2(stx.gR+stx.qR)],
+    ['Net Cost (after recovery)', r2(stx.tot-stx.gR-stx.qR)],
+    ['',''],
+    ['Storage', {onedrive:'OneDrive',google:'Google Drive',local:'Local'}[S.storage.provider]||'—'],
+    ['Receipt Folder', sp],
+    ['App Version', CFG.APP_VERSION],
+    ['Exported', new Date().toLocaleString('en-CA')]
+  ]);
+  ws3['!cols'] = [{wch:30},{wch:36}];
+  ws3['A1'].s = smSt; ws3['B1'].s = smSt;
+  XLSX.utils.book_append_sheet(wb, ws3, 'Summary');
 
   // Generate the xlsx as a blob/base64 so we can share or download it
-  const wbArray = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+  const wbArray = XLSX.write(wb, {bookType:'xlsx', type:'array', cellStyles:true});
   const blob = new Blob([wbArray], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 
   // Collect receipt lines
@@ -1593,7 +1836,7 @@ function expR(rid){
     showExportModal(r, fname, blob, lines, fn, sp, rid);
   } else {
     doDownloadXlsx(blob, fname);
-    toast('Exported ✓ — 3 sheets: Expenses, Tax Summary, Summary');
+    toast('Exported ✓ — Expenses by category · GST/QST split · Tax Summary');
     if(lines.length>0) setTimeout(()=>rcptModal(r,lines,fn,sp),500);
     if(S.storage.connected&&S.storage.provider!=='local') doSync(rid);
   }
