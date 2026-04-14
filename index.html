@@ -379,7 +379,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v1.5.7</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v1.5.9</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -403,7 +403,7 @@ tr.trc:active td{background:var(--bg)}
    See SETUP.md for full step-by-step instructions
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v1.5.7',
+  APP_VERSION:    'v1.5.9',
   APP_RELEASED:   'April 2026',
   // SmartScan API key is stored securely in your browser's localStorage
   // — it is never in this code file. Enter it via Settings in the app.
@@ -1800,138 +1800,185 @@ function expR(rid){
   // Helper: blank cell
   function bc(s){ return {t:'b',s:s||XST.DEFAULT}; }
 
-  /* ══ SHEET 1: EXPENSES ══ */
+  /* ══ SHEET 1: EXPENSES — category columns layout ══
+     Columns: # | Date | Merchant | Notes | [Cat1] | [Cat2] … | TOTAL | GST | QST | ITC | Net
+     Rows:    one per expense, amount in matching category col, blank in others
+     Bottom:  TOTAL (green) · GST · QST · ITC Recoverable · Net After ITC
+  ══════════════════════════════════════════════════════ */
   const sheet1rows=[];
   const s1merges=[];
-  const NC=14; // columns
-  let row=0;
 
-  // Title
-  sheet1rows.push([sc('RD International — Expense Report · Québec, Canada',XST.TITLE),...Array(NC-1).fill(bc(XST.TITLE))]);
-  s1merges.push(`A1:N1`); row++;
+  // All categories present in this report, sorted
+  const catList=[...new Set(exps.map(e=>e.category||'Other'))].sort();
+  // Fixed left cols: # | Date | Merchant | Notes
+  // Category cols: one per catList entry
+  // Fixed right cols: TOTAL | GST (5%) | QST (9.975%) | ITC Recov. | Net After ITC
+  const NL=4, NR=5;
+  const NC1=NL+catList.length+NR;
+  const lastColLetter = i=>{
+    // supports A-Z then AA-AZ etc.
+    if(i<26) return String.fromCharCode(65+i);
+    return String.fromCharCode(64+Math.floor(i/26))+String.fromCharCode(65+(i%26));
+  };
+  const lastC1=lastColLetter(NC1-1);
 
-  // Meta
+  // Row 1: Title — merged full width
+  sheet1rows.push([sc('RD International — Expense Report · Québec, Canada',XST.TITLE),...Array(NC1-1).fill(bc(XST.TITLE))]);
+  s1merges.push(`A1:${lastC1}1`);
+
+  // Rows 2-8: Meta block
   const meta=[
-    ['Report',r.name],['Category',r.category],
-    ['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
+    ['Report',r.name],['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
     ['Status',r.status],['Jurisdiction','Québec, Canada — GST 5% + QST 9.975%'],
     ['Exported',new Date().toLocaleString('en-CA')],['App Version',CFG.APP_VERSION]
   ];
-  meta.forEach(([l,v])=>{
-    sheet1rows.push([sc(l,XST.META_LBL),sc(v,XST.META_VAL),...Array(NC-2).fill(bc(XST.META_VAL))]);
-    s1merges.push(`B${row+2}:N${row+2}`);
-    row++;
+  meta.forEach(([l,v],mi)=>{
+    sheet1rows.push([sc(l,XST.META_LBL),sc(v,XST.META_VAL),...Array(NC1-2).fill(bc(XST.META_VAL))]);
+    s1merges.push(`B${sheet1rows.length}:${lastC1}${sheet1rows.length}`);
   });
 
-  // Blank
-  sheet1rows.push(Array(NC).fill(bc())); row++;
+  // Blank spacer
+  sheet1rows.push(Array(NC1).fill(bc()));
 
-  // Column headers
-  const COLS=['#','Date','Merchant','Notes','Amount (entered)','Tax Incl.?','Subtotal','GST (5%)','QST (9.975%)','Total','ITC (GST)','ITR (QST)','Meals Rule','Receipt(s)'];
-  sheet1rows.push(COLS.map((h,i)=>sc(h,i>=4?XST.COL_HDR_R:XST.COL_HDR))); row++;
+  // Column header row
+  const hdrRow=[
+    sc('#',        XST.COL_HDR),
+    sc('Date',     XST.COL_HDR),
+    sc('Merchant', XST.COL_HDR),
+    sc('Notes',    XST.COL_HDR),
+    ...catList.map(cat=>sc(cat, XST.CAT_HDR)),
+    sc('TOTAL',        XST.GRAND_R),
+    sc('GST (5%)',     XST.COL_HDR_R),
+    sc('QST (9.975%)', XST.COL_HDR_R),
+    sc('ITC Recov.',   XST.RECOV_R),
+    sc('Net After ITC',XST.NET_R),
+  ];
+  sheet1rows.push(hdrRow);
 
-  // Category groups
-  const cats=[...new Set(exps.map(e=>e.category||'Other'))].sort();
-  let gIdx=1;
-
-  cats.forEach(cat=>{
-    const catExps=exps.filter(e=>(e.category||'Other')===cat);
-    const catTx=TAX.sum(catExps);
-
-    // Category header
-    sheet1rows.push([sc('▸  '+cat.toUpperCase()+'  ('+catExps.length+' item'+(catExps.length>1?'s':'')+')',XST.CAT_HDR),...Array(NC-1).fill(bc(XST.CAT_HDR))]);
-    s1merges.push(`A${row+2}:N${row+2}`); row++;
-
-    catExps.forEach((e,li)=>{
-      const et=TAX.calc(Number(e.amount),e.category,e.taxIncluded||false);
-      const alt=li%2===1;
-      const L=alt?XST.ROW_ALT_L:XST.ROW_L, R=alt?XST.ROW_ALT_R:XST.ROW_R;
-      const M=alt?XST.MEAL_TAG_A:XST.MEAL_TAG;
-      const rcpNames=(e.receipts&&e.receipts.length)?e.receipts.map((_,ri)=>r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+gIdx+'_R'+(ri+1)+'.jpg').join(', '):'None';
-      sheet1rows.push([
-        nc(gIdx,L),sc(e.date,L),sc(e.merchant||'',L),sc(e.notes||'',L),
-        nc(Number(e.amount),R),sc(e.taxIncluded?'Yes':'No',L),
-        nc(et.sub,R),nc(et.xmt?0:et.gst,R),nc(et.xmt?0:et.qst,R),nc(et.tot,R),
-        nc(et.gR,R),nc(et.qR,R),
-        sc(et.meal?'50% only':'Full',et.meal?M:L),
-        sc(rcpNames,L)
-      ]);
-      row++; gIdx++;
-    });
-
-    // Category subtotal
+  // Expense rows
+  exps.forEach((e,li)=>{
+    const et=TAX.calc(Number(e.amount),e.category,e.taxIncluded||false);
+    const alt=li%2===1;
+    const L=alt?XST.ROW_ALT_L:XST.ROW_L, R=alt?XST.ROW_ALT_R:XST.ROW_R;
     sheet1rows.push([
-      bc(XST.CAT_SUB),bc(XST.CAT_SUB),sc(cat+' Subtotal',XST.CAT_SUB),bc(XST.CAT_SUB),bc(XST.CAT_SUB_R),bc(XST.CAT_SUB),
-      nc(catTx.sub,XST.CAT_SUB_R),nc(catTx.gst,XST.CAT_SUB_R),nc(catTx.qst,XST.CAT_SUB_R),nc(catTx.tot,XST.CAT_SUB_R),
-      nc(catTx.gR,XST.CAT_SUB_R),nc(catTx.qR,XST.CAT_SUB_R),bc(XST.CAT_SUB),bc(XST.CAT_SUB)
+      nc(li+1, L),
+      sc(e.date||'', L),
+      sc(e.merchant||'', L),
+      sc(e.notes||'', L),
+      ...catList.map(cat=>(e.category||'Other')===cat ? nc(et.tot,R) : bc(R)),
+      nc(et.tot, R),
+      nc(et.xmt?0:et.gst, R),
+      nc(et.xmt?0:et.qst, R),
+      nc(r2(et.gR+et.qR), R),
+      nc(r2(et.tot-et.gR-et.qR), R),
     ]);
-    s1merges.push(`A${row+2}:E${row+2}`); row++;
-
-    // Spacer
-    sheet1rows.push(Array(NC).fill(bc())); row++;
   });
 
-  // Grand total
-  sheet1rows.push([
-    bc(XST.GRAND),bc(XST.GRAND),sc('GRAND TOTAL',XST.GRAND),bc(XST.GRAND),bc(XST.GRAND_R),bc(XST.GRAND),
-    nc(stx.sub,XST.GRAND_R),nc(stx.gst,XST.GRAND_R),nc(stx.qst,XST.GRAND_R),nc(stx.tot,XST.GRAND_R),
-    nc(stx.gR,XST.GRAND_R),nc(stx.qR,XST.GRAND_R),bc(XST.GRAND),bc(XST.GRAND)
-  ]);
-  s1merges.push(`A${row+2}:E${row+2}`);
+  // Blank spacer before totals
+  sheet1rows.push(Array(NC1).fill(bc()));
 
-  /* ══ SHEET 2: TAX SUMMARY ══ */
-  const sheet2rows=[];
-  const s2merges=[];
+  // TOTAL row — grand green
+  sheet1rows.push([
+    bc(XST.GRAND), sc('TOTAL',XST.GRAND), bc(XST.GRAND), bc(XST.GRAND),
+    ...catList.map(cat=>{
+      const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
+      return nc(ct.tot, XST.GRAND_R);
+    }),
+    nc(stx.tot,         XST.GRAND_R),
+    nc(stx.gst,         XST.GRAND_R),
+    nc(stx.qst,         XST.GRAND_R),
+    nc(r2(stx.gR+stx.qR), XST.GRAND_R),
+    nc(r2(stx.tot-stx.gR-stx.qR), XST.GRAND_R),
+  ]);
+
+  // GST row — mint subtotal style
+  sheet1rows.push([
+    bc(XST.CAT_SUB), sc('GST (5%)',XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB),
+    ...catList.map(cat=>{
+      const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
+      return nc(ct.gst, XST.CAT_SUB_R);
+    }),
+    nc(stx.gst,XST.CAT_SUB_R), bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
+    bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
+  ]);
+
+  // QST row
+  sheet1rows.push([
+    bc(XST.CAT_SUB), sc('QST (9.975%)',XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB),
+    ...catList.map(cat=>{
+      const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
+      return nc(ct.qst, XST.CAT_SUB_R);
+    }),
+    nc(stx.qst,XST.CAT_SUB_R), bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
+    bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
+  ]);
+
+  // ITC Recoverable row — blue
+  sheet1rows.push([
+    bc(XST.RECOV_L), sc('ITC Recoverable',XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L),
+    ...catList.map(cat=>{
+      const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
+      return nc(r2(ct.gR+ct.qR), XST.RECOV_R);
+    }),
+    nc(r2(stx.gR+stx.qR),XST.RECOV_R), bc(XST.RECOV_R), bc(XST.RECOV_R),
+    bc(XST.RECOV_R), bc(XST.RECOV_R),
+  ]);
+
+  // Net After ITC row — amber
+  sheet1rows.push([
+    bc(XST.NET_L), sc('Net After ITC',XST.NET_L), bc(XST.NET_L), bc(XST.NET_L),
+    ...catList.map(cat=>{
+      const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
+      return nc(r2(ct.tot-ct.gR-ct.qR), XST.NET_R);
+    }),
+    nc(r2(stx.tot-stx.gR-stx.qR),XST.NET_R), bc(XST.NET_R), bc(XST.NET_R),
+    bc(XST.NET_R), bc(XST.NET_R),
+  ]);
+
+  // Col widths: # | Date | Merchant | Notes | cats... | TOTAL | GST | QST | ITC | Net
+  const s1colWidths=[4,11,24,22,...catList.map(()=>14),13,10,12,12,14];
+
+  /* ══ SHEET 3: TAX SUMMARY ══ */
+  const sheet3rows=[];
+  const s3merges=[];
   let tr=0;
 
   function tsHdr(label, ncols){
-    sheet2rows.push([sc(label,XST.SEC_HDR),...Array(ncols-1).fill(bc(XST.SEC_HDR))]);
-    if(ncols>1) s2merges.push(`A${tr+2}:${String.fromCharCode(64+ncols)}${tr+2}`);
+    sheet3rows.push([sc(label,XST.SEC_HDR),...Array(ncols-1).fill(bc(XST.SEC_HDR))]);
+    if(ncols>1) s3merges.push(`A${tr+2}:${String.fromCharCode(64+ncols)}${tr+2}`);
     tr++;
   }
   function tsRow(lbl,val,stL,stR){
-    sheet2rows.push([sc(lbl,stL),nc(val,stR)]);tr++;
+    sheet3rows.push([sc(lbl,stL),nc(val,stR)]);tr++;
   }
-  function tsBlank(){ sheet2rows.push([bc(),bc()]); tr++; }
+  function tsBlank(){ sheet3rows.push([bc(),bc()]); tr++; }
 
-  // Title
-  sheet2rows.push([sc('Québec Tax Summary — GST 5% + QST 9.975%',XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR)]);
-  s2merges.push('A1:G1'); tr++;
+  sheet3rows.push([sc('Québec Tax Summary — GST 5% + QST 9.975%',XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR)]);
+  s3merges.push('A1:G1'); tr++;
   [[r.name,'Report'],[r.status,'Status'],[(r.startDate||'')+(r.endDate?' to '+r.endDate:''),'Period'],[exps.length,'Items']].forEach(([v,l])=>{
-    sheet2rows.push([sc(l,XST.META_LBL),sc(String(v),XST.META_VAL),bc(),bc(),bc(),bc(),bc()]);
-    s2merges.push(`B${tr+2}:G${tr+2}`); tr++;
+    sheet3rows.push([sc(l,XST.META_LBL),sc(String(v),XST.META_VAL),bc(),bc(),bc(),bc(),bc()]);
+    s3merges.push(`B${tr+2}:G${tr+2}`); tr++;
   });
   tsBlank();
 
   tsHdr('TAX BREAKDOWN',2);
-  sheet2rows.push([sc('Item',XST.COL_HDR),sc('Amount (CAD)',XST.COL_HDR_R)]);tr++;
+  sheet3rows.push([sc('Item',XST.COL_HDR),sc('Amount (CAD)',XST.COL_HDR_R)]);tr++;
   [[' Subtotal (before tax)',stx.sub,XST.TX_ROW_L,XST.TX_ROW_R],
    [' GST — 5% (federal)',stx.gst,XST.TX_ALT_L,XST.TX_ALT_R],
    [' QST — 9.975% (provincial)',stx.qst,XST.TX_ROW_L,XST.TX_ROW_R]
   ].forEach(([l,v,sL,sR])=>tsRow(l,v,sL,sR));
-  sheet2rows.push([sc('Total including taxes',XST.TX_GRAND_L),nc(stx.tot,XST.TX_GRAND_R)]);tr++;
+  sheet3rows.push([sc('Total including taxes',XST.TX_GRAND_L),nc(stx.tot,XST.TX_GRAND_R)]);tr++;
   tsBlank();
 
   tsHdr('INPUT TAX CREDITS / REFUNDS',2);
-  sheet2rows.push([sc('Item',XST.COL_HDR),sc('Recoverable (CAD)',XST.COL_HDR_R)]);tr++;
+  sheet3rows.push([sc('Item',XST.COL_HDR),sc('Recoverable (CAD)',XST.COL_HDR_R)]);tr++;
   tsRow(' GST recoverable (ITC — federal)',stx.gR,XST.RECOV_L,XST.RECOV_R);
   tsRow(' QST recoverable (ITR — provincial)',stx.qR,XST.RECOV_L,XST.RECOV_R);
-  sheet2rows.push([sc('Total recoverable',XST.TX_GRAND_L),nc(r2(stx.gR+stx.qR),XST.TX_GRAND_R)]);tr++;
+  sheet3rows.push([sc('Total recoverable',XST.TX_GRAND_L),nc(r2(stx.gR+stx.qR),XST.TX_GRAND_R)]);tr++;
   tsBlank();
 
   tsHdr('NET COST AFTER RECOVERY',2);
-  sheet2rows.push([sc('Net cost (after ITC/ITR)',XST.NET_L),nc(r2(stx.tot-stx.gR-stx.qR),XST.NET_R)]);tr++;
-  tsBlank();
-
-  tsHdr('BREAKDOWN BY CATEGORY',7);
-  sheet2rows.push(['Category','Lines','Total','GST (5%)','QST (9.975%)','ITC','ITR'].map((h,i)=>sc(h,i===0?XST.COL_HDR:XST.COL_HDR_R)));tr++;
-  cats.forEach((cat,ci)=>{
-    const ce=exps.filter(e=>(e.category||'Other')===cat), ct=TAX.sum(ce);
-    const alt=ci%2===1;
-    const L=alt?XST.TX_ALT_L:XST.TX_ROW_L, R=alt?XST.TX_ALT_R:XST.TX_ROW_R;
-    sheet2rows.push([sc(cat,L),nc(ce.length,R),nc(ct.tot,R),nc(ct.gst,R),nc(ct.qst,R),nc(ct.gR,R),nc(ct.qR,R)]);tr++;
-  });
-  sheet2rows.push([sc('ALL CATEGORIES',XST.TX_GRAND_L),nc(exps.length,XST.TX_GRAND_R),nc(stx.tot,XST.TX_GRAND_R),nc(stx.gst,XST.TX_GRAND_R),nc(stx.qst,XST.TX_GRAND_R),nc(stx.gR,XST.TX_GRAND_R),nc(stx.qR,XST.TX_GRAND_R)]);tr++;
+  sheet3rows.push([sc('Net cost (after ITC/ITR)',XST.NET_L),nc(r2(stx.tot-stx.gR-stx.qR),XST.NET_R)]);tr++;
   tsBlank();
 
   tsHdr('NOTES',2);
@@ -1939,23 +1986,23 @@ function expR(rid){
    ['GST rate','5% federal — administered by CRA'],
    ['QST rate','9.975% provincial — administered by ARQ'],
    ['App Version',CFG.APP_VERSION],['Exported',new Date().toLocaleString('en-CA')]
-  ].forEach(([l,v])=>{ sheet2rows.push([sc(l,XST.META_LBL),sc(v,XST.META_VAL)]); tr++; });
+  ].forEach(([l,v])=>{ sheet3rows.push([sc(l,XST.META_LBL),sc(v,XST.META_VAL)]); tr++; });
 
-  /* ══ SHEET 3: SUMMARY ══ */
-  const sheet3rows=[];
-  sheet3rows.push([sc('Report Summary',XST.SUM_HDR),bc(XST.SUM_HDR)]);
+  /* ══ SHEET 4: SUMMARY ══ */
+  const sheet4rows=[];
+  sheet4rows.push([sc('Report Summary',XST.SUM_HDR),bc(XST.SUM_HDR)]);
   [['Report',r.name],['Category',r.category],['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
    ['Status',r.status],['Line Items',String(exps.length)]
-  ].forEach(([l,v])=>sheet3rows.push([sc(l,XST.SUM_LBL),sc(v,XST.SUM_VAL)]));
-  sheet3rows.push([bc(),bc()]);
+  ].forEach(([l,v])=>sheet4rows.push([sc(l,XST.SUM_LBL),sc(v,XST.SUM_VAL)]));
+  sheet4rows.push([bc(),bc()]);
   [['Subtotal (before tax)',stx.sub],['GST (5%)',stx.gst],['QST (9.975%)',stx.qst],
    ['Total incl. tax',stx.tot],['GST Recoverable (ITC)',stx.gR],['QST Recoverable (ITR)',stx.qR],
    ['Total Recoverable',r2(stx.gR+stx.qR)],['Net Cost (after recovery)',r2(stx.tot-stx.gR-stx.qR)]
-  ].forEach(([l,v])=>sheet3rows.push([sc(l,XST.SUM_LBL),nc(v,XST.SUM_VAL_R)]));
-  sheet3rows.push([bc(),bc()]);
+  ].forEach(([l,v])=>sheet4rows.push([sc(l,XST.SUM_LBL),nc(v,XST.SUM_VAL_R)]));
+  sheet4rows.push([bc(),bc()]);
   [['Storage',{onedrive:'OneDrive',google:'Google Drive',local:'Local'}[S.storage.provider]||'—'],
    ['Receipt Folder',sp],['App Version',CFG.APP_VERSION],['Exported',new Date().toLocaleString('en-CA')]
-  ].forEach(([l,v])=>sheet3rows.push([sc(l,XST.SUM_LBL),sc(v,XST.SUM_VAL)]));
+  ].forEach(([l,v])=>sheet4rows.push([sc(l,XST.SUM_LBL),sc(v,XST.SUM_VAL)]));
 
   // Resolve shared string indices now that all strings are collected
   const sstObj=buildSST(allStrings);
@@ -1966,16 +2013,13 @@ function expR(rid){
     }));
   }
 
-  const s1xml=buildSheet(resolveSheet(sheet1rows),
-    [5,12,26,22,13,9,12,11,13,12,12,12,11,32], s1merges);
-  const s2xml=buildSheet(resolveSheet(sheet2rows),
-    [36,16,14,14,14,13,13],[]);
-  const s3xml=buildSheet(resolveSheet(sheet3rows),
-    [30,38],[]);
+  const s1xml=buildSheet(resolveSheet(sheet1rows), s1colWidths, s1merges);
+  const s3xml=buildSheet(resolveSheet(sheet3rows), [36,16,14,14,14,13,13], s3merges);
+  const s4xml=buildSheet(resolveSheet(sheet4rows), [30,38],[]);
 
   const stylesXml=buildStyles();
   const xlsxBytes=buildXlsx(
-    [{name:'Expenses',xml:s1xml},{name:'Tax Summary',xml:s2xml},{name:'Summary',xml:s3xml}],
+    [{name:'Expenses',xml:s1xml},{name:'Tax Summary',xml:s3xml},{name:'Overview',xml:s4xml}],
     sstObj.xml, stylesXml
   );
   const blob=new Blob([xlsxBytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
@@ -1993,7 +2037,7 @@ function expR(rid){
     showExportModal(r, fname, blob, lines, fn, sp, rid);
   } else {
     doDownloadXlsx(blob, fname);
-    toast('Exported ✓ — Expenses by category · GST/QST split · Tax Summary');
+    toast('Exported ✓ — Expenses (category columns) · Tax Summary · Overview');
     if(lines.length>0) setTimeout(()=>rcptModal(r,lines,fn,sp),500);
     if(S.storage.connected&&S.storage.provider!=='local') doSync(rid);
   }
