@@ -485,7 +485,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.0.7</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.0.8</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -512,7 +512,7 @@ tr.trc:active td{background:var(--bg)}
    CFG — V2.0 Firebase Edition
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v2.0.7',
+  APP_VERSION:    'v2.0.8',
   APP_RELEASED:   'April 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca', // Change to your admin email
 };
@@ -1000,8 +1000,9 @@ function fabDoSnap(mode, ridDirect) {
       fr.onload = ev => {
         const dataUrl = ev.target.result;
         if (file.type === 'application/pdf') {
-          mAE(rid, null, false, dataUrl);
-          toast('PDF attached — fill in the expense details');
+          // PDF + SmartScan = let Claude read the PDF; PDF + manual = attach to form
+          if (mode === 'smart') doSmartScan(dataUrl, rid);
+          else { mAE(rid, null, false, dataUrl); toast('PDF attached — fill in details'); }
           return;
         }
         if (mode === 'smart') doSmartScan(dataUrl, rid);
@@ -1026,9 +1027,11 @@ async function doSmartScan(imgData, rid) {
   mR.innerHTML = '<div class="mbg"><div class="modal"><div class="mh2"></div>'+
   '<div class="mhd"><h2>&#129302; SmartScan</h2></div>'+
   '<div class="mb" style="align-items:center;text-align:center;gap:16px;padding:32px 18px">'+
-    '<img src="'+imgData+'" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1px solid var(--bd)"/>'+
+    (imgData.startsWith('data:application/pdf')
+      ? '<div style="width:80px;height:80px;background:var(--blbg);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;margin:0 auto"><span style="font-size:32px">📄</span><span style="font-size:10px;font-weight:700;color:var(--bl)">PDF</span></div>'
+      : '<img src="'+imgData+'" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1px solid var(--bd)"/>')+
     '<div class="spin" style="width:32px;height:32px;border:3px solid var(--bd2);border-top-color:var(--g);border-radius:50%;animation:sp .7s linear infinite;margin:0 auto"></div>'+
-    '<div style="font-size:13px;color:var(--tx2)" id="scanStatus">Reading receipt&hellip;</div>'+
+    '<div style="font-size:13px;color:var(--tx2)" id="scanStatus">'+(imgData.startsWith('data:application/pdf')?'Reading PDF receipt&hellip;':'Reading receipt&hellip;')+'</div>'+
   '</div></div></div>';
 
   try {
@@ -1061,8 +1064,13 @@ async function doSmartScan(imgData, rid) {
       window._pendingScanRid = rid;
       return;
     }
-    const base64 = imgData.split(',')[1];
+    const isPdf    = imgData.startsWith('data:application/pdf');
+    const base64    = imgData.split(',')[1];
     const mediaType = imgData.split(';')[0].split(':')[1] || 'image/jpeg';
+    // PDFs use type:'document', images use type:'image'
+    const fileBlock = isPdf
+      ? { type:'document', source:{ type:'base64', media_type:'application/pdf', data:base64 } }
+      : { type:'image',    source:{ type:'base64', media_type:mediaType,          data:base64 } };
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -1078,7 +1086,7 @@ async function doSmartScan(imgData, rid) {
         messages: [{
           role: 'user',
           content: [
-            { type:'image', source:{ type:'base64', media_type:mediaType, data:base64 } },
+            fileBlock,
             { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true}' }
           ]
         }]
