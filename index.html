@@ -282,9 +282,117 @@ tr.trc:active td{background:var(--bg)}
 }
 @media(min-width:701px){.bnn,.hbg{display:none}.sbov{display:none!important}}
 @media(max-width:400px){.r2{grid-template-columns:1fr}}
+
+/* ── LOGIN SCREEN ── */
+#loginScreen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.lbox{background:var(--sf);border:1px solid var(--bd2);border-radius:16px;width:100%;max-width:380px;padding:36px 32px;box-shadow:var(--shlg)}
+.llogo{text-align:center;margin-bottom:28px}
+.llogo .logo{font-size:22px;justify-content:center;display:flex}
+.lsub{font-size:13px;color:var(--tx2);text-align:center;margin-top:6px}
+.lbox h2{font-size:18px;font-weight:700;margin-bottom:20px;text-align:center}
+.lerr{background:var(--rdbg);color:var(--rd);border:1px solid #F7C1C1;border-radius:var(--rsm);padding:10px 13px;font-size:13px;margin-bottom:14px;display:none}
+.lbtn{width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:var(--rsm);font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font);margin-top:6px}
+.lbtn:active{background:var(--gdk)}
+.lbtn:disabled{opacity:.5;pointer-events:none}
+.lspin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:6px}
+.ladmin{text-align:center;margin-top:18px;font-size:12px;color:var(--tx3)}
+.ladmin a{color:var(--bl);cursor:pointer;text-decoration:none}
+.ladmin a:hover{text-decoration:underline}
+
+/* ── ADMIN PANEL ── */
+#adminScreen{position:fixed;inset:0;background:var(--bg);z-index:999;display:none;flex-direction:column}
+.adtb{height:52px;flex-shrink:0;background:var(--sf);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 20px;gap:12px}
+.adtb h1{font-size:16px;font-weight:700;flex:1}
+.admain{flex:1;overflow-y:auto;padding:24px 20px;max-width:640px;margin:0 auto;width:100%}
+.adcard{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:16px;overflow:hidden}
+.adch{padding:14px 18px;border-bottom:1px solid var(--bd);font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.adcb{padding:18px}
+.adusr{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--bd)}
+.adusr:last-child{border-bottom:none}
+.adav{width:36px;height:36px;border-radius:50%;background:var(--g);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.adun{font-size:14px;font-weight:600}
+.adem{font-size:12px;color:var(--tx2)}
+.adact{margin-left:auto;display:flex;gap:7px}
+.adbl{background:var(--rdbg);color:var(--rd);border:1px solid #F7C1C1;font-size:12px;padding:4px 10px;border-radius:var(--rsm);cursor:pointer;font-family:var(--font);font-weight:600}
+.adbl:active{background:#F7C1C1}
+.adempty{text-align:center;padding:28px;color:var(--tx3);font-size:13px}
 </style>
 </head>
 <body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+  <div class="lbox">
+    <div class="llogo">
+      <div class="logo">RD <em>Expense</em></div>
+      <div class="lsub">Sign in to your account</div>
+    </div>
+    <div class="lerr" id="lErr"></div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="fld">
+        <label>Email</label>
+        <input class="fi2" id="lEmail" type="email" placeholder="you@example.com" autocomplete="email" autocapitalize="none"/>
+      </div>
+      <div class="fld">
+        <label>Password</label>
+        <input class="fi2" id="lPass" type="password" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+    </div>
+    <button class="lbtn" id="lBtn" onclick="doLogin()" style="margin-top:18px">Sign In</button>
+    <div class="ladmin"><a onclick="openAdminLogin()">Admin Panel</a></div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminScreen">
+  <div class="adtb">
+    <div class="logo">RD <em>Expense</em> <span style="font-size:11px;font-weight:400;color:var(--tx2);margin-left:6px">Admin</span></div>
+    <div style="flex:1"></div>
+    <button class="btn sm" onclick="closeAdmin()">← Back to Login</button>
+    <button class="btn sm" style="color:var(--rd)" onclick="adminLogout()">Sign Out</button>
+  </div>
+  <div class="admain">
+    <div class="adcard">
+      <div class="adch">👥 User Accounts</div>
+      <div class="adcb">
+        <div id="adUserList"><div class="adempty">Loading users…</div></div>
+      </div>
+    </div>
+    <div class="adcard">
+      <div class="adch">➕ Create New User</div>
+      <div class="adcb" style="display:flex;flex-direction:column;gap:12px">
+        <div class="lerr" id="adErr"></div>
+        <div class="r2">
+          <div class="fld"><label>Display Name</label><input class="fi2" id="adName" type="text" placeholder="Jane Smith"/></div>
+          <div class="fld"><label>Email</label><input class="fi2" id="adEmail" type="email" placeholder="jane@company.com"/></div>
+        </div>
+        <div class="fld"><label>Temporary Password</label><input class="fi2" id="adPass" type="password" placeholder="Min 8 characters"/></div>
+        <button class="btn p" id="adCreateBtn" onclick="adminCreateUser()">Create User Account</button>
+      </div>
+    </div>
+    <div class="adcard">
+      <div class="adch" style="color:var(--rd)">⚠️ Admin Login</div>
+      <div class="adcb" style="font-size:13px;color:var(--tx2);line-height:1.6">
+        Admin credentials are separate from user accounts. The admin email and password are set directly in Firebase Authentication. 
+        To change the admin password, go to <strong>Firebase Console → Authentication → Users</strong>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN MODAL (separate from user login) -->
+<div id="adminLoginModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1100;display:none;align-items:center;justify-content:center;padding:20px">
+  <div class="lbox" style="max-width:340px">
+    <div class="llogo"><div class="logo">RD <em>Admin</em></div><div class="lsub">Admin access only</div></div>
+    <div class="lerr" id="alErr"></div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="fld"><label>Admin Email</label><input class="fi2" id="alEmail" type="email" autocomplete="email" autocapitalize="none"/></div>
+      <div class="fld"><label>Admin Password</label><input class="fi2" id="alPass" type="password" autocomplete="current-password"/></div>
+    </div>
+    <button class="lbtn" id="alBtn" onclick="doAdminLogin()" style="margin-top:16px">Sign In as Admin</button>
+    <div class="ladmin"><a onclick="closeAdminLogin()">← Back to user login</a></div>
+  </div>
+</div>
 
 <div id="app">
 
@@ -299,29 +407,26 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logo">RD <em>Expense</em></div>
     <div class="tbs"></div>
-    <div class="sc nosync" id="syncChip" onclick="doSync()"><div class="scd"></div><span id="syncLbl">No storage</span></div>
+    <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
     <div class="uc" id="uChip" onclick="toggleUM()">
       <div class="av" id="uAv">RD</div>
       <span id="uTx" class="utx">RD</span>
       <svg class="uca" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-      <div class="um" id="uMenu">
+        <div class="um" id="uMenu">
         <div class="umh"><strong id="uMN">RD International</strong><span id="uME" style="display:block;font-size:11px;color:var(--tx3)">Québec, Canada</span></div>
-        <div class="umi" onclick="openSt()">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><ellipse cx="7" cy="4" rx="5" ry="2"/><path d="M2 4v2c0 1.1 2.24 2 5 2s5-.9 5-2V4"/><path d="M2 8v2c0 1.1 2.24 2 5 2s5-.9 5-2V8"/></svg>
-          Storage Settings
-        </div>
         <div class="umi" onclick="openApiKeySettings()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M5.5 8.5a3 3 0 100-6 3 3 0 000 6zM8 7.5l4 4M10.5 9.5l1.5 1.5" stroke-linecap="round"/></svg>
           SmartScan API Key
-        </div>
-        <div class="umi" onclick="doSync()">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 7a5 5 0 009.9-1M12 7a5 5 0 01-9.9 1" stroke-linecap="round"/></svg>
-          Sync Now
         </div>
         <div class="udiv"></div>
         <div class="umi danger" onclick="clearData()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 3.5h10M5 3.5V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5v1M3 3.5l.7 8a1 1 0 001 .9h4.6a1 1 0 001-.9l.7-8" stroke-linecap="round"/></svg>
           Clear All Data
+        </div>
+        <div class="udiv"></div>
+        <div class="umi danger" onclick="doSignOut()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M5 2H2.5a1 1 0 00-1 1v8a1 1 0 001 1H5M9 10l3-3-3-3M12 7H5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Sign Out
         </div>
       </div>
     </div>
@@ -350,12 +455,11 @@ tr.trc:active td{background:var(--bg)}
       <div class="sbsp"></div>
       <div class="stp">
         <div class="stph">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><ellipse cx="7" cy="4" rx="5" ry="2"/><path d="M2 4v2c0 1.1 2.24 2 5 2s5-.9 5-2V4"/><path d="M2 8v2c0 1.1 2.24 2 5 2s5-.9 5-2V8"/></svg>
-          <span id="stN">Storage</span><div class="dot dotx" id="stDt"></div>
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M7 1l1.5 3 3.5.5-2.5 2.5.5 3.5L7 9l-3 1.5.5-3.5L2 4.5 5.5 4z"/></svg>
+          <span id="stN">Firebase</span><div class="dot dotg" id="stDt"></div>
         </div>
-        <div class="stpd" id="stDe">Not configured</div>
+        <div class="stpd" id="stDe">Cloud sync active</div>
         <div class="stpp" id="stPa" style="display:none"></div>
-        <button class="stpc" onclick="openSt()">Configure</button>
       </div>
     </nav>
 
@@ -380,7 +484,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v1.6.5</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.0.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -396,22 +500,37 @@ tr.trc:active td{background:var(--bg)}
 <div id="mR"></div>
 <div class="toast" id="toast"></div>
 
+<!-- Firebase SDKs — must load before main script -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
 <script>
 /* ══════════════════════════════════════════════════════
-   CFG
-   To enable OneDrive sync: paste your Azure App Client ID
-   To enable Google Drive sync: paste your Google OAuth Client ID
-   See SETUP.md for full step-by-step instructions
+   CFG — V2.0 Firebase Edition
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v1.6.5',
+  APP_VERSION:    'v2.0.0',
   APP_RELEASED:   'April 2026',
-  // SmartScan API key is stored securely in your browser's localStorage
-  // — it is never in this code file. Enter it via Settings in the app.
-  MSAL_CLIENT_ID: 'YOUR_AZURE_CLIENT_ID',
-  MSAL_TENANT:    'common',
-  GAPI_CLIENT_ID: 'YOUR_GOOGLE_CLIENT_ID',
+  ADMIN_EMAIL:    'admin@rd-international.ca', // Change to your admin email
 };
+
+/* ══════════════════════════════════════════════════════
+   FIREBASE CONFIG — init happens in window.load below
+══════════════════════════════════════════════════════ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBsCfLVNCGjdydkRjj2s1N3QpfLlOBIm_Y",
+  authDomain: "rd-expense-tracker-3fc57.firebaseapp.com",
+  projectId: "rd-expense-tracker-3fc57",
+  storageBucket: "rd-expense-tracker-3fc57.firebasestorage.app",
+  messagingSenderId: "41497121534",
+  appId: "1:41497121534:web:747520fd032b7998ee4baf"
+};
+
+// Placeholder — populated inside window.load once SDKs are ready
+let FB = {};
+let CU = null; // { uid, email, displayName, isAdmin }
 
 /* ══════════════════════════════════════════════════════
    QUÉBEC TAX ENGINE
@@ -445,8 +564,8 @@ const TAX = {
 const S = {
   view:'dashboard', rid:null,
   reports:[], expenses:[],
-  storage:{provider:null,folder:'RD-Expenses',connected:false,lastSync:null,token:null,folderId:null},
-  fabOpen:false, msalApp:null, gTC:null
+  fabOpen:false,
+  _saving:false
 };
 
 /* ══════════════════════════════════════════════════════ HELPERS */
@@ -468,18 +587,38 @@ function badge(s) {
   return '<span class="badge '+(m[s]||'bcl')+'">'+esc(s)+'</span>';
 }
 
-/* ══════════════════════════════════════════════════════ PERSIST */
-function save() {
-  try { localStorage.setItem('rdex5',JSON.stringify({reports:S.reports,expenses:S.expenses,storage:S.storage})); } catch(e){}
-}
-function load() {
+/* ══════════════════════════════════════════════════════ PERSIST — Firestore */
+async function save() {
+  if(!CU) return;
   try {
-    const d=JSON.parse(localStorage.getItem('rdex5')||'{}');
-    if(d.reports)  S.reports  = d.reports;
-    if(d.expenses) S.expenses = d.expenses;
-    if(d.storage)  Object.assign(S.storage,d.storage);
-    S.expenses.forEach(e=>{ if(e.taxIncluded===undefined) e.taxIncluded=false; });
-  } catch(e){}
+    await FB.db.collection('users').doc(CU.uid).set({
+      reports:  S.reports,
+      expenses: S.expenses.map(e=>({...e, receipts:(e.receipts||[]).map(r=>r.startsWith('data:')?'[pending-upload]':r)})),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge:true});
+    updSyncChip('synced');
+  } catch(e) {
+    console.error('Save failed',e);
+    updSyncChip('err');
+    toast('Save failed — check connection','#A32D2D');
+  }
+}
+
+async function load() {
+  if(!CU) return;
+  try {
+    const doc = await FB.db.collection('users').doc(CU.uid).get();
+    if(doc.exists) {
+      const d = doc.data();
+      if(d.reports)  S.reports  = d.reports;
+      if(d.expenses) S.expenses = d.expenses;
+      S.expenses.forEach(e=>{ if(e.taxIncluded===undefined) e.taxIncluded=false; });
+    }
+    updSyncChip('synced');
+  } catch(e) {
+    console.error('Load failed',e);
+    updSyncChip('err');
+  }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -551,21 +690,190 @@ function confirmClearKey() {
 }
 
 
+/* ══════════════════════════════════════════════════════ SYNC CHIP */
+function updSyncChip(state) {
+  const chip=$('syncChip'), lbl=$('syncLbl');
+  if(!chip) return;
+  chip.className='sc';
+  if(state==='synced'){chip.classList.add('synced');lbl.textContent='Synced';}
+  else if(state==='syncing'){chip.classList.add('syncing');lbl.textContent='Saving…';}
+  else if(state==='err'){chip.classList.add('err');lbl.textContent='Sync error';}
+  else{chip.classList.add('nosync');lbl.textContent='Firebase';}
+}
+
+/* ══════════════════════════════════════════════════════ AUTH */
+function showLogin()  { $('loginScreen').style.display='flex'; $('app').style.display='none'; }
+function showApp()    { $('loginScreen').style.display='none'; $('app').style.display='flex'; }
+
+// User login
+async function doLogin() {
+  const email = ($('lEmail')?.value||'').trim();
+  const pass  = ($('lPass')?.value||'').trim();
+  const err   = $('lErr'), btn=$('lBtn');
+  err.style.display='none';
+  if(!email||!pass){err.textContent='Please enter your email and password.';err.style.display='block';return;}
+  btn.disabled=true; btn.innerHTML='<span class="lspin"></span>Signing in…';
+  try {
+    await FB.auth.signInWithEmailAndPassword(email, pass);
+    // onAuthStateChanged handles the rest
+  } catch(e) {
+    btn.disabled=false; btn.innerHTML='Sign In';
+    err.textContent = e.code==='auth/user-not-found'||e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'
+      ? 'Invalid email or password. Please try again.'
+      : (e.message||'Sign in failed.');
+    err.style.display='block';
+  }
+}
+
+// Enter key support on login
+document.addEventListener('keydown', e=>{
+  if(e.key==='Enter') {
+    if($('adminLoginModal')?.style.display==='flex') doAdminLogin();
+    else if($('loginScreen')?.style.display!=='none') doLogin();
+  }
+});
+
+// Auth state listener — fires on login/logout
 function boot() {
-  load();
-  $('vBdg').textContent = CFG.APP_VERSION;
-  $('vDt').textContent  = CFG.APP_RELEASED;
-  updSt();
-  showView('dashboard');
+  // Firebase auth listener registered in window.load — just hide app on boot
+  $('app').style.display='none';
+}
+
+/* ══════════════════════════════════════════════════════ ADMIN AUTH */
+function openAdminLogin() {
+  $('adminLoginModal').style.display='flex';
+  setTimeout(()=>$('alEmail')?.focus(),100);
+}
+function closeAdminLogin() {
+  const m=$('adminLoginModal');
+  if(m){m.style.display='none';}
+  const err=$('alErr'); if(err)err.style.display='none';
+  const btn=$('alBtn'); if(btn){btn.disabled=false;btn.innerHTML='Sign In as Admin';}
+}
+
+async function doAdminLogin() {
+  const email = ($('alEmail')?.value||'').trim();
+  const pass  = ($('alPass')?.value||'').trim();
+  const err=$('alErr'), btn=$('alBtn');
+  err.style.display='none';
+  if(!email||!pass){err.textContent='Enter admin email and password.';err.style.display='block';return;}
+  btn.disabled=true; btn.innerHTML='<span class="lspin"></span>Signing in…';
+  try {
+    const cred = await FB.auth.signInWithEmailAndPassword(email, pass);
+    if(cred.user.email !== CFG.ADMIN_EMAIL) {
+      await FB.auth.signOut();
+      err.textContent='This account does not have admin access.';
+      err.style.display='block';
+      btn.disabled=false; btn.innerHTML='Sign In as Admin';
+      return;
+    }
+    closeAdminLogin();
+    $('loginScreen').style.display='none';
+    $('app').style.display='none';
+    openAdminPanel();
+  } catch(e) {
+    btn.disabled=false; btn.innerHTML='Sign In as Admin';
+    err.textContent = e.code==='auth/invalid-credential'
+      ? 'Invalid admin credentials.'
+      : (e.message||'Sign in failed.');
+    err.style.display='block';
+  }
+}
+
+function adminLogout() {
+  FB.auth.signOut();
+  $('adminScreen').style.display='none';
+}
+
+function closeAdmin() {
+  FB.auth.signOut();
+  $('adminScreen').style.display='none';
+}
+
+/* ══════════════════════════════════════════════════════ ADMIN PANEL */
+async function openAdminPanel() {
+  const panel=$('adminScreen');
+  panel.style.display='flex'; panel.style.flexDirection='column';
+  await adminLoadUsers();
+}
+
+async function adminLoadUsers() {
+  const list=$('adUserList');
+  list.innerHTML='<div class="adempty">Loading…</div>';
+  try {
+    const snap = await FB.db.collection('userProfiles').orderBy('createdAt','asc').get();
+    if(snap.empty){list.innerHTML='<div class="adempty">No users yet. Create the first one below.</div>';return;}
+    list.innerHTML = snap.docs.map(doc=>{
+      const u=doc.data();
+      const ini=(u.displayName||u.email||'U').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      return `<div class="adusr">
+        <div class="adav">${ini}</div>
+        <div><div class="adun">${esc(u.displayName||'—')}</div><div class="adem">${esc(u.email)}</div></div>
+        <div class="adact">
+          <button class="adbl" onclick="adminDeleteUser('${doc.id}','${esc(u.email)}')">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML='<div class="adempty" style="color:var(--rd)">Failed to load users: '+esc(e.message)+'</div>';
+  }
+}
+
+async function adminCreateUser() {
+  const name  = ($('adName')?.value||'').trim();
+  const email = ($('adEmail')?.value||'').trim();
+  const pass  = ($('adPass')?.value||'').trim();
+  const err=$('adErr'), btn=$('adCreateBtn');
+  err.style.display='none';
+  if(!name||!email||!pass){err.textContent='Please fill in all fields.';err.style.display='block';return;}
+  if(pass.length<8){err.textContent='Password must be at least 8 characters.';err.style.display='block';return;}
+  btn.disabled=true; btn.textContent='Creating…';
+  try {
+    // Use a secondary app instance to create user without signing out admin
+    const secondaryApp = firebase.initializeApp(firebaseConfig, 'secondary_'+Date.now());
+    const secondaryAuth = secondaryApp.auth();
+    const cred = await secondaryAuth.createUserWithEmailAndPassword(email, pass);
+    await cred.user.updateProfile({displayName: name});
+    // Store profile in Firestore
+    await FB.db.collection('userProfiles').doc(cred.user.uid).set({
+      uid: cred.user.uid,
+      email,
+      displayName: name,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: CU?.email||'admin'
+    });
+    await secondaryAuth.signOut();
+    await secondaryApp.delete();
+    // Clear form
+    $('adName').value=''; $('adEmail').value=''; $('adPass').value='';
+    toast('User "'+name+'" created successfully ✓');
+    await adminLoadUsers();
+  } catch(e) {
+    err.textContent = e.code==='auth/email-already-in-use'
+      ? 'That email is already registered.'
+      : (e.message||'Failed to create user.');
+    err.style.display='block';
+  }
+  btn.disabled=false; btn.textContent='Create User Account';
+}
+
+async function adminDeleteUser(uid, email) {
+  if(!confirm('Delete user '+email+'?\n\nThis will remove their profile. Their expense data will be preserved in Firestore but they will no longer be able to log in.\n\nThis cannot be undone.')) return;
+  try {
+    await FB.db.collection('userProfiles').doc(uid).delete();
+    toast('User removed ✓');
+    await adminLoadUsers();
+  } catch(e) {
+    toast('Delete failed: '+(e.message||e),'#A32D2D');
+  }
 }
 
 function clearData() {
-  if(!confirm('Clear ALL reports, expenses and storage settings?\nThis cannot be undone.')) return;
+  if(!confirm('Clear ALL reports and expenses?\nThis will permanently delete your data from the cloud.\nThis cannot be undone.')) return;
   S.reports  = [];
   S.expenses = [];
-  S.storage  = {provider:null,folder:'RD-Expenses',connected:false,lastSync:null,token:null,folderId:null};
-  try { localStorage.removeItem('rdex5'); } catch(e){}
-  closeM(); updSt(); render();
+  save();
+  closeM(); render();
   toast('All data cleared');
 }
 
@@ -575,285 +883,12 @@ document.addEventListener('click', e => {
   if (S.fabOpen && $('fabW')  && !$('fabW').contains(e.target))  closeFab();
 });
 
-/* ══════════════════════════════════════════════════════
-   ONEDRIVE SYNC — Microsoft Graph REST API v1.0
-   Paste your Azure Client ID into CFG.MSAL_CLIENT_ID
-   then click "Configure" in the sidebar to connect.
-══════════════════════════════════════════════════════ */
-async function connectOneDrive() {
-  if(CFG.MSAL_CLIENT_ID==='YOUR_AZURE_CLIENT_ID') {
-    toast('Paste your Azure Client ID into CFG.MSAL_CLIENT_ID in index.html — see SETUP.md','#BA7517');
-    return false;
-  }
-  try {
-    if(!S.msalApp) {
-      const {PublicClientApplication} = msal;
-      S.msalApp = new PublicClientApplication({
-        auth:{clientId:CFG.MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+CFG.MSAL_TENANT,redirectUri:location.href.split('?')[0].split('#')[0]},
-        cache:{cacheLocation:'localStorage',storeAuthStateInCookie:true}
-      });
-      await S.msalApp.initialize();
-    }
-    const sc=['User.Read','Files.ReadWrite'];
-    let resp;
-    const accs=S.msalApp.getAllAccounts();
-    if(accs.length>0){try{resp=await S.msalApp.acquireTokenSilent({scopes:sc,account:accs[0]});}catch(e){resp=null;}}
-    if(!resp) resp=await S.msalApp.loginPopup({scopes:sc,prompt:'select_account'});
-    const tr=await S.msalApp.acquireTokenSilent({scopes:sc,account:resp.account||S.msalApp.getAllAccounts()[0]});
-    S.storage.token=tr.accessToken; S.storage.provider='onedrive'; S.storage.connected=true;
-    save(); updSt();
-    toast('OneDrive connected — '+resp.account.username);
-    return true;
-  } catch(err) {
-    toast('OneDrive connection failed: '+(err.message||err),'#A32D2D');
-    return false;
-  }
-}
-
-async function refreshMST() {
-  if(!S.msalApp)return;
-  try {
-    const a=S.msalApp.getAllAccounts(); if(!a.length)return;
-    const t=await S.msalApp.acquireTokenSilent({scopes:['User.Read','Files.ReadWrite'],account:a[0]});
-    S.storage.token=t.accessToken;
-  } catch(e){console.warn('Token refresh skipped',e);}
-}
-
-async function syncOD(rid) {
-  await refreshMST();
-  if(!S.storage.token) throw new Error('OneDrive: no token — click Storage Settings to reconnect.');
-  const base='https://graph.microsoft.com/v1.0/me/drive/root';
-  const auth={'Authorization':'Bearer '+S.storage.token,'Content-Type':'application/json'};
-  const f=S.storage.folder;
-  await fetch(base+'/children',{method:'POST',headers:auth,body:JSON.stringify({name:f,folder:{},['@microsoft.graph.conflictBehavior']:'rename'})});
-  const snap=JSON.stringify({reports:S.reports,expenses:S.expenses.map(e=>({...e,receipts:(e.receipts||[]).map(r=>r.startsWith('data:')?'[image]':r)})),exportedAt:new Date().toISOString(),version:CFG.APP_VERSION});
-  const dr=await fetch(base+':/%2F'+encodeURIComponent(f)+'/data.json:/content',{method:'PUT',headers:{'Authorization':'Bearer '+S.storage.token,'Content-Type':'application/json'},body:snap});
-  if(!dr.ok) throw new Error('OneDrive upload failed: HTTP '+dr.status);
-  if(rid){
-    const rpt=S.reports.find(r=>r.id===rid); if(!rpt)return;
-    const exps=S.expenses.filter(e=>e.reportId===rid);
-    const rn=rpt.name.replace(/[^a-z0-9]/gi,'_')+'_Receipts';
-    await fetch(base+':/%2F'+encodeURIComponent(f)+':/children',{method:'POST',headers:auth,body:JSON.stringify({name:rn,folder:{},['@microsoft.graph.conflictBehavior']:'rename'})});
-    for(let i=0;i<exps.length;i++) for(let j=0;j<(exps[i].receipts||[]).length;j++) {
-      const src=exps[i].receipts[j];
-      if(!src||src.startsWith('pdf::')||!src.startsWith('data:'))continue;
-      try {
-        const bl=await(await fetch(src)).blob();
-        const fn=rpt.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(j+1)+'.jpg';
-        await fetch(base+':/%2F'+encodeURIComponent(f)+'%2F'+encodeURIComponent(rn)+'/'+encodeURIComponent(fn)+':/content',{method:'PUT',headers:{'Authorization':'Bearer '+S.storage.token,'Content-Type':bl.type||'image/jpeg'},body:bl});
-      } catch(e){console.warn('Receipt upload skipped',e);}
-    }
-  }
-}
-
-/* ══════════════════════════════════════════════════════
-   GOOGLE DRIVE SYNC — Drive API v3
-   Paste your Google Client ID into CFG.GAPI_CLIENT_ID
-   then click "Configure" in the sidebar to connect.
-══════════════════════════════════════════════════════ */
-function connectGDrive() {
-  return new Promise((resolve)=>{
-    if(CFG.GAPI_CLIENT_ID==='YOUR_GOOGLE_CLIENT_ID') {
-      toast('Paste your Google Client ID into CFG.GAPI_CLIENT_ID in index.html — see SETUP.md','#BA7517');
-      resolve(false); return;
-    }
-    if(typeof google==='undefined'||!google?.accounts?.oauth2) {
-      toast('Google Identity Services not loaded — check your internet connection','#A32D2D');
-      resolve(false); return;
-    }
-    S.gTC=google.accounts.oauth2.initTokenClient({
-      client_id:CFG.GAPI_CLIENT_ID,
-      scope:'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email',
-      callback:async tr=>{
-        if(tr.error){toast('Google auth error: '+tr.error,'#A32D2D');resolve(false);return;}
-        S.storage.token=tr.access_token; S.storage.provider='google'; S.storage.connected=true;
-        save(); updSt();
-        toast('Google Drive connected');
-        resolve(true);
-      }
-    });
-    S.gTC.requestAccessToken({prompt:'consent'});
-  });
-}
-
-async function ensureGF() {
-  const h={'Authorization':'Bearer '+S.storage.token};
-  const q=encodeURIComponent("name='"+S.storage.folder+"' and mimeType='application/vnd.google-apps.folder' and trashed=false");
-  const r=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id)',{headers:h});
-  if(!r.ok) throw new Error('Drive search failed: HTTP '+r.status);
-  const d=await r.json();
-  if(d.files&&d.files.length>0){S.storage.folderId=d.files[0].id;return d.files[0].id;}
-  const cr=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{...h,'Content-Type':'application/json'},body:JSON.stringify({name:S.storage.folder,mimeType:'application/vnd.google-apps.folder'})});
-  if(!cr.ok) throw new Error('Could not create Drive folder: HTTP '+cr.status);
-  const ff=await cr.json(); S.storage.folderId=ff.id; return ff.id;
-}
-
-async function syncGD(rid) {
-  if(!S.storage.token) throw new Error('Google Drive: no token — click Storage Settings to reconnect.');
-  const h={'Authorization':'Bearer '+S.storage.token};
-  const fid=S.storage.folderId||await ensureGF();
-  const snap=JSON.stringify({reports:S.reports,expenses:S.expenses.map(e=>({...e,receipts:(e.receipts||[]).map(r=>r.startsWith('data:')?'[image]':r)})),exportedAt:new Date().toISOString(),version:CFG.APP_VERSION});
-  const eq=encodeURIComponent("name='data.json' and '"+fid+"' in parents and trashed=false");
-  const er=await fetch('https://www.googleapis.com/drive/v3/files?q='+eq+'&fields=files(id)',{headers:h});
-  const ed=await er.json(); const eid=ed.files?.[0]?.id;
-  const fm=new FormData();
-  fm.append('metadata',new Blob([JSON.stringify(eid?{}:{name:'data.json',parents:[fid]})],{type:'application/json'}));
-  fm.append('file',new Blob([snap],{type:'application/json'}));
-  const up=eid
-    ?await fetch('https://www.googleapis.com/upload/drive/v3/files/'+eid+'?uploadType=multipart',{method:'PATCH',headers:h,body:fm})
-    :await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:h,body:fm});
-  if(!up.ok) throw new Error('Drive upload failed: HTTP '+up.status);
-  if(rid){
-    const rpt=S.reports.find(r=>r.id===rid); if(!rpt)return;
-    const exps=S.expenses.filter(e=>e.reportId===rid);
-    const rfn=rpt.name.replace(/[^a-z0-9]/gi,'_')+'_Receipts';
-    const rq=encodeURIComponent("name='"+rfn+"' and '"+fid+"' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false");
-    const rr=await fetch('https://www.googleapis.com/drive/v3/files?q='+rq+'&fields=files(id)',{headers:h});
-    const rd=await rr.json(); let rfid=rd.files?.[0]?.id;
-    if(!rfid){const rc=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{...h,'Content-Type':'application/json'},body:JSON.stringify({name:rfn,mimeType:'application/vnd.google-apps.folder',parents:[fid]})});rfid=(await rc.json()).id;}
-    for(let i=0;i<exps.length;i++) for(let j=0;j<(exps[i].receipts||[]).length;j++) {
-      const src=exps[i].receipts[j];
-      if(!src||src.startsWith('pdf::')||!src.startsWith('data:'))continue;
-      try {
-        const bl=await(await fetch(src)).blob();
-        const fn=rpt.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(j+1)+'.jpg';
-        const ffm=new FormData();
-        ffm.append('metadata',new Blob([JSON.stringify({name:fn,parents:[rfid]})],{type:'application/json'}));
-        ffm.append('file',bl);
-        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:h,body:ffm});
-      } catch(e){console.warn('Receipt upload skipped',e);}
-    }
-  }
-}
-
-/* ══════════════════════════════════════════════════════ SYNC ORCHESTRATOR */
-async function doSync(rid) {
+/* ══════════════════════════════════════════════════════ SIGN OUT */
+async function doSignOut() {
   $('uMenu').classList.remove('open');
-  if(!S.storage.connected||!S.storage.token) {
-    if(S.storage.provider==='local'){toast('Local mode — use Export on each report','#6b6860');return;}
-    toast('Storage not connected — open Storage Settings to connect','#BA7517'); return;
-  }
-  const c=$('syncChip'),l=$('syncLbl');
-  c.className='sc syncing'; l.textContent='Syncing…';
-  try {
-    if(S.storage.provider==='onedrive') await syncOD(rid);
-    if(S.storage.provider==='google')   await syncGD(rid);
-    S.storage.lastSync=new Date().toISOString(); save(); updSt();
-    toast('Synced to '+{onedrive:'OneDrive',google:'Google Drive'}[S.storage.provider]);
-  } catch(err) {
-    console.error('Sync error',err);
-    c.className='sc err'; l.textContent='Sync error';
-    toast('Sync failed — '+(err.message||err),'#A32D2D');
-  }
-}
-
-/* ══════════════════════════════════════════════════════ STORAGE UI */
-function updSt() {
-  const st=S.storage, nm={onedrive:'OneDrive',google:'Google Drive',local:'Local'};
-  if(!st.provider){
-    $('stN').textContent='Storage'; $('stDe').textContent='Not configured';
-    $('stPa').style.display='none'; $('stDt').className='dot dotx';
-    $('syncChip').className='sc nosync'; $('syncLbl').textContent='No storage'; return;
-  }
-  $('stN').textContent=nm[st.provider]||'Storage';
-  if(st.connected){
-    $('stDe').textContent='Connected'+(st.lastSync?' · '+new Date(st.lastSync).toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'}):'');
-    $('stPa').textContent=st.provider==='local'?'Downloads folder':'/'+st.folder;
-    $('stPa').style.display='block'; $('stDt').className='dot dotg';
-    $('syncChip').className='sc synced'; $('syncLbl').textContent='Synced';
-  } else {
-    $('stDe').textContent='Not connected'; $('stPa').style.display='none';
-    $('stDt').className='dot dotx'; $('syncChip').className='sc nosync'; $('syncLbl').textContent=nm[st.provider];
-  }
-}
-
-function openSt() {
-  $('uMenu').classList.remove('open');
-  const st=S.storage, sel=p=>st.provider===p?'sel':'';
-  const odRdy=CFG.MSAL_CLIENT_ID!=='YOUR_AZURE_CLIENT_ID';
-  const gdRdy=CFG.GAPI_CLIENT_ID!=='YOUR_GOOGLE_CLIENT_ID';
-  mR.innerHTML=`<div class="mbg" onclick="if(event.target===this)closeM()">
-  <div class="modal wide"><div class="mh2"></div>
-    <div class="mhd"><h2>Storage Settings</h2><button class="ib" onclick="closeM()">&#10005;</button></div>
-    <div class="mb">
-      <div class="info ${st.connected?'gn':'bl'}" style="font-size:12px">
-        ${st.connected&&st.provider!=='local'
-          ?'&#10003; Connected to '+{onedrive:'OneDrive',google:'Google Drive'}[st.provider]+'. Data syncs automatically on each save.'
-          :'Choose where your exports and receipts are saved.'}
-      </div>
-      <div>
-        <label style="font-size:12px;color:var(--tx2);font-weight:600;display:block;margin-bottom:8px">Provider</label>
-        <div class="stp2">
-          <div class="sto ${sel('onedrive')}" onclick="selProv('onedrive')">
-            <div class="sico" style="background:#E6F1FB"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 15.5c0-1.6.8-3 2-3.8C5.4 10 7.3 8.5 9.5 8.5c.7 0 1.4.1 2 .4C12.4 7.6 13.7 7 15.2 7c2.3 0 4.3 1.8 4.3 4.1 0 .2 0 .4-.05.5.8.5 1.3 1.4 1.3 2.4 0 1.7-1.4 3-3.1 3H5.5C4.1 17 3 16.4 3 15.5z" stroke="#185FA5" stroke-width="1.2" fill="#E6F1FB"/></svg></div>
-            <div class="sna">OneDrive</div><div class="sde">Microsoft 365</div>
-            <div class="sbdg ${odRdy?'':'nd'}">${odRdy?'Ready':'Needs setup'}</div>
-          </div>
-          <div class="sto ${sel('google')}" onclick="selProv('google')">
-            <div class="sico" style="background:#fef8e7"><svg width="22" height="22" viewBox="0 0 22 22"><path d="M11 1L2.5 16.5h17L11 1z" fill="#FBC02D"/><rect x="1" y="16.5" width="20" height="4" rx="2" fill="#4285F4"/><path d="M8 16.5l3-5 3 5" fill="#34A853"/></svg></div>
-            <div class="sna">Google Drive</div><div class="sde">Google Account</div>
-            <div class="sbdg ${gdRdy?'':'nd'}">${gdRdy?'Ready':'Needs setup'}</div>
-          </div>
-          <div class="sto ${sel('local')}" onclick="selProv('local')">
-            <div class="sico" style="background:#F1EFE8"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="2" y="4" width="18" height="14" rx="2" stroke="#5F5E5A" stroke-width="1.3"/><path d="M7 18v1a1 1 0 001 1h6a1 1 0 001-1v-1" stroke="#5F5E5A" stroke-width="1.3"/><circle cx="11" cy="13" r="2" stroke="#5F5E5A" stroke-width="1.3"/></svg></div>
-            <div class="sna">Local</div><div class="sde">Download to device</div>
-            <div class="sbdg">Always works</div>
-          </div>
-        </div>
-      </div>
-      <div id="stFld" style="display:${st.provider&&st.provider!=='local'?'flex':'none'};flex-direction:column;gap:12px">
-        <div class="fld"><label>Sync Folder Name</label><input class="fi2" id="sfF" value="${esc(st.folder||'RD-Expenses')}" placeholder="RD-Expenses"/></div>
-        <div id="odCfg" style="display:${st.provider==='onedrive'?'block':'none'}">
-          <div class="info ${odRdy?'gn':'am'}" style="font-size:12px;line-height:1.6">
-            ${odRdy?'&#10003; Azure app configured. Click "Connect" to authenticate.'
-            :'<strong>One-time Azure setup:</strong><br>1. portal.azure.com &#x2192; App registrations &#x2192; New<br>2. Supported accounts: Personal Microsoft accounts<br>3. Platform: Single-page application &#x2192; Redirect URI: <code>'+location.href.split('?')[0]+'</code><br>4. API permissions &#x2192; Graph &#x2192; Files.ReadWrite + User.Read (Delegated)<br>5. Copy Application (client) ID &#x2192; set <code>CFG.MSAL_CLIENT_ID</code> in index.html'}
-          </div>
-        </div>
-        <div id="gdCfg" style="display:${st.provider==='google'?'block':'none'}">
-          <div class="info ${gdRdy?'gn':'am'}" style="font-size:12px;line-height:1.6">
-            ${gdRdy?'&#10003; Google client configured. Click "Connect" to authenticate.'
-            :'<strong>One-time Google setup:</strong><br>1. console.cloud.google.com &#x2192; New project<br>2. Enable Google Drive API<br>3. OAuth consent &#x2192; External &#x2192; add Gmail as test user &#x2192; scope: drive.file<br>4. Credentials &#x2192; OAuth 2.0 Client ID &#x2192; Web application<br>5. Authorised JS origins: <code>'+location.origin+'</code><br>6. Copy Client ID &#x2192; set <code>CFG.GAPI_CLIENT_ID</code> in index.html'}
-          </div>
-        </div>
-      </div>
-      <div id="locInfo" style="display:${st.provider==='local'?'block':'none'}">
-        <div class="info gn" style="font-size:12px">Exports download to your device Downloads folder. No setup needed.</div>
-      </div>
-    </div>
-    <div class="mf">
-      <button class="btn" onclick="closeM()">Close</button>
-      ${st.connected&&st.provider!=='local'?'<button class="btn" style="color:var(--rd)" onclick="discSt()">Disconnect</button>':''}
-      ${st.provider==='local'?'<button class="btn p" onclick="setLoc()">Use Local</button>':''}
-      ${st.provider&&st.provider!=='local'?'<button class="btn p" onclick="connectSt()">Connect</button>':''}
-    </div>
-  </div></div>`;
-}
-
-function selProv(p) {
-  S.storage.provider=p;
-  document.querySelectorAll('.sto').forEach(el=>el.classList.remove('sel'));
-  event.currentTarget.classList.add('sel');
-  $('stFld').style.display=(p&&p!=='local')?'flex':'none';
-  $('locInfo').style.display=p==='local'?'block':'none';
-  if(p){$('odCfg').style.display=p==='onedrive'?'block':'none';$('gdCfg').style.display=p==='google'?'block':'none';}
-  // show/hide connect button
-  const cf=$('stFld').nextElementSibling?.nextElementSibling;
-}
-
-async function connectSt() {
-  S.storage.folder=($('sfF')?.value||'RD-Expenses').trim()||'RD-Expenses';
-  closeM();
-  if(S.storage.provider==='onedrive') await connectOneDrive();
-  else if(S.storage.provider==='google') await connectGDrive();
-}
-
-function setLoc() {
-  S.storage.provider='local'; S.storage.connected=true; S.storage.token=null;
-  save(); updSt(); closeM(); toast('Local storage selected');
-}
-function discSt() {
-  S.storage={provider:null,folder:'RD-Expenses',connected:false,lastSync:null,token:null,folderId:null};
-  save(); updSt(); closeM(); toast('Storage disconnected');
+  if(!confirm('Sign out of RD Expense?')) return;
+  S.reports=[]; S.expenses=[];
+  await FB.auth.signOut();
 }
 
 /* ══════════════════════════════════════════════════════ SIDEBAR / NAV */
@@ -1144,7 +1179,7 @@ async function startBatch(files, rid) {
   }
 
   save();
-  if(S.storage.connected&&S.storage.provider!=='local') doSync(rid);
+  
 
   // Done — show summary
   const title=$('batchTitle'), sub=$('batchSub');
@@ -1406,7 +1441,7 @@ function saveRename(rid) {
   r.startDate= $('rnS')?.value    || r.startDate;
   r.endDate  = $('rnE')?.value    || r.endDate;
   save(); closeM(); toast('Report renamed');
-  if(S.storage.connected&&S.storage.provider!=='local') doSync();
+  
   render();
 }
 
@@ -1414,7 +1449,7 @@ function saveR(){
   const name=$('rN').value.trim(); if(!name){alert('Report name required.');return;}
   const r={id:uid('R'),name,category:$('rC').value,startDate:$('rS').value,endDate:$('rE').value,notes:$('rNt').value.trim(),status:'Open',_ts:Date.now()};
   S.reports.push(r); save(); closeM(); toast('Report created');
-  if(S.storage.connected&&S.storage.provider!=='local') doSync();
+  
   showView('report-detail',r.id);
 }
 
@@ -1497,7 +1532,7 @@ function saveE(rid){
   if(!m||!a||!d){alert('Merchant, date and amount are required.');return;}
   const e={id:uid('E'),reportId:rid,merchant:m,date:d,amount:parseFloat(a),category:$('eCt').value,notes:$('eNo').value.trim(),taxIncluded:!!($('tI')&&$('tI').checked),receipts:[...window._rec],_ts:Date.now()};
   S.expenses.push(e); save(); closeM(); toast('Expense added');
-  if(S.storage.connected&&S.storage.provider!=='local') doSync(rid);
+  
   render();
 }
 function delE(id){if(!confirm('Remove this expense?'))return;S.expenses=S.expenses.filter(e=>e.id!==id);save();toast('Removed');render();}
@@ -1569,20 +1604,20 @@ function saveEditE(eid) {
   if(moved){
     const destReport=S.reports.find(r=>r.id===newReportId);
     toast('Moved to "'+( destReport?.name||'report')+'" ✓');
-    if(S.storage.connected&&S.storage.provider!=='local'){ doSync(oldReportId); doSync(newReportId); }
+    save();
   } else {
     toast('Expense updated ✓');
-    if(S.storage.connected&&S.storage.provider!=='local') doSync(e.reportId);
+    
   }
   render();
 }
 function delR(id){if(!confirm('Delete report and all its expenses?'))return;S.reports=S.reports.filter(r=>r.id!==id);S.expenses=S.expenses.filter(e=>e.reportId!==id);save();toast('Deleted');render();}
-function advSt(rid,ns){const r=S.reports.find(r=>r.id===rid);if(!r)return;r.status=ns;save();toast('Status → '+ns);if(S.storage.connected&&S.storage.provider!=='local')doSync();render();}
+function advSt(rid,ns){const r=S.reports.find(r=>r.id===rid);if(!r)return;r.status=ns;save();toast('Status → '+ns);save();render();}
 function revertSt(rid,ps){
   const r=S.reports.find(r=>r.id===rid);if(!r)return;
   if(!confirm('Revert "'+r.name+'" back to '+ps+'?\n\nThis will re-open the report for editing.'))return;
   r.status=ps;save();toast('Reverted to '+ps);
-  if(S.storage.connected&&S.storage.provider!=='local')doSync();
+  save();
   render();
 }
 function pRec(src){mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div><div class="mhd"><h2>Receipt</h2><button class="ib" onclick="closeM()">&#10005;</button></div><div style="padding:14px;text-align:center;max-height:80vh;overflow:auto"><img src="'+src+'" style="max-width:100%;border-radius:8px"/></div></div></div>';}
@@ -1833,7 +1868,7 @@ async function expR(rid){
   if(typeof JSZip==='undefined'){toast('Export library loading — try again in a moment','#BA7517');return;}
   const exps=S.expenses.filter(e=>e.reportId===rid);
   const fn=r.name.replace(/[^a-z0-9]/gi,'_')+'_Receipts';
-  const sp={onedrive:'/'+S.storage.folder+'/'+fn+'/',google:'My Drive/'+S.storage.folder+'/'+fn+'/',local:'Downloads/'+fn+'/'}[S.storage.provider]||'(local)';
+  const sp='Downloads/'+fn+'/';
   const stx=TAX.sum(exps);
   const fname=r.name.replace(/[^a-z0-9]/gi,'_')+'_'+CFG.APP_VERSION+'_Report.xlsx';
 
@@ -2043,8 +2078,8 @@ async function expR(rid){
    ['Total Recoverable',r2(stx.gR+stx.qR)],['Net Cost (after recovery)',r2(stx.tot-stx.gR-stx.qR)]
   ].forEach(([l,v])=>sheet4rows.push([sc(l,XST.SUM_LBL),nc(v,XST.SUM_VAL_R)]));
   sheet4rows.push([bc(),bc()]);
-  [['Storage',{onedrive:'OneDrive',google:'Google Drive',local:'Local'}[S.storage.provider]||'—'],
-   ['Receipt Folder',sp],['App Version',CFG.APP_VERSION],['Exported',new Date().toLocaleString('en-CA')]
+  [['Storage','Firebase (Cloud)'],
+   ['User',CU?.email||'—'],['App Version',CFG.APP_VERSION],['Exported',new Date().toLocaleString('en-CA')]
   ].forEach(([l,v])=>sheet4rows.push([sc(l,XST.SUM_LBL),sc(v,XST.SUM_VAL)]));
 
   // Resolve shared string indices now that all strings are collected
@@ -2088,7 +2123,7 @@ async function expR(rid){
     doDownloadXlsx(blob, fname);
     toast('Exported ✓ — Expenses (category columns) · Tax Summary · Overview');
     if(lines.length>0) setTimeout(()=>rcptModal(r,lines,fn,sp),500);
-    if(S.storage.connected&&S.storage.provider!=='local') doSync(rid);
+    
   }
 }
 
@@ -2101,7 +2136,6 @@ function doDownloadXlsx(blob, fname) {
 }
 
 function showExportModal(r, fname, blob, lines, fn, sp, rid) {
-  const hasCloud = S.storage.connected && S.storage.provider !== 'local';
   const hasShare = !!navigator.share;
   mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()">'+
   '<div class="modal"><div class="mh2"></div>'+
@@ -2119,14 +2153,6 @@ function showExportModal(r, fname, blob, lines, fn, sp, rid) {
           '<div style="font-size:26px">&#128140;</div>'+
           '<div><div style="font-weight:700;font-size:14px">Email</div><div style="font-size:12px;color:var(--tx2);margin-top:2px">Opens your email app with the report attached</div></div>'+
         '</div>')+
-
-    // Cloud sync
-    (hasCloud
-      ? '<div onclick="doCloudExport()" style="padding:15px 14px;border:1px solid var(--bd2);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px">'+
-          '<div style="font-size:26px">'+(S.storage.provider==='google'?'&#128196;':'&#9729;')+'</div>'+
-          '<div><div style="font-weight:700;font-size:14px">Save to '+{onedrive:'OneDrive',google:'Google Drive'}[S.storage.provider]+'</div><div style="font-size:12px;color:var(--tx2);margin-top:2px">Upload report + receipts to your connected cloud folder</div></div>'+
-        '</div>'
-      : '')+
 
     // Download to device
     '<div onclick="doDownloadExport()" style="padding:15px 14px;border:1px solid var(--bd2);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px">'+
@@ -2189,10 +2215,8 @@ function doEmailExport() {
 }
 
 function doCloudExport() {
+  // No longer used - Firebase auto-saves all data
   closeM();
-  toast('Syncing to '+{onedrive:'OneDrive',google:'Google Drive'}[S.storage.provider]+'…');
-  doSync(window._expRid);
-  if(window._expLines?.length>0) setTimeout(()=>rcptModal(window._expR, window._expLines, window._expFn, window._expSp), 500);
 }
 
 function doDownloadExport() {
@@ -2204,17 +2228,14 @@ function doDownloadExport() {
 
 function _afterExport() {
   if(window._expLines?.length>0) setTimeout(()=>rcptModal(window._expR, window._expLines, window._expFn, window._expSp), 500);
-  if(S.storage.connected&&S.storage.provider!=='local') doSync(window._expRid);
 }
 
 function rcptModal(r,lines,fn,sp){
-  const cloud=S.storage.provider&&S.storage.provider!=='local';
   mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal wide"><div class="mh2"></div>'+
   '<div class="mhd"><h2>Receipt Files</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
   '<div class="mb">'+
-    '<div class="info '+(cloud?'gn':'bl')+'" style="font-size:12px;line-height:1.6">'+
-    (cloud?'Uploading to <strong>'+{onedrive:'OneDrive',google:'Google Drive'}[S.storage.provider]+'</strong> at <code>'+sp+'</code>'
-          :'Save into a folder named <strong>'+fn+'</strong> alongside your Excel export.')+
+    '<div class="info bl" style="font-size:12px;line-height:1.6">'+
+    'Save into a folder named <strong>'+fn+'</strong> alongside your Excel export.'+
     '</div>'+
     '<div style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto">'+
     lines.map(l=>'<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg);border-radius:var(--rsm)">'+
@@ -2404,12 +2425,74 @@ function doImport(reportName, reportCat, startDate, endDate, replace) {
   S.expenses.push(...exps);
   save(); closeM(); render();
   showView('report-detail',r.id);
-  if(S.storage.connected&&S.storage.provider!=='local')doSync(r.id);
+  save();
   toast(exps.length+' expenses imported into "'+reportName+'"');
 }
 
 /* ══════════════════════════════════════════════════════ INIT */
-boot();
+window.addEventListener('load', () => {
+  if (typeof firebase === 'undefined') {
+    const isFile = location.protocol === 'file:';
+    const msg = isFile
+      ? 'Open this file from a web server or GitHub Pages — not directly from your file system (file://).'
+      : 'Firebase SDKs failed to load. Check your internet connection and reload.';
+    document.body.innerHTML =
+      '<div style="display:flex;height:100vh;align-items:center;justify-content:center;font-family:system-ui;flex-direction:column;gap:14px;padding:24px;text-align:center">' +
+      '<div style="font-size:28px">⚠️</div>' +
+      '<strong style="color:#A32D2D;font-size:16px">Firebase SDKs not loaded</strong>' +
+      '<div style="font-size:13px;color:#6b6860;max-width:360px;line-height:1.6">' + msg + '</div>' +
+      '<div style="font-size:11px;color:#a09e99;font-family:monospace">protocol: ' + location.protocol + ' | firebase: ' + typeof firebase + '</div>' +
+      '<button onclick="location.reload()" style="padding:9px 20px;background:#1D9E75;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">Reload</button>' +
+      '</div>';
+    return;
+  }
+  // Init Firebase now that SDKs are guaranteed loaded
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  FB.auth    = firebase.auth();
+  FB.db      = firebase.firestore();
+  FB.storage = firebase.storage();
+
+  // Register auth listener then boot
+  FB.auth.onAuthStateChanged(async user => {
+    if (user) {
+      const isAdmin = user.email === CFG.ADMIN_EMAIL;
+      CU = { uid: user.uid, email: user.email, displayName: user.displayName||user.email.split('@')[0], isAdmin };
+
+      if (isAdmin && $('adminScreen').style.display === 'flex') return;
+
+      $('loginScreen').style.display = 'none';
+      $('adminScreen').style.display = 'none';
+      closeAdminLogin();
+      $('app').style.display = 'flex';
+
+      const initials = CU.displayName.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)||'U';
+      $('uAv').textContent  = initials;
+      $('uTx').textContent  = CU.displayName;
+      $('uMN').textContent  = CU.displayName;
+      $('uME').textContent  = CU.email;
+      $('vUsr').textContent = CU.displayName;
+      $('vBdg').textContent = CFG.APP_VERSION;
+      $('vDt').textContent  = CFG.APP_RELEASED;
+      updSyncChip('syncing');
+
+      await load();
+      render();
+      updSyncChip('synced');
+    } else {
+      CU = null;
+      S.reports=[]; S.expenses=[];
+      $('app').style.display = 'none';
+      $('adminScreen').style.display = 'none';
+      $('loginScreen').style.display = 'flex';
+      const btn=$('lBtn');
+      if(btn){btn.disabled=false;btn.innerHTML='Sign In';}
+    }
+  });
+
+  boot();
+});
 </script>
 </body>
 </html>
