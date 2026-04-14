@@ -484,7 +484,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.0.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.0.1</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -511,7 +511,7 @@ tr.trc:active td{background:var(--bg)}
    CFG — V2.0 Firebase Edition
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v2.0.0',
+  APP_VERSION:    'v2.0.1',
   APP_RELEASED:   'April 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca', // Change to your admin email
 };
@@ -588,19 +588,52 @@ function badge(s) {
 }
 
 /* ══════════════════════════════════════════════════════ PERSIST — Firestore */
+async function uploadReceiptToStorage(base64DataUrl, expenseId, index) {
+  // Convert base64 data URL to blob
+  const res   = await fetch(base64DataUrl);
+  const blob  = await res.blob();
+  const ext   = blob.type.includes('png') ? 'png' : 'jpg';
+  const path  = `receipts/${CU.uid}/${expenseId}_${index}.${ext}`;
+  const ref   = FB.storage.ref(path);
+  await ref.put(blob, { contentType: blob.type });
+  return await ref.getDownloadURL();
+}
+
 async function save() {
   if(!CU) return;
+  updSyncChip('syncing');
   try {
+    // Upload any base64 receipts to Firebase Storage, replace with URLs
+    const expenses = await Promise.all(S.expenses.map(async e => {
+      const receipts = await Promise.all((e.receipts||[]).map(async (r, i) => {
+        if (r && r.startsWith('data:')) {
+          try {
+            const url = await uploadReceiptToStorage(r, e.id, i);
+            return url;
+          } catch(uploadErr) {
+            console.warn('Receipt upload failed for expense', e.id, uploadErr);
+            return r; // keep base64 as fallback
+          }
+        }
+        return r; // already a URL or empty
+      }));
+      return { ...e, receipts };
+    }));
+
+    // Update S.expenses with storage URLs so UI stays in sync
+    S.expenses = expenses;
+
     await FB.db.collection('users').doc(CU.uid).set({
-      reports:  S.reports,
-      expenses: S.expenses.map(e=>({...e, receipts:(e.receipts||[]).map(r=>r.startsWith('data:')?'[pending-upload]':r)})),
+      reports:   S.reports,
+      expenses:  S.expenses,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, {merge:true});
+
     updSyncChip('synced');
   } catch(e) {
-    console.error('Save failed',e);
+    console.error('Save failed', e);
     updSyncChip('err');
-    toast('Save failed — check connection','#A32D2D');
+    toast('Save failed — ' + (e.message||'check connection'), '#A32D2D');
   }
 }
 
