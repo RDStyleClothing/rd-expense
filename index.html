@@ -95,7 +95,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .sbov.show{display:block}
 
 /* ── MAIN ── */
-.main{flex:1;overflow-y:scroll;padding:20px;display:flex;flex-direction:column;gap:18px;padding-bottom:calc(var(--fab) + 80px);-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
+.main{flex:1;overflow-y:scroll;padding:20px;display:flex;flex-direction:column;gap:18px;padding-bottom:calc(var(--fab) + 40px);-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
 
 /* ── BOTTOM NAV ── */
 .bnn{display:none;flex-shrink:0;background:var(--sf);border-top:1px solid var(--bd)}
@@ -266,11 +266,11 @@ tr.trc:active td{background:var(--bg)}
   .utx{display:none}
   .uca{display:none}
   .bnn{display:flex;flex-direction:column}
-  .vbar{font-size:10px;padding:0 12px;justify-content:center;gap:8px}
+  .vbar{display:none}
   .vbar-right{display:none}
-  .fw{bottom:calc(var(--bn) + var(--safe) + 14px);right:16px}
-  .toast{bottom:calc(var(--bn) + var(--safe) + var(--fab) + 22px)}
-  .main{padding:14px 12px;padding-bottom:calc(var(--bn) + var(--fab) + 120px + var(--safe))}
+  .fw{bottom:calc(var(--bn) + var(--safe) + 16px);right:16px}
+  .toast{bottom:calc(var(--bn) + var(--safe) + var(--fab) + 18px)}
+  .main{padding:14px 12px;padding-bottom:calc(var(--bn) + var(--fab) + var(--safe) + 24px)}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .dt{display:none!important}
   .xc{display:flex}
@@ -485,7 +485,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.0.6</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.0.7</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -512,7 +512,7 @@ tr.trc:active td{background:var(--bg)}
    CFG — V2.0 Firebase Edition
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v2.0.6',
+  APP_VERSION:    'v2.0.7',
   APP_RELEASED:   'April 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca', // Change to your admin email
 };
