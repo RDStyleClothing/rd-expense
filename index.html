@@ -485,7 +485,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.0.3</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.0.5</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -512,7 +512,7 @@ tr.trc:active td{background:var(--bg)}
    CFG — V2.0 Firebase Edition
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v2.0.3',
+  APP_VERSION:    'v2.0.5',
   APP_RELEASED:   'April 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca', // Change to your admin email
 };
@@ -938,11 +938,11 @@ function openFab(){
   const r=onDet?S.reports.find(r=>r.id===S.rid):null;
   const locked=r&&r.status!=='Open';
   let opts='';
-  if(onDet&&!locked) opts+=fo('📋','Add to "'+r.name.slice(0,20)+(r.name.length>20?'…':'')+'"',"mAE('"+r.id+"');closeFab()");
-  opts+=fo('🤖','SmartScan receipt','fabSnap();');
-  opts+=fo('📄','Batch scan receipts','fabSnap();'); // fabSnap now shows the 3-option modal
-  opts+=fo('➕','Manual expense entry','fabAdd()');
-  opts+=fo('📁','New report','mNR();closeFab()');
+  if(onDet&&!locked) opts+=fo('📋','Add to "'+r.name.slice(0,20)+(r.name.length>20?'…':'')+'"',"closeFab();mAE('"+r.id+"')");
+  opts+=fo('🤖','SmartScan Receipt','closeFab();ensureReport(rid=>fabDoSnap("smart",rid))');
+  opts+=fo('📸','Batch Scan','closeFab();fabBatch()');
+  opts+=fo('➕','Manual Entry','closeFab();ensureReport(rid=>mAE(rid))');
+  opts+=fo('📁','New Report','mNR();closeFab()');
   const m=$('fabM'); m.innerHTML=opts; m.style.display='flex';
 }
 function closeFab(){S.fabOpen=false;$('fabB').classList.remove('open');$('fabM').style.display='none';}
@@ -951,8 +951,16 @@ function fo(ico,lbl,act){return'<div class="fo" onclick="'+act+'"><div class="fl
 /* Auto-create a report if none exist, then run callback(reportId) */
 function ensureReport(cb) {
   const op = S.reports.filter(r=>r.status==='Open');
+  // If already on a report detail page, use that report
+  if (S.view==='report-detail' && S.rid) { cb(S.rid); return; }
+  // If exactly one open report, use it
   if (op.length === 1) { cb(op[0].id); return; }
-  if (op.length > 1)   { window._afterReport = cb; pickR(); return; }
+  // If multiple open reports, use the most recently updated one — no popup
+  if (op.length > 1) {
+    const latest = op.sort((a,b)=>(b._ts||0)-(a._ts||0))[0];
+    cb(latest.id);
+    return;
+  }
   // No open reports — auto-create one with today's date
   const today = new Date().toISOString().slice(0,10);
   const month = new Date().toLocaleDateString('en-CA',{month:'long',year:'numeric'});
@@ -962,56 +970,33 @@ function ensureReport(cb) {
   cb(r.id);
 }
 
-function fabSnap(){
-  closeFab();
-  // Show SmartScan vs Manual choice
-  const keySet = hasApiKey();
-  const keyBanner = keySet ? '' :
-    '<div style="background:var(--ambg);border:1px solid #FAC775;border-radius:var(--rsm);padding:9px 12px;font-size:12px;color:var(--amdk);margin-bottom:4px">'+
-    '&#9888; <strong>No API key saved</strong> &mdash; SmartScan will prompt you for your key. '+
-    'Or go to <strong>&#8942; menu &rarr; SmartScan API Key</strong> to save it now.'+
-    '</div>';
-  mR.innerHTML = '<div class="mbg" onclick="if(event.target===this)closeM()">'+
-  '<div class="modal"><div class="mh2"></div>'+
-  '<div class="mhd"><h2>Add Receipt</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
-  '<div class="mb" style="gap:12px">'+
-    keyBanner+
-    '<div onclick="fabDoSnap(\'smart\')" style="padding:16px 14px;border:2px solid var(--g);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px;background:var(--gbg)">'+
-      '<div style="font-size:28px">&#129302;</div>'+
-      '<div><div style="font-weight:700;font-size:14px;color:var(--gdk)">SmartScan</div><div style="font-size:12px;color:var(--gdk);margin-top:2px">AI reads your receipt &mdash; auto-fills merchant, date &amp; amount</div></div>'+
-    '</div>'+
-    '<div onclick="fabDoSnap(\'manual\')" style="padding:16px 14px;border:1px solid var(--bd2);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px">'+
-      '<div style="font-size:28px">&#9997;</div>'+
-      '<div><div style="font-weight:700;font-size:14px">Manual Entry</div><div style="font-size:12px;color:var(--tx2);margin-top:2px">Upload receipt image and fill in fields yourself</div></div>'+
-    '</div>'+
-    '<div onclick="fabBatch()" style="padding:16px 14px;border:1px solid var(--bd2);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px">'+
-      '<div style="font-size:28px">&#128196;</div>'+
-      '<div><div style="font-weight:700;font-size:14px">Batch SmartScan</div><div style="font-size:12px;color:var(--tx2);margin-top:2px">Upload multiple receipts at once &mdash; each auto-scanned &amp; added</div></div>'+
-    '</div>'+
-  '</div></div></div>';
-}
-
-function fabDoSnap(mode) {
-  closeM();
-  const inp = document.createElement('input');
-  inp.type='file'; inp.accept='image/*'; inp.capture='environment';
-  inp.onchange = e => {
-    if (!e.target.files[0]) return;
-    const fr = new FileReader();
-    fr.onload = ev => {
-      const imgData = ev.target.result;
-      ensureReport(rid => {
-        if (mode === 'smart') {
-          doSmartScan(imgData, rid);
-        } else {
-          window._snap = imgData;
-          mAE(rid, imgData);
+function fabDoSnap(mode, ridDirect) {
+  // Opens file picker — images and PDFs accepted, fires directly without extra popup
+  const doIt = rid => {
+    const inp = document.createElement('input');
+    inp.type='file'; inp.accept='image/*,application/pdf';
+    inp.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const fr = new FileReader();
+      fr.onload = ev => {
+        const dataUrl = ev.target.result;
+        if (file.type === 'application/pdf') {
+          // Store PDF as base64 data URL — attaches to expense form
+          mAE(rid, null, false, dataUrl);
+          toast('PDF attached — fill in the expense details');
+          return;
         }
-      });
+        // Image: SmartScan auto-fills form, manual mode opens form with image pre-loaded
+        if (mode === 'smart') doSmartScan(dataUrl, rid);
+        else mAE(rid, dataUrl);
+      };
+      fr.readAsDataURL(file);
     };
-    fr.readAsDataURL(e.target.files[0]);
+    inp.click();
   };
-  inp.click();
+  if (ridDirect) doIt(ridDirect);
+  else ensureReport(doIt);
 }
 
 function fabAdd(){
@@ -1548,16 +1533,26 @@ function updT(){
 window._rec=[];
 function onFi(files){
   Array.from(files).forEach(f=>{
-    if(f.type.startsWith('image/')){const fr=new FileReader();fr.onload=ev=>{window._rec.push(ev.target.result);renderT();};fr.readAsDataURL(f);}
-    else{window._rec.push('pdf::'+f.name);renderT();}
+    const fr=new FileReader();
+    fr.onload=ev=>{ window._rec.push(ev.target.result); renderT(); };
+    fr.readAsDataURL(f); // works for both images AND PDFs — stores as data:application/pdf;base64,...
   });
 }
 function onDp(ev){ev.preventDefault();$('dz').classList.remove('ov');onFi(ev.dataTransfer.files);}
 function renderT(){
   const g=$('tg'); if(!g)return;
-  g.innerHTML=window._rec.map((src,i)=>src.startsWith('pdf::')
-    ?'<div class="tw"><div style="width:100%;aspect-ratio:1;background:var(--bg);border-radius:6px;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--tx3)">PDF</div><button class="tx" onclick="rmT('+i+')">&#10005;</button></div>'
-    :'<div class="tw"><img src="'+src+'"/><button class="tx" onclick="rmT('+i+')">&#10005;</button></div>').join('');
+  // Store sources in a temp lookup to avoid inline quote issues
+  window._recPrev = window._rec.slice();
+  g.innerHTML=window._rec.map((src,i)=>{
+    const isPdf = src.startsWith('data:application/pdf') || src.startsWith('pdf::');
+    if(isPdf) return '<div class="tw">'+
+      '<div style="width:100%;aspect-ratio:1;background:var(--blbg);border-radius:6px;border:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer" onclick="pRec(window._recPrev['+i+'])">'+
+        '<span style="font-size:20px">\u{1F4C4}</span>'+
+        '<span style="font-size:9px;font-weight:700;color:var(--bl)">PDF</span>'+
+      '</div>'+
+      '<button class="tx" onclick="rmT('+i+')">&#10005;</button></div>';
+    return '<div class="tw"><img src="'+src+'" onclick="pRec(window._recPrev['+i+'])" style="cursor:pointer"/><button class="tx" onclick="rmT('+i+')">&#10005;</button></div>';
+  }).join('');
 }
 function rmT(i){window._rec.splice(i,1);renderT();}
 
@@ -1654,7 +1649,17 @@ function revertSt(rid,ps){
   save();
   render();
 }
-function pRec(src){mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div><div class="mhd"><h2>Receipt</h2><button class="ib" onclick="closeM()">&#10005;</button></div><div style="padding:14px;text-align:center;max-height:80vh;overflow:auto"><img src="'+src+'" style="max-width:100%;border-radius:8px"/></div></div></div>';}
+function pRec(src){
+  const isPdf = src && (src.startsWith('data:application/pdf') || src.startsWith('pdf::'));
+  if(isPdf && src.startsWith('data:')) {
+    try {
+      const b=new Blob([Uint8Array.from(atob(src.split(',')[1]),c=>c.charCodeAt(0))],{type:'application/pdf'});
+      window.open(URL.createObjectURL(b),'_blank');
+    } catch(e){ toast('Could not open PDF','#A32D2D'); }
+    return;
+  }
+  mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div><div class="mhd"><h2>Receipt</h2><button class="ib" onclick="closeM()">&#10005;</button></div><div style="padding:14px;text-align:center;max-height:80vh;overflow:auto"><img src="'+src+'" style="max-width:100%;border-radius:8px"/></div></div></div>';
+}
 
 /* ══════════════════════════════════════════════════════
    EXCEL EXPORT — v1.5.7
@@ -2142,12 +2147,16 @@ async function expR(rid){
     return;
   }
 
-  // Collect receipt lines — accept base64 AND Firebase Storage https:// URLs
+  // Collect receipt lines — images and PDFs, base64 or Firebase Storage URLs
   const lines=[];
   exps.forEach((e,i)=>(e.receipts||[]).forEach((src,ri)=>{
-    if(!src || src.startsWith('pdf::') || src==='[pending-upload]') return;
-    if(src.startsWith('data:') || src.startsWith('https://') || src.startsWith('http://'))
-      lines.push({src,name:r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(ri+1)+'.jpg',path:sp});
+    if(!src || src==='[pending-upload]' || src.startsWith('pdf::')) return;
+    const isPdf  = src.startsWith('data:application/pdf');
+    const isImg  = src.startsWith('data:image') || src.startsWith('https://') || src.startsWith('http://');
+    if(isPdf || isImg) {
+      const ext  = isPdf ? 'pdf' : 'jpg';
+      lines.push({src, isPdf, name:r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(ri+1)+'.'+ext, path:sp});
+    }
   }));
 
   // Always show export modal with 3 options
@@ -2186,8 +2195,6 @@ function showExportModal(r, fname, blob, lines, fn, sp, rid) {
       '<div style="font-size:12px;margin-top:2px;'+descC+'">'+desc+'</div></div>'+
     '</div>';
   }
-
-  const noRcptNote = ' <span style="font-size:11px;font-weight:400;color:var(--tx3)">(no receipts on this report)</span>';
 
   mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()">'+
   '<div class="modal"><div class="mh2"></div>'+
