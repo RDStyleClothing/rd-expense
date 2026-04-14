@@ -95,7 +95,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .sbov.show{display:block}
 
 /* ── MAIN ── */
-.main{flex:1;overflow-y:scroll;padding:20px;display:flex;flex-direction:column;gap:18px;padding-bottom:calc(var(--fab) + 40px);-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
+.main{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:18px;padding-bottom:calc(var(--fab) + 60px);-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
 
 /* ── BOTTOM NAV ── */
 .bnn{display:none;flex-shrink:0;background:var(--sf);border-top:1px solid var(--bd)}
@@ -485,7 +485,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.0.8</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.0.9</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -512,7 +512,7 @@ tr.trc:active td{background:var(--bg)}
    CFG — V2.0 Firebase Edition
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v2.0.8',
+  APP_VERSION:    'v2.0.9',
   APP_RELEASED:   'April 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca', // Change to your admin email
 };
@@ -1357,7 +1357,7 @@ function vExp(){
         '<td style="color:var(--tx2)">'+( tx.xmt?'Exempt':fmt(tx.qst))+'</td>'+
         '<td style="font-weight:600">'+fmt(tx.tot)+'</td>'+
         '<td><span style="cursor:pointer;color:var(--bl)" onclick="showView(\'report-detail\',\''+e.reportId+'\')">'+( r?esc(r.name):'&mdash;')+'</span></td>'+
-        '<td>'+(e.receipts?.length?'<img src="'+e.receipts[0]+'" style="width:32px;height:32px;object-fit:cover;border-radius:4px;border:1px solid var(--bd);cursor:pointer" onclick="pRec(\''+e.receipts[0]+'\')"/>' :'&mdash;')+'</td>'+
+        (()=>{const rc=e.receipts?.[0];return'<td>'+(rc?rcptThumb(rc,32):'&mdash;')+'</td>';})()+
         '<td style="white-space:nowrap">'+(locked?'':'<button class="ib" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><button class="ib" onclick="delE(\''+e.id+'\')">&#128465;</button>')+'</td>'+
       '</tr>';}).join('')+
   '</tbody></table>'+
@@ -1365,7 +1365,11 @@ function vExp(){
     const r=S.reports.find(r=>r.id===e.reportId);
     const tx=TAX.calc(e.amount,e.category,e.taxIncluded||false);
     const img=e.receipts?.[0];
-    return'<div class="xcd">'+(img?'<img class="xcth" src="'+img+'" onclick="pRec(\''+img+'\')"/>'  :'<div class="xcic">&#128179;</div>')+
+    const imgHtml=img?(img.startsWith('data:application/pdf')||img.startsWith('pdf::')
+      ?'<div class="xcth" style="background:var(--blbg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:18px">📄</span><span style="font-size:8px;font-weight:700;color:var(--bl)">PDF</span></div>'
+      :'<img class="xcth" src="'+img+'"/>')
+      :'<div class="xcic">&#128179;</div>';
+    return'<div class="xcd">'+(imgHtml)+
     '<div class="xcb"><div class="xcn">'+esc(e.merchant)+'</div><div class="xcm">'+fd(e.date)+' &middot; '+esc(e.category)+(r?' &middot; <span style="color:var(--bl)">'+esc(r.name)+'</span>':'')+'</div>'+
     '<div style="font-size:11px;color:var(--tx2);margin-top:2px">GST '+(tx.xmt?'exempt':fmt(tx.gst))+' &middot; QST '+(tx.xmt?'exempt':fmt(tx.qst))+'</div></div>'+
     '<div style="text-align:right"><div class="xca">'+fmt(tx.tot)+'</div>'+((!r||r.status==='Open')?'<div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px"><button class="ib" style="font-size:12px" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><button class="ib" style="font-size:12px" onclick="delE(\''+e.id+'\')">&#128465;</button></div>':'')+'</div></div>';}).join('')+'</div>')+
@@ -1420,7 +1424,7 @@ function vDet(rid){
         '<td style="color:var(--tx2)">'+(e.taxIncluded?'Y':'N')+'</td>'+
         '<td>'+fmt(et.sub)+'</td><td>'+(et.xmt?'&mdash;':fmt(et.gst))+'</td><td>'+(et.xmt?'&mdash;':fmt(et.qst))+'</td>'+
         '<td style="font-weight:600">'+fmt(et.tot)+'</td>'+
-        '<td><div style="display:flex;gap:4px">'+(e.receipts?.length?e.receipts.map(rc=>'<img src="'+rc+'" style="width:34px;height:34px;object-fit:cover;border-radius:4px;border:1px solid var(--bd);cursor:pointer" onclick="pRec(\''+rc+'\')" />').join(''):'&mdash;')+'</div></td>'+
+        '<td><div style="display:flex;gap:4px">'+(e.receipts?.length?e.receipts.map(rc=>rcptThumb(rc,34)).join(''):'&mdash;')+'</div></td>'+
         (locked?'':'<td style="white-space:nowrap"><button class="ib" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><button class="ib" onclick="delE(\''+e.id+'\')">&#128465;</button></td>')+
       '</tr>';}).join('')+
     '</tbody></table>')+
@@ -1579,6 +1583,17 @@ function renderT(){
   }).join('');
 }
 function rmT(i){window._rec.splice(i,1);renderT();}
+
+// Return thumbnail HTML for a receipt src — handles both images and PDFs
+function rcptThumb(src, size, onclick) {
+  const s = size||32;
+  const cl = onclick ? 'cursor:pointer' : '';
+  const oc = onclick ? ' onclick="'+onclick+'"' : '';
+  if (!src) return '&mdash;';
+  const isPdf = src.startsWith('data:application/pdf') || src.startsWith('pdf::');
+  if (isPdf) return '<div'+oc+' style="width:'+s+'px;height:'+s+'px;background:var(--blbg);border-radius:4px;border:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;'+cl+'"><span style="font-size:'+(s*0.45)+'px">📄</span><span style="font-size:'+(s*0.22)+'px;font-weight:700;color:var(--bl)">PDF</span></div>';
+  return '<img src="'+src+'"'+oc+' style="width:'+s+'px;height:'+s+'px;object-fit:cover;border-radius:4px;border:1px solid var(--bd);'+cl+'"/>';
+}
 
 function saveE(rid){
   const m=$('eM').value.trim(),a=$('eA').value,d=$('eD').value;
@@ -2343,17 +2358,39 @@ async function buildReceiptsPDF(r, lines) {
       if (details) doc.text(details, M, 26);
     }
 
-    // Image
+    // Image or PDF receipt
     try {
-      const src = line.src;
-      const isJpeg = src.includes('jpeg') || src.includes('jpg');
-      const fmt2   = isJpeg ? 'JPEG' : 'PNG';
+      const src    = line.src;
+      const isPdfR = src.startsWith('data:application/pdf');
       const imgY   = expLine ? 30 : 24;
       const imgH   = PH - imgY - M;
-      doc.addImage(src, fmt2, M, imgY, IW, imgH, undefined, 'MEDIUM');
+
+      if (isPdfR) {
+        // Can't embed PDF-in-PDF with jsPDF — render a clear info box instead
+        doc.setFillColor(230,241,251);
+        doc.rect(M, imgY, IW, 48, 'F');
+        doc.setDrawColor(180,210,240);
+        doc.rect(M, imgY, IW, 48, 'S');
+        doc.setFontSize(22); doc.setTextColor(30,30,30);
+        doc.text('📄', PW/2 - 5, imgY+18);
+        doc.setFontSize(11); doc.setFont('helvetica','bold');
+        doc.text('PDF Receipt', PW/2, imgY+28, {align:'center'});
+        doc.setFontSize(9); doc.setFont('helvetica','normal');
+        doc.setTextColor(80,80,80);
+        doc.text(line.name, PW/2, imgY+36, {align:'center'});
+        doc.text('Open the original PDF file to view this receipt.', PW/2, imgY+43, {align:'center'});
+      } else {
+        // Detect image format from data URL or Firebase URL
+        let fmt2 = 'JPEG';
+        if (src.includes('data:image/png') || src.toLowerCase().includes('.png')) fmt2 = 'PNG';
+        else if (src.includes('data:image/webp') || src.toLowerCase().includes('.webp')) fmt2 = 'WEBP';
+        doc.addImage(src, fmt2, M, imgY, IW, imgH, undefined, 'MEDIUM');
+      }
     } catch(imgErr) {
       doc.setFontSize(10); doc.setTextColor(180,50,50);
-      doc.text('Image could not be embedded: '+line.name, M, 40);
+      doc.text('Could not embed receipt: '+line.name, M, 40);
+      doc.setFontSize(8); doc.setTextColor(120,120,120);
+      doc.text(imgErr.message||'Unknown error', M, 48);
     }
 
     // Page number footer
