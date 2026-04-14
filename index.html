@@ -379,7 +379,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v1.5.9</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v1.6.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -403,7 +403,7 @@ tr.trc:active td{background:var(--bg)}
    See SETUP.md for full step-by-step instructions
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v1.5.9',
+  APP_VERSION:    'v1.6.0',
   APP_RELEASED:   'April 2026',
   // SmartScan API key is stored securely in your browser's localStorage
   // — it is never in this code file. Enter it via Settings in the app.
@@ -1658,6 +1658,14 @@ ${numFmts}${fonts}${fills}${borders}${cellStyleXfs}
    Each row is an array of cell objects: {v, s, t} where
    t = 's' (shared string index), 'n' (number), 'b' (blank)
    s = style index from XST */
+function colAddr(ci){
+  // Convert 0-based column index to Excel letter(s): 0→A, 25→Z, 26→AA, 27→AB …
+  let s='', n=ci+1;
+  while(n>0){ n--; s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26); }
+  return s;
+}
+function cellAddr(ci,ri){ return colAddr(ci)+(ri+1); }
+
 function buildSheet(rows, colWidths, merges){
   const colsXml = colWidths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('');
   const mergesXml = merges && merges.length
@@ -1669,7 +1677,7 @@ function buildSheet(rows, colWidths, merges){
     let cellsXml='';
     row.forEach((cell,ci)=>{
       if(cell==null) return;
-      const addr = String.fromCharCode(65+ci)+(ri+1);
+      const addr = cellAddr(ci,ri);
       const s = cell.s!=null?cell.s:0;
       if(cell.t==='n'){
         cellsXml+=`<c r="${addr}" s="${s}" t="n"><v>${cell.v}</v></c>`;
@@ -1682,10 +1690,8 @@ function buildSheet(rows, colWidths, merges){
     if(cellsXml) rowsXml+=`<row r="${ri+1}">${cellsXml}</row>`;
   });
 
-  // Compute ref
   const maxC = Math.max(...rows.map(r=>r.length))-1;
-  const lastCol = maxC<26?String.fromCharCode(65+maxC):'A'; // simple — enough for our cols
-  const ref=`A1:${String.fromCharCode(65+maxC)}${rows.length}`;
+  const ref=`A1:${colAddr(maxC)}${rows.length}`;
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -1815,24 +1821,19 @@ function expR(rid){
   // Fixed right cols: TOTAL | GST (5%) | QST (9.975%) | ITC Recov. | Net After ITC
   const NL=4, NR=5;
   const NC1=NL+catList.length+NR;
-  const lastColLetter = i=>{
-    // supports A-Z then AA-AZ etc.
-    if(i<26) return String.fromCharCode(65+i);
-    return String.fromCharCode(64+Math.floor(i/26))+String.fromCharCode(65+(i%26));
-  };
-  const lastC1=lastColLetter(NC1-1);
+  const lastC1=colAddr(NC1-1);
 
   // Row 1: Title — merged full width
   sheet1rows.push([sc('RD International — Expense Report · Québec, Canada',XST.TITLE),...Array(NC1-1).fill(bc(XST.TITLE))]);
   s1merges.push(`A1:${lastC1}1`);
 
-  // Rows 2-8: Meta block
+  // Rows 2+: Meta block
   const meta=[
     ['Report',r.name],['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
     ['Status',r.status],['Jurisdiction','Québec, Canada — GST 5% + QST 9.975%'],
     ['Exported',new Date().toLocaleString('en-CA')],['App Version',CFG.APP_VERSION]
   ];
-  meta.forEach(([l,v],mi)=>{
+  meta.forEach(([l,v])=>{
     sheet1rows.push([sc(l,XST.META_LBL),sc(v,XST.META_VAL),...Array(NC1-2).fill(bc(XST.META_VAL))]);
     s1merges.push(`B${sheet1rows.length}:${lastC1}${sheet1rows.length}`);
   });
@@ -1945,7 +1946,7 @@ function expR(rid){
 
   function tsHdr(label, ncols){
     sheet3rows.push([sc(label,XST.SEC_HDR),...Array(ncols-1).fill(bc(XST.SEC_HDR))]);
-    if(ncols>1) s3merges.push(`A${tr+2}:${String.fromCharCode(64+ncols)}${tr+2}`);
+    if(ncols>1) s3merges.push(`A${tr+2}:${colAddr(ncols-1)}${tr+2}`);
     tr++;
   }
   function tsRow(lbl,val,stL,stR){
