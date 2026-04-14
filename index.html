@@ -11,6 +11,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -484,7 +485,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.0.1</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.0.2</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -511,7 +512,7 @@ tr.trc:active td{background:var(--bg)}
    CFG — V2.0 Firebase Edition
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v2.0.1',
+  APP_VERSION:    'v2.0.2',
   APP_RELEASED:   'April 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca', // Change to your admin email
 };
@@ -2148,16 +2149,8 @@ async function expR(rid){
       lines.push({src,name:r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(ri+1)+'.jpg',path:sp});
   }));
 
-  // On mobile show choice modal; on desktop just download
-  const isMobile = window.innerWidth <= 700 || 'ontouchstart' in window;
-  if (isMobile) {
-    showExportModal(r, fname, blob, lines, fn, sp, rid);
-  } else {
-    doDownloadXlsx(blob, fname);
-    toast('Exported ✓ — Expenses (category columns) · Tax Summary · Overview');
-    if(lines.length>0) setTimeout(()=>rcptModal(r,lines,fn,sp),500);
-    
-  }
+  // Always show export modal with 3 options
+  showExportModal(r, fname, blob, lines, fn, sp, rid);
 }
 
 function doDownloadXlsx(blob, fname) {
@@ -2169,116 +2162,187 @@ function doDownloadXlsx(blob, fname) {
 }
 
 function showExportModal(r, fname, blob, lines, fn, sp, rid) {
-  const hasShare = !!navigator.share;
+  // Stash for action handlers
+  window._expBlob  = blob;
+  window._expFname = fname;
+  window._expLines = lines;
+  window._expFn    = fn;
+  window._expSp    = sp;
+  window._expRid   = rid;
+  window._expR     = r;
+
+  const hasReceipts = lines && lines.length > 0;
+
+  function opt(ico, title, desc, onclick, primary) {
+    const border = primary ? 'border:2px solid var(--g);background:var(--gbg)' : 'border:1px solid var(--bd2)';
+    const titleC = primary ? 'color:var(--gdk)' : '';
+    const descC  = primary ? 'color:var(--gdk)' : 'color:var(--tx2)';
+    return '<div onclick="'+onclick+'" style="padding:15px 14px;'+border+';border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px">'+
+      '<div style="font-size:26px">'+ico+'</div>'+
+      '<div><div style="font-weight:700;font-size:14px;'+titleC+'">'+title+'</div>'+
+      '<div style="font-size:12px;margin-top:2px;'+descC+'">'+desc+'</div></div>'+
+    '</div>';
+  }
+
   mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()">'+
   '<div class="modal"><div class="mh2"></div>'+
   '<div class="mhd"><h2>&#11015; Export Report</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
   '<div class="mb" style="gap:12px">'+
-    '<div style="font-size:13px;color:var(--tx2)"><strong style="color:var(--tx)">'+esc(r.name)+'</strong> &mdash; choose how to export:</div>'+
-
-    // Share / Email via native share sheet
-    (hasShare
-      ? '<div onclick="doShareExport()" style="padding:15px 14px;border:2px solid var(--g);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px;background:var(--gbg)">'+
-          '<div style="font-size:26px">&#128279;</div>'+
-          '<div><div style="font-weight:700;font-size:14px;color:var(--gdk)">Share / Email</div><div style="font-size:12px;color:var(--gdk);margin-top:2px">Opens your share sheet — send by email, AirDrop, Messages or any app</div></div>'+
-        '</div>'
-      : '<div onclick="doEmailExport()" style="padding:15px 14px;border:1px solid var(--bd2);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px">'+
-          '<div style="font-size:26px">&#128140;</div>'+
-          '<div><div style="font-weight:700;font-size:14px">Email</div><div style="font-size:12px;color:var(--tx2);margin-top:2px">Opens your email app with the report attached</div></div>'+
+    '<div style="font-size:13px;color:var(--tx2)"><strong style="color:var(--tx)">'+esc(r.name)+'</strong> &mdash; choose export format:</div>'+
+    opt('📊','Excel File Only','Download the expense report as an .xlsx spreadsheet','doExportExcel()',true)+
+    (hasReceipts
+      ? opt('📄','Receipts PDF Only','All receipt images compiled into a single PDF','doExportPDF()',false)
+      : '<div style="padding:13px 14px;border:1px solid var(--bd);border-radius:var(--r);display:flex;align-items:center;gap:14px;opacity:.45">'+
+          '<div style="font-size:26px">📄</div>'+
+          '<div><div style="font-weight:700;font-size:14px">Receipts PDF Only</div>'+
+          '<div style="font-size:12px;color:var(--tx2);margin-top:2px">No receipts attached to this report</div></div>'+
         '</div>')+
-
-    // Download to device
-    '<div onclick="doDownloadExport()" style="padding:15px 14px;border:1px solid var(--bd2);border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:14px">'+
-      '<div style="font-size:26px">&#128229;</div>'+
-      '<div><div style="font-weight:700;font-size:14px">Save to Device</div><div style="font-size:12px;color:var(--tx2);margin-top:2px">Download .xlsx file to your Downloads folder</div></div>'+
-    '</div>'+
+    (hasReceipts
+      ? opt('📦','Excel + Receipts PDF','Both the spreadsheet and a PDF of all receipts','doExportBoth()',false)
+      : '')+
   '</div>'+
   '<div class="mf"><button class="btn" onclick="closeM()">Cancel</button></div>'+
   '</div></div>';
-
-  // Stash for the action handlers
-  window._expBlob = blob;
-  window._expFname = fname;
-  window._expLines = lines;
-  window._expFn = fn;
-  window._expSp = sp;
-  window._expRid = rid;
-  window._expR = r;
 }
 
-async function doShareExport() {
-  const blob=window._expBlob, fname=window._expFname;
-  closeM();
-  try {
-    const file = new File([blob], fname, {type: blob.type});
-    if (navigator.canShare && navigator.canShare({files:[file]})) {
-      await navigator.share({
-        title: 'RD Expense Report — ' + window._expR.name,
-        text:  'Expense report attached.',
-        files: [file]
-      });
-    } else {
-      // Fallback: share without file (just text + download)
-      await navigator.share({ title:'RD Expense Report', text: window._expR.name });
-      doDownloadXlsx(blob, fname);
-    }
-  } catch(err) {
-    if (err.name !== 'AbortError') {
-      doDownloadXlsx(blob, fname);
-      toast('File saved to Downloads', '#1a1917');
-    }
-  }
-  _afterExport();
-}
-
-function doEmailExport() {
-  const r=window._expR, fname=window._expFname, blob=window._expBlob;
-  closeM();
-  // Build mailto — file attachment not supported via mailto, so download + open mail
-  doDownloadXlsx(blob, fname);
-  const subject = encodeURIComponent('Expense Report — '+r.name);
-  const body = encodeURIComponent(
-    'Please find attached the expense report: '+r.name+
-    '\n\nTotal: '+fmt(TAX.sum(S.expenses.filter(e=>e.reportId===r.id)).tot)+
-    '\nExported from RD Expense '+CFG.APP_VERSION
-  );
-  setTimeout(()=>{ window.location.href = 'mailto:?subject='+subject+'&body='+body; }, 600);
-  toast('Report downloaded — attach it to your email');
-  _afterExport();
-}
-
-function doCloudExport() {
-  // No longer used - Firebase auto-saves all data
-  closeM();
-}
-
-function doDownloadExport() {
+/* ── Export: Excel only ── */
+function doExportExcel() {
   closeM();
   doDownloadXlsx(window._expBlob, window._expFname);
-  toast('Exported ✓');
-  _afterExport();
+  toast('Excel report downloaded ✓');
 }
 
-function _afterExport() {
-  if(window._expLines?.length>0) setTimeout(()=>rcptModal(window._expR, window._expLines, window._expFn, window._expSp), 500);
+/* ── Export: PDF of receipts only ── */
+async function doExportPDF() {
+  closeM();
+  toast('Building PDF…');
+  try {
+    const pdfBlob = await buildReceiptsPDF(window._expR, window._expLines);
+    const pdfName = window._expFname.replace('.xlsx','')+'_Receipts.pdf';
+    doDownloadBlob(pdfBlob, pdfName);
+    toast('Receipts PDF downloaded ✓');
+  } catch(e) {
+    console.error('PDF failed',e);
+    toast('PDF generation failed: '+(e.message||e),'#A32D2D');
+  }
 }
 
-function rcptModal(r,lines,fn,sp){
-  mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal wide"><div class="mh2"></div>'+
-  '<div class="mhd"><h2>Receipt Files</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
-  '<div class="mb">'+
-    '<div class="info bl" style="font-size:12px;line-height:1.6">'+
-    'Save into a folder named <strong>'+fn+'</strong> alongside your Excel export.'+
-    '</div>'+
-    '<div style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto">'+
-    lines.map(l=>'<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg);border-radius:var(--rsm)">'+
-      '<img src="'+l.src+'" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--bd);flex-shrink:0"/>'+
-      '<div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--tx2);word-break:break-all">'+l.name+'</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">'+l.path+'</div></div>'+
-      '<a href="'+l.src+'" download="'+l.name+'" class="btn sm" style="text-decoration:none;flex-shrink:0">Save</a></div>').join('')+
-    '</div>'+
-  '</div>'+
-  '<div class="mf"><button class="btn p" onclick="closeM()">Done</button></div>'+
-  '</div></div>';
+/* ── Export: Both Excel + PDF ── */
+async function doExportBoth() {
+  closeM();
+  toast('Building Excel + PDF…');
+  try {
+    doDownloadXlsx(window._expBlob, window._expFname);
+    await new Promise(r=>setTimeout(r,400));
+    const pdfBlob = await buildReceiptsPDF(window._expR, window._expLines);
+    const pdfName = window._expFname.replace('.xlsx','')+'_Receipts.pdf';
+    doDownloadBlob(pdfBlob, pdfName);
+    toast('Excel + Receipts PDF downloaded ✓');
+  } catch(e) {
+    console.error('Export both failed',e);
+    toast('Export failed: '+(e.message||e),'#A32D2D');
+  }
+}
+
+/* ── Build receipts PDF using jsPDF ── */
+async function buildReceiptsPDF(r, lines) {
+  if (typeof window.jspdf === 'undefined' && typeof jsPDF === 'undefined') {
+    throw new Error('jsPDF library not loaded');
+  }
+  const { jsPDF } = window.jspdf || window;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const PW = 210, PH = 297, M = 14;
+  const IW = PW - M*2, IH = PH - 60;
+
+  // Cover page
+  doc.setFillColor(29,158,117);
+  doc.rect(0,0,PW,28,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(16); doc.setFont('helvetica','bold');
+  doc.text('RD Expense — Receipt Package', M, 12);
+  doc.setFontSize(10); doc.setFont('helvetica','normal');
+  doc.text(r.name, M, 19);
+  doc.text('Exported: '+new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'}), M, 25);
+
+  // Summary box
+  const exps  = S.expenses.filter(e=>e.reportId===r.id);
+  const stx   = TAX.sum(exps);
+  doc.setTextColor(30,30,30);
+  doc.setFontSize(10); doc.setFont('helvetica','normal');
+  let y = 38;
+  const rows = [
+    ['Report', r.name],
+    ['Category', r.category||'—'],
+    ['Expenses', exps.length+' line'+(exps.length!==1?'s':'')],
+    ['Total incl. tax', fmt(stx.tot)],
+    ['GST Recoverable', fmt(stx.gR)],
+    ['QST Recoverable', fmt(stx.qR)],
+    ['App Version', CFG.APP_VERSION],
+  ];
+  rows.forEach(([l,v])=>{
+    doc.setFont('helvetica','bold');   doc.text(l+':', M, y);
+    doc.setFont('helvetica','normal'); doc.text(String(v), M+52, y);
+    y+=6;
+  });
+  doc.setDrawColor(200,200,200);
+  doc.line(M, y+2, PW-M, y+2);
+
+  // Receipt pages
+  for (let i=0; i<lines.length; i++) {
+    const line = lines[i];
+    doc.addPage();
+
+    // Header bar
+    doc.setFillColor(240,237,232);
+    doc.rect(0,0,PW,20,'F');
+    doc.setTextColor(30,30,30);
+    doc.setFontSize(11); doc.setFont('helvetica','bold');
+    doc.text('Receipt '+(i+1)+' of '+lines.length, M, 9);
+    doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.setTextColor(100,100,100);
+    doc.text(line.name, M, 16);
+
+    // Expense details if available
+    const expLine = exps[Math.floor(i / Math.max(1, lines.length/exps.length))];
+    if (expLine) {
+      doc.setFontSize(9); doc.setTextColor(80,80,80);
+      const details = [
+        expLine.merchant||'',
+        expLine.date ? fd(expLine.date) : '',
+        expLine.amount ? fmt(expLine.amount) : '',
+        expLine.category||''
+      ].filter(Boolean).join('  ·  ');
+      if (details) doc.text(details, M, 26);
+    }
+
+    // Image
+    try {
+      const src = line.src;
+      const isJpeg = src.includes('jpeg') || src.includes('jpg');
+      const fmt2   = isJpeg ? 'JPEG' : 'PNG';
+      const imgY   = expLine ? 30 : 24;
+      const imgH   = PH - imgY - M;
+      doc.addImage(src, fmt2, M, imgY, IW, imgH, undefined, 'MEDIUM');
+    } catch(imgErr) {
+      doc.setFontSize(10); doc.setTextColor(180,50,50);
+      doc.text('Image could not be embedded: '+line.name, M, 40);
+    }
+
+    // Page number footer
+    doc.setFontSize(8); doc.setTextColor(160,160,160);
+    doc.text('Page '+(i+2)+' — RD Expense '+CFG.APP_VERSION, M, PH-5);
+  }
+
+  return doc.output('blob');
+}
+
+/* ── Download a generic blob ── */
+function doDownloadBlob(blob, fname) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href=url; a.download=fname; a.style.display='none';
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
 }
 
 /* ══════════════════════════════════════════════════════
