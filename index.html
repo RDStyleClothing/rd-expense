@@ -485,7 +485,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.1.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.1.1</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -512,7 +512,7 @@ tr.trc:active td{background:var(--bg)}
    CFG — V2.0 Firebase Edition
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v2.1.0',
+  APP_VERSION:    'v2.1.1',
   APP_RELEASED:   'April 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca', // Change to your admin email
 };
@@ -1000,7 +1000,7 @@ function ensureReport(cb) {
   const today = new Date().toISOString().slice(0,10);
   const month = new Date().toLocaleDateString('en-CA',{month:'long',year:'numeric'});
   const r = {id:uid('R'), name:'Expenses — '+month, category:'Other', startDate:today, endDate:today, notes:'', status:'Open', _ts:Date.now()};
-  S.reports.push(r); save(); render();
+  S.reports.push(r); save().then(()=>render());
   toast('Report "'+r.name+'" created automatically');
   cb(r.id);
 }
@@ -1615,15 +1615,18 @@ function rcptThumb(src, size, onclick) {
   return '<img src="'+src+'"'+oc+' style="width:'+s+'px;height:'+s+'px;object-fit:cover;border-radius:4px;border:1px solid var(--bd);'+cl+'"/>';
 }
 
-function saveE(rid){
+async function saveE(rid){
   const m=$('eM').value.trim(),a=$('eA').value,d=$('eD').value;
   if(!m||!a||!d){alert('Merchant, date and amount are required.');return;}
   const e={id:uid('E'),reportId:rid,merchant:m,date:d,amount:parseFloat(a),category:$('eCt').value,notes:$('eNo').value.trim(),taxIncluded:!!($('tI')&&$('tI').checked),receipts:[...window._rec],_ts:Date.now()};
-  S.expenses.push(e); save(); closeM(); toast('Expense added');
-  
+  S.expenses.push(e);
+  closeM();
+  toast('Saving…');
+  await save();
+  toast('Expense added ✓');
   render();
 }
-function delE(id){if(!confirm('Remove this expense?'))return;S.expenses=S.expenses.filter(e=>e.id!==id);save();toast('Removed');render();}
+function delE(id){if(!confirm('Remove this expense?'))return;S.expenses=S.expenses.filter(e=>e.id!==id);save().then(()=>render());toast('Removed');}
 
 function mEditE(eid) {
   const e=S.expenses.find(e=>e.id===eid); if(!e) return;
@@ -1672,7 +1675,7 @@ function mEditE(eid) {
   setTimeout(()=>{ updT(); renderT(); $('eM')?.focus(); }, 100);
 }
 
-function saveEditE(eid) {
+async function saveEditE(eid) {
   const e=S.expenses.find(e=>e.id===eid); if(!e) return;
   const m=($('eM')?.value||'').trim(), a=$('eA')?.value, d=$('eD')?.value;
   if(!m||!a||!d){alert('Merchant, date and amount are required.');return;}
@@ -1688,24 +1691,33 @@ function saveEditE(eid) {
   e.receipts    = [...window._rec];
   e.reportId    = newReportId||e.reportId;
   e._ts         = Date.now();
-  save(); closeM();
+  closeM();
+  toast('Saving…');
+  await save(); // single save — uploads receipts to Storage then writes to Firestore
   if(moved){
     const destReport=S.reports.find(r=>r.id===newReportId);
-    toast('Moved to "'+( destReport?.name||'report')+'" ✓');
-    save();
+    toast('Moved to "'+(destReport?.name||'report')+'" ✓');
   } else {
     toast('Expense updated ✓');
-    
   }
   render();
 }
-function delR(id){if(!confirm('Delete report and all its expenses?'))return;S.reports=S.reports.filter(r=>r.id!==id);S.expenses=S.expenses.filter(e=>e.reportId!==id);save();toast('Deleted');render();}
-function advSt(rid,ns){const r=S.reports.find(r=>r.id===rid);if(!r)return;r.status=ns;save();toast('Status → '+ns);save();render();}
-function revertSt(rid,ps){
+function delR(id){if(!confirm('Delete report and all its expenses?'))return;S.reports=S.reports.filter(r=>r.id!==id);S.expenses=S.expenses.filter(e=>e.reportId!==id);save().then(()=>render());toast('Deleted');}
+async function advSt(rid, ns) {
+  const r = S.reports.find(r=>r.id===rid);
+  if (!r) return;
+  r.status = ns;
+  toast('Status → ' + ns);
+  await save();   // wait for receipt uploads + Firestore write to complete
+  render();       // only re-render after save is done — receipts are now URLs not base64
+}
+async function revertSt(rid,ps){
   const r=S.reports.find(r=>r.id===rid);if(!r)return;
   if(!confirm('Revert "'+r.name+'" back to '+ps+'?\n\nThis will re-open the report for editing.'))return;
-  r.status=ps;save();toast('Reverted to '+ps);
-  save();
+  r.status=ps;
+  toast('Reverting…');
+  await save();
+  toast('Reverted to '+ps);
   render();
 }
 function pRec(src){
@@ -2605,7 +2617,7 @@ function doImport(reportName, reportCat, startDate, endDate, replace) {
   // Assign report ID to all imported expenses
   exps.forEach(e=>{ e.reportId=r.id; });
   S.expenses.push(...exps);
-  save(); closeM(); render();
+  save().then(()=>render()); closeM();
   showView('report-detail',r.id);
   save();
   toast(exps.length+' expenses imported into "'+reportName+'"');
