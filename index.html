@@ -485,7 +485,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.0.9</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.1.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -512,7 +512,7 @@ tr.trc:active td{background:var(--bg)}
    CFG — V2.0 Firebase Edition
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v2.0.9',
+  APP_VERSION:    'v2.1.0',
   APP_RELEASED:   'April 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca', // Change to your admin email
 };
@@ -589,52 +589,72 @@ function badge(s) {
 }
 
 /* ══════════════════════════════════════════════════════ PERSIST — Firestore */
+
+// Convert a base64 data URL to a Blob without using fetch() (works in all browsers)
+function dataUrlToBlob(dataUrl) {
+  const [header, b64] = dataUrl.split(',');
+  const mime = header.match(/:(.*?);/)[1];
+  const bytes = atob(b64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
 async function uploadReceiptToStorage(base64DataUrl, expenseId, index) {
-  // Convert base64 data URL to blob
-  const res   = await fetch(base64DataUrl);
-  const blob  = await res.blob();
-  const ext   = blob.type.includes('png') ? 'png' : 'jpg';
-  const path  = `receipts/${CU.uid}/${expenseId}_${index}.${ext}`;
-  const ref   = FB.storage.ref(path);
-  await ref.put(blob, { contentType: blob.type });
+  const blob = dataUrlToBlob(base64DataUrl);
+  const mime = blob.type;
+  const ext  = mime.includes('pdf') ? 'pdf'
+             : mime.includes('png') ? 'png'
+             : mime.includes('webp') ? 'webp'
+             : 'jpg';
+  const path = `receipts/${CU.uid}/${expenseId}_${index}.${ext}`;
+  const ref  = FB.storage.ref(path);
+  await ref.put(blob, { contentType: mime });
   return await ref.getDownloadURL();
 }
 
 async function save() {
-  if(!CU) return;
+  if (!CU) return;
   updSyncChip('syncing');
   try {
-    // Upload any base64 receipts to Firebase Storage, replace with URLs
+    // Upload any base64 receipts to Firebase Storage first, replace with https:// URLs
+    // This is critical — Firestore has a 1MB doc limit; base64 images blow past it instantly
     const expenses = await Promise.all(S.expenses.map(async e => {
       const receipts = await Promise.all((e.receipts||[]).map(async (r, i) => {
-        if (r && r.startsWith('data:')) {
-          try {
-            const url = await uploadReceiptToStorage(r, e.id, i);
-            return url;
-          } catch(uploadErr) {
-            console.warn('Receipt upload failed for expense', e.id, uploadErr);
-            return r; // keep base64 as fallback
-          }
+        if (!r || !r.startsWith('data:')) return r; // already a URL or empty — skip
+        try {
+          const url = await uploadReceiptToStorage(r, e.id, i);
+          return url; // replace base64 with Firebase Storage URL
+        } catch (uploadErr) {
+          console.error('Storage upload failed:', uploadErr);
+          // Do NOT fall back to base64 — strip the receipt instead to avoid Firestore size error
+          // The user will see a missing receipt thumbnail but the expense saves cleanly
+          return null;
         }
-        return r; // already a URL or empty
       }));
-      return { ...e, receipts };
+      return { ...e, receipts: receipts.filter(Boolean) };
     }));
 
-    // Update S.expenses with storage URLs so UI stays in sync
+    // Persist URLs back to in-memory state so UI reflects what's in Firestore
     S.expenses = expenses;
 
     await FB.db.collection('users').doc(CU.uid).set({
       reports:   S.reports,
       expenses:  S.expenses,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, {merge:true});
+    }, { merge: true });
 
     updSyncChip('synced');
-  } catch(e) {
+  } catch (e) {
     console.error('Save failed', e);
     updSyncChip('err');
-    toast('Save failed — ' + (e.message||'check connection'), '#A32D2D');
+    // Show specific error to help diagnose
+    const msg = e.code === 'storage/unauthorized'
+      ? 'Storage permission denied — check Firebase Storage rules'
+      : e.code === 'storage/quota-exceeded'
+      ? 'Firebase Storage quota exceeded'
+      : (e.message || 'check connection');
+    toast('Save failed — ' + msg, '#A32D2D');
   }
 }
 
