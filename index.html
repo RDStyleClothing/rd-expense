@@ -485,7 +485,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.1.1</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.1.2</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -512,7 +512,7 @@ tr.trc:active td{background:var(--bg)}
    CFG — V2.0 Firebase Edition
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v2.1.1',
+  APP_VERSION:    'v2.1.2',
   APP_RELEASED:   'April 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca', // Change to your admin email
 };
@@ -590,12 +590,12 @@ function badge(s) {
 
 /* ══════════════════════════════════════════════════════ PERSIST — Firestore */
 
-// Convert a base64 data URL to a Blob without using fetch() (works in all browsers)
+// Convert base64 data URL → Blob using atob (works in all browsers, no fetch needed)
 function dataUrlToBlob(dataUrl) {
   const [header, b64] = dataUrl.split(',');
-  const mime = header.match(/:(.*?);/)[1];
+  const mime  = header.match(/:(.*?);/)[1];
   const bytes = atob(b64);
-  const arr = new Uint8Array(bytes.length);
+  const arr   = new Uint8Array(bytes.length);
   for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
   return new Blob([arr], { type: mime });
 }
@@ -603,8 +603,8 @@ function dataUrlToBlob(dataUrl) {
 async function uploadReceiptToStorage(base64DataUrl, expenseId, index) {
   const blob = dataUrlToBlob(base64DataUrl);
   const mime = blob.type;
-  const ext  = mime.includes('pdf') ? 'pdf'
-             : mime.includes('png') ? 'png'
+  const ext  = mime.includes('pdf')  ? 'pdf'
+             : mime.includes('png')  ? 'png'
              : mime.includes('webp') ? 'webp'
              : 'jpg';
   const path = `receipts/${CU.uid}/${expenseId}_${index}.${ext}`;
@@ -617,38 +617,54 @@ async function save() {
   if (!CU) return;
   updSyncChip('syncing');
   try {
-    // Upload any base64 receipts to Firebase Storage first, replace with https:// URLs
-    // This is critical — Firestore has a 1MB doc limit; base64 images blow past it instantly
-    const expenses = await Promise.all(S.expenses.map(async e => {
+    // Step 1: Upload any base64 receipts → Firebase Storage → get back https:// URLs
+    // Do this BEFORE touching S.expenses so a failed upload doesn't corrupt in-memory state
+    const uploadedExpenses = await Promise.all(S.expenses.map(async e => {
       const receipts = await Promise.all((e.receipts||[]).map(async (r, i) => {
-        if (!r || !r.startsWith('data:')) return r; // already a URL or empty — skip
+        if (!r || !r.startsWith('data:')) return r; // already a Storage URL — skip
         try {
           const url = await uploadReceiptToStorage(r, e.id, i);
-          return url; // replace base64 with Firebase Storage URL
+          return url;
         } catch (uploadErr) {
-          console.error('Storage upload failed:', uploadErr);
-          // Do NOT fall back to base64 — strip the receipt instead to avoid Firestore size error
-          // The user will see a missing receipt thumbnail but the expense saves cleanly
-          return null;
+          console.error('Storage upload failed for', e.id, 'receipt', i, ':', uploadErr.message);
+          // Return the original base64 — we'll strip it from Firestore but keep it in memory
+          return r;
         }
       }));
       return { ...e, receipts: receipts.filter(Boolean) };
     }));
 
-    // Persist URLs back to in-memory state so UI reflects what's in Firestore
-    S.expenses = expenses;
+    // Step 2: Update S.expenses in memory with uploaded URLs
+    // Receipts that failed to upload remain as base64 in memory (visible in UI)
+    S.expenses = uploadedExpenses;
+
+    // Step 3: Write to Firestore — strip any base64 that failed to upload
+    // Firestore 1MB limit: base64 images are too large. Store a placeholder instead.
+    // On next save() those receipts will be retried automatically.
+    const expensesForFS = S.expenses.map(e => ({
+      ...e,
+      receipts: (e.receipts||[]).map(r =>
+        (r && r.startsWith('data:')) ? '__pending__' : r
+      )
+    }));
 
     await FB.db.collection('users').doc(CU.uid).set({
       reports:   S.reports,
-      expenses:  S.expenses,
+      expenses:  expensesForFS,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
+
+    // Step 4: Remove any __pending__ placeholders from in-memory state
+    // so they don't accidentally get saved as literal strings on next load
+    S.expenses = S.expenses.map(e => ({
+      ...e,
+      receipts: (e.receipts||[]).filter(r => r && r !== '__pending__')
+    }));
 
     updSyncChip('synced');
   } catch (e) {
     console.error('Save failed', e);
     updSyncChip('err');
-    // Show specific error to help diagnose
     const msg = e.code === 'storage/unauthorized'
       ? 'Storage permission denied — check Firebase Storage rules'
       : e.code === 'storage/quota-exceeded'
@@ -665,8 +681,14 @@ async function load() {
     if(doc.exists) {
       const d = doc.data();
       if(d.reports)  S.reports  = d.reports;
-      if(d.expenses) S.expenses = d.expenses;
-      S.expenses.forEach(e=>{ if(e.taxIncluded===undefined) e.taxIncluded=false; });
+      if(d.expenses) {
+        S.expenses = d.expenses.map(e => ({
+          ...e,
+          taxIncluded: e.taxIncluded ?? false,
+          // Strip any __pending__ placeholders that made it into Firestore
+          receipts: (e.receipts||[]).filter(r => r && r !== '__pending__')
+        }));
+      }
     }
     updSyncChip('synced');
   } catch(e) {
