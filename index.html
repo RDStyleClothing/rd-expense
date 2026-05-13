@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <meta name="theme-color" content="#ffffff"/>
 <title>RD Expense</title>
- 
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -31,10 +31,10 @@
 html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:4px}
- 
+
 /* ── APP SHELL ── */
 #app{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
- 
+
 /* ── TOP BAR ── */
 .tb{height:52px;flex-shrink:0;background:var(--sf);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:10px;padding-top:env(safe-area-inset-top,0)}
 .logo{font-size:15px;font-weight:700;letter-spacing:-.4px}
@@ -42,7 +42,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .tbs{flex:1}
 .hbg{display:none;background:none;border:none;cursor:pointer;padding:6px;color:var(--tx2);border-radius:6px}
 .hbg:active{background:var(--bg)}
- 
+
 /* ── SYNC CHIP ── */
 .sc{display:flex;align-items:center;gap:5px;font-size:11px;padding:4px 9px;border-radius:20px;border:1px solid var(--bd);cursor:pointer;color:var(--tx2);background:var(--sf);white-space:nowrap}
 .sc.synced{color:var(--gdk);border-color:#9FE1CB;background:var(--gbg)}
@@ -52,7 +52,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .scd{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
 @keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}
 .sc.syncing .scd{animation:bl 1s ease-in-out infinite}
- 
+
 /* ── USER CHIP ── */
 .uc{display:flex;align-items:center;gap:6px;padding:3px 9px 3px 4px;border:1px solid var(--bd);border-radius:20px;cursor:pointer;font-size:12px;background:var(--sf);position:relative}
 .uc:active{background:var(--bg)}
@@ -66,10 +66,10 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .umi svg{width:13px;height:13px;color:var(--tx2);flex-shrink:0}
 .umi.danger{color:var(--rd)}
 .udiv{height:1px;background:var(--bd)}
- 
+
 /* ── BODY LAYOUT ── */
 .body{display:flex;flex:1;min-height:0;overflow:hidden}
- 
+
 /* ── SIDEBAR ── */
 .sb{width:216px;flex-shrink:0;background:var(--sf);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;transition:transform .22s ease}
 .nsec{padding:14px 14px 4px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--tx3)}
@@ -79,7 +79,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .ni svg{width:15px;height:15px;flex-shrink:0}
 .npill{margin-left:auto;font-size:10px;background:var(--s2);border-radius:10px;padding:1px 7px;color:var(--tx3)}
 .sbsp{flex:1}
- 
+
 /* ── STORAGE PANEL (sidebar) ── */
 .stp{margin:8px;border:1px solid var(--bd);border-radius:var(--rsm);padding:10px 12px;background:var(--bg)}
 .stph{display:flex;align-items:center;gap:7px;margin-bottom:5px;font-size:12px;font-weight:600}
@@ -93,21 +93,21 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .dotx{background:var(--bd2)}
 .sbov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200}
 .sbov.show{display:block}
- 
+
 /* ── MAIN ── */
 .main{flex:1;min-height:0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:18px;padding-bottom:calc(var(--fab) + 32px);-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
- 
+
 /* ── BOTTOM NAV ── */
 .bnn{display:none;flex-shrink:0;background:var(--sf);border-top:1px solid var(--bd)}
 .bni2{display:flex;height:var(--bn)}
 .bni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--tx3);font-size:10px;font-weight:500;padding:6px 4px;border:none;background:none;font-family:var(--font)}
 .bni.active{color:var(--gdk)}
 .bni svg{width:22px;height:22px}
- 
+
 /* ── VERSION BAR ── */
 .vbar{height:26px;flex-shrink:0;background:var(--sf);border-top:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:11px;color:var(--tx3)}
 .vb{background:var(--gbg);color:var(--gdk);font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;margin-right:6px}
- 
+
 /* ── FAB ── */
 .fw{position:fixed;right:18px;bottom:calc(18px + var(--safe));z-index:150;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 .fab{width:var(--fab);height:var(--fab);background:var(--g);color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(29,158,117,.42);font-size:28px;line-height:1;transition:transform .15s,background .15s}
@@ -118,7 +118,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .fo{display:flex;align-items:center;gap:10px;cursor:pointer}
 .fl{background:var(--sf);color:var(--tx);font-size:13px;font-weight:500;padding:7px 13px;border-radius:20px;border:1px solid var(--bd);box-shadow:0 2px 8px rgba(0,0,0,.08);white-space:nowrap}
 .fi3{width:44px;height:44px;border-radius:50%;background:var(--sf);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.08);font-size:20px;flex-shrink:0}
- 
+
 /* ── PAGE ELEMENTS ── */
 .ph{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
 .pt{font-size:20px;font-weight:700;letter-spacing:-.4px}
@@ -131,20 +131,20 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .btn.p:active{background:var(--gdk)}
 .btn.sm{font-size:12px;padding:5px 10px}
 .btn:disabled{opacity:.4;pointer-events:none}
- 
+
 /* ── STATS ── */
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .stat{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:13px 15px}
 .slbl{font-size:10px;color:var(--tx2);margin-bottom:5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .sval{font-size:20px;font-weight:700;letter-spacing:-.5px}
 .cg{color:var(--g)}.cb{color:var(--bl)}.ca{color:var(--am)}
- 
+
 /* ── CARD ── */
 .card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
 .chd{padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
 .ctl{font-size:13px;font-weight:700}
 .csp{flex:1}
- 
+
 /* ── TABLE ── */
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{padding:9px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--tx3);border-bottom:1px solid var(--bd);background:var(--bg);letter-spacing:.5px;text-transform:uppercase}
@@ -152,7 +152,7 @@ td{padding:11px 14px;border-bottom:1px solid var(--bd);vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr.trc{cursor:pointer}
 tr.trc:active td{background:var(--bg)}
- 
+
 /* ── MOBILE CARDS ── */
 .xc{display:none;flex-direction:column}
 .xcd{padding:14px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:flex-start;gap:12px;cursor:pointer}
@@ -164,7 +164,7 @@ tr.trc:active td{background:var(--bg)}
 .xcn{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .xcm{font-size:12px;color:var(--tx2);margin-top:2px}
 .xca{font-size:15px;font-weight:700;flex-shrink:0}
- 
+
 /* ── BADGES ── */
 .badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;white-space:nowrap}
 .bop{background:var(--blbg);color:var(--bl)}
@@ -172,7 +172,7 @@ tr.trc:active td{background:var(--bg)}
 .baw{background:var(--ambg);color:var(--amdk)}
 .bpa{background:#EAF3DE;color:#3B6D11}
 .bcl{background:var(--s2);color:var(--tx2)}
- 
+
 /* ── MISC ── */
 .empty{text-align:center;padding:44px 20px;color:var(--tx3);font-size:13px}
 .eic{font-size:30px;margin-bottom:10px}
@@ -180,7 +180,7 @@ tr.trc:active td{background:var(--bg)}
 .back svg{width:14px;height:14px}
 .ib{background:none;border:none;cursor:pointer;padding:6px;border-radius:5px;color:var(--tx2);font-size:15px;line-height:1}
 .ib:active{background:var(--bg)}
- 
+
 /* ── QUÉBEC TAX BOX ── */
 .txb{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
 .txh{padding:11px 16px;background:var(--gbg);font-size:12px;font-weight:700;color:var(--gdk);border-bottom:1px solid #9FE1CB;display:flex;align-items:center;gap:7px}
@@ -189,7 +189,7 @@ tr.trc:active td{background:var(--bg)}
 .txr.sub{background:var(--bg);font-weight:600}
 .txr.tot{background:var(--gbg);font-weight:700;color:var(--gdk)}
 .txr.rec{color:var(--tx2)}
- 
+
 /* ── MODALS ── */
 .mbg{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:300;display:flex;align-items:flex-end;justify-content:center}
 @media(min-width:600px){.mbg{align-items:center;padding:16px}}
@@ -202,7 +202,7 @@ tr.trc:active td{background:var(--bg)}
 .mb{padding:18px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch}
 .mf{padding:12px 18px;padding-bottom:calc(12px + var(--safe));border-top:1px solid var(--bd);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
 @media(min-width:600px){.mf{padding-bottom:12px}}
- 
+
 /* ── FORM ── */
 .fld{display:flex;flex-direction:column;gap:5px}
 .fld label{font-size:12px;color:var(--tx2);font-weight:600}
@@ -213,13 +213,13 @@ tr.trc:active td{background:var(--bg)}
 .ckr{display:flex;align-items:center;gap:9px;padding:9px 0}
 .ckr input[type=checkbox]{width:16px;height:16px;accent-color:var(--g);cursor:pointer;flex-shrink:0}
 .ckr label{font-size:13px;color:var(--tx);cursor:pointer;margin:0}
- 
+
 /* ── TAX PREVIEW ── */
 .tp{background:var(--bg);border:1px solid var(--bd);border-radius:var(--rsm);padding:10px 13px;font-size:12px}
 .tpr{display:flex;justify-content:space-between;padding:3px 0;color:var(--tx2)}
 .tpr.bold{font-weight:700;color:var(--tx);padding-top:6px;border-top:1px solid var(--bd);margin-top:3px}
 .tpr.rec{color:var(--g)}
- 
+
 /* ── DROP ZONE ── */
 .dz{border:2px dashed var(--bd2);border-radius:var(--rsm);padding:22px 16px;text-align:center;cursor:pointer}
 .dz:active,.dz.ov{background:var(--bg);border-color:var(--g)}
@@ -229,13 +229,13 @@ tr.trc:active td{background:var(--bg)}
 .tw{position:relative}
 .tw img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--rsm);border:1px solid var(--bd);display:block}
 .tx{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
- 
+
 /* ── INFO BOX ── */
 .info{border-radius:var(--rsm);padding:11px 13px;font-size:13px;border:1px solid;line-height:1.5}
 .info.bl{background:var(--blbg);color:var(--bl);border-color:#B5D4F4}
 .info.gn{background:var(--gbg);color:var(--gdk);border-color:#9FE1CB}
 .info.am{background:var(--ambg);color:var(--amdk);border-color:#FAC775}
- 
+
 /* ── STORAGE PICKER ── */
 .stp2{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .sto{border:2px solid var(--bd);border-radius:var(--r);padding:14px 10px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px}
@@ -245,18 +245,18 @@ tr.trc:active td{background:var(--bg)}
 .sde{font-size:10px;color:var(--tx2);line-height:1.3}
 .sbdg{font-size:10px;padding:2px 7px;border-radius:10px;background:var(--gbg);color:var(--gdk);font-weight:600}
 .sbdg.nd{background:var(--ambg);color:var(--amdk)}
- 
+
 /* ── SPIN ANIMATION ── */
 @keyframes sp{to{transform:rotate(360deg)}}
- 
+
 /* ── BATCH PROGRESS ── */
 .bprog{width:100%;background:var(--s2);border-radius:20px;height:8px;overflow:hidden;margin-top:4px}
 .bprog-bar{height:100%;background:var(--g);border-radius:20px;width:0%;transition:width .4s}
- 
+
 /* ── TOAST ── */
 .toast{position:fixed;bottom:calc(var(--fab) + 52px);right:16px;z-index:999;background:#1a1917;color:#fff;font-size:13px;padding:10px 15px;border-radius:var(--rsm);opacity:0;transition:opacity .22s;pointer-events:none;max-width:300px;line-height:1.4}
 .toast.show{opacity:1}
- 
+
 /* ── MOBILE ── */
 @media(max-width:700px){
   .sb{position:fixed;top:0;left:0;bottom:0;z-index:250;transform:translateX(-100%);width:260px;padding-top:env(safe-area-inset-top,0);box-shadow:var(--shlg)}
@@ -283,7 +283,7 @@ tr.trc:active td{background:var(--bg)}
 }
 @media(min-width:701px){.bnn,.hbg{display:none}.sbov{display:none!important}}
 @media(max-width:400px){.r2{grid-template-columns:1fr}}
- 
+
 /* ── LOGIN SCREEN ── */
 #loginScreen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
 .lbox{background:var(--sf);border:1px solid var(--bd2);border-radius:16px;width:100%;max-width:380px;padding:36px 32px;box-shadow:var(--shlg)}
@@ -299,7 +299,7 @@ tr.trc:active td{background:var(--bg)}
 .ladmin{text-align:center;margin-top:18px;font-size:12px;color:var(--tx3)}
 .ladmin a{color:var(--bl);cursor:pointer;text-decoration:none}
 .ladmin a:hover{text-decoration:underline}
- 
+
 /* ── ADMIN PANEL ── */
 #adminScreen{position:fixed;inset:0;background:var(--bg);z-index:999;display:none;flex-direction:column}
 .adtb{height:52px;flex-shrink:0;background:var(--sf);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 20px;gap:12px}
@@ -320,7 +320,7 @@ tr.trc:active td{background:var(--bg)}
 </style>
 </head>
 <body>
- 
+
 <!-- LOGIN SCREEN -->
 <div id="loginScreen">
   <div class="lbox">
@@ -343,7 +343,7 @@ tr.trc:active td{background:var(--bg)}
     <div class="ladmin"><a onclick="openAdminLogin()">Admin Panel</a></div>
   </div>
 </div>
- 
+
 <!-- ADMIN PANEL -->
 <div id="adminScreen">
   <div class="adtb">
@@ -380,7 +380,7 @@ tr.trc:active td{background:var(--bg)}
     </div>
   </div>
 </div>
- 
+
 <!-- ADMIN LOGIN MODAL (separate from user login) -->
 <div id="adminLoginModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1100;display:none;align-items:center;justify-content:center;padding:20px">
   <div class="lbox" style="max-width:340px">
@@ -394,9 +394,9 @@ tr.trc:active td{background:var(--bg)}
     <div class="ladmin"><a onclick="closeAdminLogin()">← Back to user login</a></div>
   </div>
 </div>
- 
+
 <div id="app">
- 
+
   <!-- TOP BAR -->
   <div class="tb">
     <button class="hbg" onclick="toggleSB()" aria-label="Menu">
@@ -432,11 +432,11 @@ tr.trc:active td{background:var(--bg)}
       </div>
     </div>
   </div>
- 
+
   <!-- BODY -->
   <div class="body">
     <div class="sbov" id="sbOv" onclick="closeSB()"></div>
- 
+
     <!-- SIDEBAR -->
     <nav class="sb" id="sidebar">
       <div class="nsec">Overview</div>
@@ -463,10 +463,10 @@ tr.trc:active td{background:var(--bg)}
         <div class="stpp" id="stPa" style="display:none"></div>
       </div>
     </nav>
- 
+
     <main class="main" id="mainC"></main>
   </div>
- 
+
   <!-- BOTTOM NAV -->
   <div class="bnn"><div class="bni2">
     <button class="bni active" id="bn-dashboard" onclick="navTo('dashboard')">
@@ -482,41 +482,41 @@ tr.trc:active td{background:var(--bg)}
       Expenses
     </button>
   </div></div>
- 
+
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.1.5</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.1.6</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
- 
+
 </div><!-- /#app -->
- 
+
 <!-- FAB (floating action button — always visible) -->
 <div class="fw" id="fabW">
   <div class="fm" id="fabM" style="display:none"></div>
   <button class="fab" id="fabB" onclick="toggleFab()" aria-label="Quick add">+</button>
 </div>
- 
+
 <!-- MODAL ROOT + TOAST -->
 <div id="mR"></div>
 <div class="toast" id="toast"></div>
- 
+
 <!-- Firebase SDKs — must load before main script -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
- 
+
 <script>
 /* ══════════════════════════════════════════════════════
    CFG — V2.0 Firebase Edition
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v2.1.5',
+  APP_VERSION:    'v2.1.6',
   APP_RELEASED:   'April 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca', // Change to your admin email
 };
- 
+
 /* ══════════════════════════════════════════════════════
    FIREBASE CONFIG — init happens in window.load below
 ══════════════════════════════════════════════════════ */
@@ -528,11 +528,11 @@ const firebaseConfig = {
   messagingSenderId: "41497121534",
   appId: "1:41497121534:web:747520fd032b7998ee4baf"
 };
- 
+
 // Placeholder — populated inside window.load once SDKs are ready
 let FB = {};
 let CU = null; // { uid, email, displayName, isAdmin }
- 
+
 /* ══════════════════════════════════════════════════════
    QUÉBEC TAX ENGINE
    GST 5% (federal) + QST 9.975% (provincial)
@@ -560,7 +560,7 @@ const TAX = {
     return {sub:r2(t.sub),gst:r2(t.gst),qst:r2(t.qst),tot:r2(t.tot),gR:r2(t.gR),qR:r2(t.qR)};
   }
 };
- 
+
 /* ══════════════════════════════════════════════════════ STATE */
 const S = {
   view:'dashboard', rid:null,
@@ -568,16 +568,76 @@ const S = {
   fabOpen:false,
   _saving:false
 };
- 
+
 /* ══════════════════════════════════════════════════════ HELPERS */
 const r2  = n => Math.round(n*100)/100;
 const uid = p => p+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-const fmt = n => '$'+Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
-const ftx = n => n===0?'—':fmt(n);
+// Currency list — CAD and USD first, then full world list
+const CURRENCIES = [
+  {code:'CAD',symbol:'$',name:'Canadian Dollar'},
+  {code:'USD',symbol:'$',name:'US Dollar'},
+  {code:'EUR',symbol:'€',name:'Euro'},
+  {code:'GBP',symbol:'£',name:'British Pound'},
+  {code:'MXN',symbol:'$',name:'Mexican Peso'},
+  {code:'AUD',symbol:'$',name:'Australian Dollar'},
+  {code:'JPY',symbol:'¥',name:'Japanese Yen'},
+  {code:'CNY',symbol:'¥',name:'Chinese Yuan'},
+  {code:'CHF',symbol:'Fr',name:'Swiss Franc'},
+  {code:'HKD',symbol:'$',name:'Hong Kong Dollar'},
+  {code:'SGD',symbol:'$',name:'Singapore Dollar'},
+  {code:'SEK',symbol:'kr',name:'Swedish Krona'},
+  {code:'NOK',symbol:'kr',name:'Norwegian Krone'},
+  {code:'DKK',symbol:'kr',name:'Danish Krone'},
+  {code:'NZD',symbol:'$',name:'New Zealand Dollar'},
+  {code:'KRW',symbol:'₩',name:'South Korean Won'},
+  {code:'INR',symbol:'₹',name:'Indian Rupee'},
+  {code:'BRL',symbol:'R$',name:'Brazilian Real'},
+  {code:'ZAR',symbol:'R',name:'South African Rand'},
+  {code:'AED',symbol:'د.إ',name:'UAE Dirham'},
+  {code:'SAR',symbol:'﷼',name:'Saudi Riyal'},
+  {code:'TRY',symbol:'₺',name:'Turkish Lira'},
+  {code:'RUB',symbol:'₽',name:'Russian Ruble'},
+  {code:'THB',symbol:'฿',name:'Thai Baht'},
+  {code:'MYR',symbol:'RM',name:'Malaysian Ringgit'},
+  {code:'IDR',symbol:'Rp',name:'Indonesian Rupiah'},
+  {code:'PHP',symbol:'₱',name:'Philippine Peso'},
+  {code:'VND',symbol:'₫',name:'Vietnamese Dong'},
+  {code:'CZK',symbol:'Kč',name:'Czech Koruna'},
+  {code:'PLN',symbol:'zł',name:'Polish Zloty'},
+  {code:'HUF',symbol:'Ft',name:'Hungarian Forint'},
+  {code:'ILS',symbol:'₪',name:'Israeli Shekel'},
+  {code:'CLP',symbol:'$',name:'Chilean Peso'},
+  {code:'COP',symbol:'$',name:'Colombian Peso'},
+  {code:'PEN',symbol:'S/',name:'Peruvian Sol'},
+  {code:'ARS',symbol:'$',name:'Argentine Peso'},
+];
+
+// Build currency select options HTML — CAD+USD first with divider
+function currencyOpts(selected) {
+  const top  = CURRENCIES.slice(0,2);
+  const rest = CURRENCIES.slice(2);
+  const opt  = (c,sel) => '<option value="'+c.code+'"'+(sel?' selected':'')+'>'+c.code+' — '+c.name+'</option>';
+  return top.map(c=>opt(c,c.code===(selected||'CAD'))).join('')+
+    '<option disabled>──────────────</option>'+
+    rest.map(c=>opt(c,c.code===(selected||'CAD'))).join('');
+}
+
+// Format amount with currency symbol and code
+const fmt = (n, currency) => {
+  const c = CURRENCIES.find(x=>x.code===(currency||'CAD')) || CURRENCIES[0];
+  const num = Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  return c.symbol+num+' '+c.code;
+};
+// Short format (no code) for tight spaces
+const fmtS = (n, currency) => {
+  const c = CURRENCIES.find(x=>x.code===(currency||'CAD')) || CURRENCIES[0];
+  return c.symbol+Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+};
+const ftx = (n, currency) => n===0?'—':fmt(n, currency);
 const fd  = d => { if(!d)return'—'; return new Date(d+'T12:00:00').toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'}); };
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const $   = id => document.getElementById(id);
- 
+
 function toast(msg,c) {
   const t=$('toast'); t.textContent=msg; t.style.background=c||'#1a1917';
   t.classList.add('show'); clearTimeout(t._t);
@@ -587,9 +647,9 @@ function badge(s) {
   const m={Open:'bop',Approved:'bap','Awaiting Payment':'baw',Paid:'bpa',Closed:'bcl'};
   return '<span class="badge '+(m[s]||'bcl')+'">'+esc(s)+'</span>';
 }
- 
+
 /* ══════════════════════════════════════════════════════ PERSIST — Firestore */
- 
+
 // Convert base64 data URL → Blob using atob (works in all browsers, no fetch needed)
 function dataUrlToBlob(dataUrl) {
   const [header, b64] = dataUrl.split(',');
@@ -599,7 +659,7 @@ function dataUrlToBlob(dataUrl) {
   for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
   return new Blob([arr], { type: mime });
 }
- 
+
 async function uploadReceiptToStorage(base64DataUrl, expenseId, index) {
   const blob = dataUrlToBlob(base64DataUrl);
   const mime = blob.type;
@@ -612,7 +672,7 @@ async function uploadReceiptToStorage(base64DataUrl, expenseId, index) {
   await ref.put(blob, { contentType: mime });
   return await ref.getDownloadURL();
 }
- 
+
 async function save() {
   if (!CU) return;
   updSyncChip('syncing');
@@ -633,11 +693,11 @@ async function save() {
       }));
       return { ...e, receipts: receipts.filter(Boolean) };
     }));
- 
+
     // Step 2: Update S.expenses in memory with uploaded URLs
     // Receipts that failed to upload remain as base64 in memory (visible in UI)
     S.expenses = uploadedExpenses;
- 
+
     // Step 3: Write to Firestore — strip any base64 that failed to upload
     // Firestore 1MB limit: base64 images are too large. Store a placeholder instead.
     // On next save() those receipts will be retried automatically.
@@ -647,20 +707,20 @@ async function save() {
         (r && r.startsWith('data:')) ? '__pending__' : r
       )
     }));
- 
+
     await FB.db.collection('users').doc(CU.uid).set({
       reports:   S.reports,
       expenses:  expensesForFS,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
- 
+
     // Step 4: Remove any __pending__ placeholders from in-memory state
     // so they don't accidentally get saved as literal strings on next load
     S.expenses = S.expenses.map(e => ({
       ...e,
       receipts: (e.receipts||[]).filter(r => r && r !== '__pending__')
     }));
- 
+
     updSyncChip('synced');
   } catch (e) {
     console.error('Save failed', e);
@@ -673,7 +733,7 @@ async function save() {
     toast('Save failed — ' + msg, '#A32D2D');
   }
 }
- 
+
 async function load() {
   if(!CU) return;
   try {
@@ -696,7 +756,7 @@ async function load() {
     updSyncChip('err');
   }
 }
- 
+
 /* ══════════════════════════════════════════════════════
    API KEY — stored only in localStorage, never in code
    Never synced to cloud storage or included in exports.
@@ -705,7 +765,7 @@ function getApiKey()      { try { return localStorage.getItem('rdex_ak')||''; } 
 function setApiKey(k)     { try { localStorage.setItem('rdex_ak', k.trim()); } catch(e){} }
 function clearApiKey()    { try { localStorage.removeItem('rdex_ak'); } catch(e){} }
 function hasApiKey()      { return !!getApiKey(); }
- 
+
 function openApiKeySettings() {
   $('uMenu').classList.remove('open');
   const current = getApiKey();
@@ -741,12 +801,12 @@ function openApiKeySettings() {
   '</div>'+
   '</div></div>';
 }
- 
+
 function toggleKeyVis() {
   const inp = $('akInput');
   if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
 }
- 
+
 function saveApiKey() {
   const val = ($('akInput')?.value||'').trim();
   if (!val) { toast('Please enter your API key first', '#BA7517'); return; }
@@ -757,15 +817,24 @@ function saveApiKey() {
   closeM();
   toast('API key saved securely to this device ✓');
 }
- 
+
 function confirmClearKey() {
   if (!confirm('Remove the saved API key from this device? SmartScan will stop working until you add a new key.')) return;
   clearApiKey();
   closeM();
   toast('API key removed from this device');
 }
- 
- 
+
+
+// Get the effective currency for an expense (own override > report default > CAD)
+function expCurrency(e) {
+  if (e.currency) return e.currency;
+  const r = S.reports.find(r=>r.id===e.reportId);
+  return r?.currency || 'CAD';
+}
+// Get currency for a report
+function rptCurrency(r) { return r?.currency || 'CAD'; }
+
 /* ══════════════════════════════════════════════════════ SYNC CHIP */
 function updSyncChip(state) {
   const chip=$('syncChip'), lbl=$('syncLbl');
@@ -776,11 +845,11 @@ function updSyncChip(state) {
   else if(state==='err'){chip.classList.add('err');lbl.textContent='Sync error';}
   else{chip.classList.add('nosync');lbl.textContent='Firebase';}
 }
- 
+
 /* ══════════════════════════════════════════════════════ AUTH */
 function showLogin()  { $('loginScreen').style.display='flex'; $('app').style.display='none'; }
 function showApp()    { $('loginScreen').style.display='none'; $('app').style.display='flex'; }
- 
+
 // User login
 async function doLogin() {
   const email = ($('lEmail')?.value||'').trim();
@@ -800,7 +869,7 @@ async function doLogin() {
     err.style.display='block';
   }
 }
- 
+
 // Enter key support on login
 document.addEventListener('keydown', e=>{
   if(e.key==='Enter') {
@@ -808,13 +877,13 @@ document.addEventListener('keydown', e=>{
     else if($('loginScreen')?.style.display!=='none') doLogin();
   }
 });
- 
+
 // Auth state listener — fires on login/logout
 function boot() {
   // Firebase auth listener registered in window.load — just hide app on boot
   $('app').style.display='none';
 }
- 
+
 /* ══════════════════════════════════════════════════════ ADMIN AUTH */
 function openAdminLogin() {
   $('adminLoginModal').style.display='flex';
@@ -826,7 +895,7 @@ function closeAdminLogin() {
   const err=$('alErr'); if(err)err.style.display='none';
   const btn=$('alBtn'); if(btn){btn.disabled=false;btn.innerHTML='Sign In as Admin';}
 }
- 
+
 async function doAdminLogin() {
   const email = ($('alEmail')?.value||'').trim();
   const pass  = ($('alPass')?.value||'').trim();
@@ -855,24 +924,24 @@ async function doAdminLogin() {
     err.style.display='block';
   }
 }
- 
+
 function adminLogout() {
   FB.auth.signOut();
   $('adminScreen').style.display='none';
 }
- 
+
 function closeAdmin() {
   FB.auth.signOut();
   $('adminScreen').style.display='none';
 }
- 
+
 /* ══════════════════════════════════════════════════════ ADMIN PANEL */
 async function openAdminPanel() {
   const panel=$('adminScreen');
   panel.style.display='flex'; panel.style.flexDirection='column';
   await adminLoadUsers();
 }
- 
+
 async function adminLoadUsers() {
   const list=$('adUserList');
   list.innerHTML='<div class="adempty">Loading…</div>';
@@ -894,7 +963,7 @@ async function adminLoadUsers() {
     list.innerHTML='<div class="adempty" style="color:var(--rd)">Failed to load users: '+esc(e.message)+'</div>';
   }
 }
- 
+
 async function adminCreateUser() {
   const name  = ($('adName')?.value||'').trim();
   const email = ($('adEmail')?.value||'').trim();
@@ -932,7 +1001,7 @@ async function adminCreateUser() {
   }
   btn.disabled=false; btn.textContent='Create User Account';
 }
- 
+
 async function adminDeleteUser(uid, email) {
   if(!confirm('Delete user '+email+'?\n\nThis will remove their profile. Their expense data will be preserved in Firestore but they will no longer be able to log in.\n\nThis cannot be undone.')) return;
   try {
@@ -943,7 +1012,7 @@ async function adminDeleteUser(uid, email) {
     toast('Delete failed: '+(e.message||e),'#A32D2D');
   }
 }
- 
+
 function clearData() {
   if(!confirm('Clear ALL reports and expenses?\nThis will permanently delete your data from the cloud.\nThis cannot be undone.')) return;
   S.reports  = [];
@@ -952,13 +1021,13 @@ function clearData() {
   closeM(); render();
   toast('All data cleared');
 }
- 
+
 function toggleUM() { $('uMenu').classList.toggle('open'); }
 document.addEventListener('click', e => {
   if ($('uChip') && !$('uChip').contains(e.target)) $('uMenu').classList.remove('open');
   if (S.fabOpen && $('fabW')  && !$('fabW').contains(e.target))  closeFab();
 });
- 
+
 /* ══════════════════════════════════════════════════════ SIGN OUT */
 async function doSignOut() {
   $('uMenu').classList.remove('open');
@@ -966,12 +1035,12 @@ async function doSignOut() {
   S.reports=[]; S.expenses=[];
   await FB.auth.signOut();
 }
- 
+
 /* ══════════════════════════════════════════════════════ SIDEBAR / NAV */
 function toggleSB(){$('sidebar').classList.toggle('open');$('sbOv').classList.toggle('show');}
 function closeSB(){$('sidebar').classList.remove('open');$('sbOv').classList.remove('show');}
 function navTo(v,id){closeSB();showView(v,id);}
- 
+
 /* ══════════════════════════════════════════════════════ FAB */
 function toggleFab(){S.fabOpen?closeFab():openFab();}
 function openFab(){
@@ -1004,7 +1073,7 @@ function fo(ico,lbl,actFn){
   const idx=(window._fabActs=window._fabActs||[]).push(actFn)-1;
   return '<div class="fo" data-fai="'+idx+'"><div class="fl">'+lbl+'</div><div class="fi3">'+ico+'</div></div>';
 }
- 
+
 /* Auto-create a report if none exist, then run callback(reportId) */
 function ensureReport(cb) {
   const op = S.reports.filter(r=>r.status==='Open');
@@ -1021,12 +1090,12 @@ function ensureReport(cb) {
   // No open reports — auto-create one with today's date
   const today = new Date().toISOString().slice(0,10);
   const month = new Date().toLocaleDateString('en-CA',{month:'long',year:'numeric'});
-  const r = {id:uid('R'), name:'Expenses — '+month, category:'Other', startDate:today, endDate:today, notes:'', status:'Open', _ts:Date.now()};
+  const r = {id:uid('R'), name:'Expenses — '+month, category:'Other', currency:'CAD', startDate:today, endDate:today, notes:'', status:'Open', _ts:Date.now()};
   S.reports.push(r); save().then(()=>render());
   toast('Report "'+r.name+'" created automatically');
   cb(r.id);
 }
- 
+
 function fabDoSnap(mode, ridDirect) {
   // Opens file picker — images and PDFs, fires directly preserving user gesture
   const doIt = rid => {
@@ -1057,12 +1126,12 @@ function fabDoSnap(mode, ridDirect) {
   if (ridDirect) doIt(ridDirect);
   else ensureReport(doIt);
 }
- 
+
 function fabAdd(){
   closeFab();
   ensureReport(rid => mAE(rid));
 }
- 
+
 /* ── SMARTSCAN — uses Claude API to read receipt ─────── */
 async function doSmartScan(imgData, rid) {
   // Show scanning overlay
@@ -1075,7 +1144,7 @@ async function doSmartScan(imgData, rid) {
     '<div class="spin" style="width:32px;height:32px;border:3px solid var(--bd2);border-top-color:var(--g);border-radius:50%;animation:sp .7s linear infinite;margin:0 auto"></div>'+
     '<div style="font-size:13px;color:var(--tx2)" id="scanStatus">'+(imgData.startsWith('data:application/pdf')?'Reading PDF receipt&hellip;':'Reading receipt&hellip;')+'</div>'+
   '</div></div></div>';
- 
+
   try {
     const apiKey = getApiKey();
     if (!apiKey) {
@@ -1113,7 +1182,7 @@ async function doSmartScan(imgData, rid) {
     const fileBlock = isPdf
       ? { type:'document', source:{ type:'base64', media_type:'application/pdf', data:base64 } }
       : { type:'image',    source:{ type:'base64', media_type:mediaType,          data:base64 } };
- 
+
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -1134,27 +1203,27 @@ async function doSmartScan(imgData, rid) {
         }]
       })
     });
- 
+
     // Check HTTP status first — a 4xx/5xx means the API rejected the request
     if (!resp.ok) {
       const errBody = await resp.json().catch(()=>({error:{message:'HTTP '+resp.status}}));
       const errMsg = errBody?.error?.message || ('HTTP ' + resp.status);
       throw new Error(errMsg);
     }
- 
+
     const data = await resp.json();
- 
+
     // Check for API-level error in the response body
     if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
- 
+
     const raw = data.content?.[0]?.text || '{}';
     let parsed;
     try { parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); } catch(e) { parsed = {}; }
- 
+
     // If we got an empty or invalid parse, still open the form with the image
     closeM();
     mAE(rid, imgData, parsed);
- 
+
   } catch(err) {
     console.error('SmartScan failed', err);
     closeM();
@@ -1163,7 +1232,7 @@ async function doSmartScan(imgData, rid) {
     mAE(rid, imgData);
   }
 }
- 
+
 /* Save key from inline prompt then immediately retry scan */
 function saveQuickKey() {
   const val = ($('akQuick')?.value||'').trim();
@@ -1189,12 +1258,12 @@ function fabBatch() {
   };
   inp.click();
 }
- 
+
 async function startBatch(files, rid) {
   const fileArr = Array.from(files);
   const total   = fileArr.length;
   let done = 0, added = 0;
- 
+
   mR.innerHTML = '<div class="mbg">'+
   '<div class="modal"><div class="mh2"></div>'+
   '<div class="mhd"><h2>&#128196; Batch SmartScan</h2></div>'+
@@ -1207,38 +1276,38 @@ async function startBatch(files, rid) {
     '</div>'+
     '<div id="batchLog" style="font-size:11px;color:var(--tx3);max-height:160px;overflow-y:auto;width:100%;text-align:left;line-height:1.7"></div>'+
   '</div></div></div>';
- 
+
   const apiKey = getApiKey();
- 
+
   for (const file of fileArr) {
     const logEl = $('batchLog');
     const isPdf = file.type === 'application/pdf';
     const fileIcon = isPdf ? '📄' : '🖼';
- 
+
     // Update progress label with current file
     const titleEl = $('batchTitle');
     if(titleEl) titleEl.textContent = (isPdf ? 'Reading PDF' : 'Scanning image') + ' ' + (done+1) + ' of ' + total + '…';
- 
+
     const dataUrl = await new Promise(res => {
       const fr = new FileReader();
       fr.onload = ev => res(ev.target.result);
       fr.readAsDataURL(file);
     });
- 
+
     try {
       if (!apiKey) {
         if(logEl) logEl.innerHTML += '<div style="color:var(--rd)">✗ No API key — add it via Settings → SmartScan API Key</div>';
         done++; continue;
       }
- 
+
       const base64    = dataUrl.split(',')[1];
       const mediaType = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
- 
+
       // PDFs use type:'document', images use type:'image'
       const fileBlock = isPdf
         ? { type:'document', source:{ type:'base64', media_type:'application/pdf', data:base64 } }
         : { type:'image',    source:{ type:'base64', media_type:mediaType,          data:base64 } };
- 
+
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -1256,17 +1325,17 @@ async function startBatch(files, rid) {
           ]}]
         })
       });
- 
+
       if(!resp.ok) {
         const eb = await resp.json().catch(()=>({error:{message:'HTTP '+resp.status}}));
         throw new Error(eb?.error?.message || 'HTTP '+resp.status);
       }
       const rdata = await resp.json();
       if(rdata.error) throw new Error(rdata.error.message || JSON.stringify(rdata.error));
- 
+
       let parsed = {};
       try { parsed = JSON.parse((rdata.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim()); } catch(e){}
- 
+
       const today = new Date().toISOString().slice(0,10);
       const exp = {
         id:          uid('E'),
@@ -1283,28 +1352,28 @@ async function startBatch(files, rid) {
       S.expenses.push(exp);
       added++;
       if(logEl) logEl.innerHTML += '<div>'+fileIcon+' <strong>'+esc(exp.merchant)+'</strong> &mdash; '+fmt(exp.amount)+(isPdf?' <span style="color:var(--bl);font-size:10px">PDF</span>':'')+'</div>';
- 
+
     } catch(err) {
       console.error('Batch item failed:', file.name, err);
       if(logEl) logEl.innerHTML += '<div style="color:var(--rd)">✗ '+esc(file.name)+': '+(err.message||'scan failed')+'</div>';
     }
- 
+
     done++;
     const pct = Math.round(done/total*100);
     const bar=$('batchBar'), sub=$('batchSub');
     if(bar) bar.style.width = pct+'%';
     if(sub) sub.textContent = done+' of '+total+' complete';
   }
- 
+
   // Save once after all files processed — await to ensure receipts upload before render
   const titleEl2=$('batchTitle'), subEl=$('batchSub');
   if(titleEl2) titleEl2.textContent = 'Saving to Firebase…';
   await save();
- 
+
   // Show summary then navigate to report
   if(titleEl2) titleEl2.innerHTML = '&#10003; Batch complete';
   if(subEl)    subEl.textContent  = added+' of '+total+' receipts added';
- 
+
   setTimeout(()=>{
     closeM();
     render();
@@ -1325,7 +1394,7 @@ function pickR(){
   '<button class="btn" style="width:100%;justify-content:center" onclick="closeM();window._snap=null;window._afterReport=null;mNR()">+ New Report</button>'+
   '</div></div></div>';
 }
- 
+
 function pickRSelect(rid) {
   const sn=window._snap, cb=window._afterReport;
   window._snap=null; window._afterReport=null;
@@ -1333,7 +1402,7 @@ function pickRSelect(rid) {
   if(cb) { cb(rid); return; }
   mAE(rid, sn);
 }
- 
+
 /* ══════════════════════════════════════════════════════ VIEWS */
 function showView(v,id){
   document.querySelectorAll('.ni,.bni').forEach(n=>n.classList.remove('active'));
@@ -1350,7 +1419,7 @@ function render(){
   else if(S.view==='report-detail') m.innerHTML=vDet(S.rid);
   m.scrollTop=0;
 }
- 
+
 /* Tax summary widget */
 function taxBox(exps){
   if(!exps.length) return '';
@@ -1366,7 +1435,7 @@ function taxBox(exps){
     '<div class="txr tot"><span>Net after recovery</span><span>'+fmt(r2(t.tot-t.gR-t.qR))+'</span></div>'+
   '</div>';
 }
- 
+
 /* DASHBOARD */
 function vDash(){
   const t=TAX.sum(S.expenses);
@@ -1392,7 +1461,7 @@ function vDash(){
     '<div class="xc">'+rec.map(r=>{const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);return'<div class="xcd" onclick="showView(\'report-detail\',\''+r.id+'\')"><div class="xcic">&#128203;</div><div class="xcb"><div class="xcn">'+esc(r.name)+'</div><div class="xcm">'+esc(r.category)+' &middot; '+ex.length+' lines &middot; '+badge(r.status)+'</div></div><div class="xca">'+fmt(tx.tot)+'</div></div>';}).join('')+'</div>')+
   '</div>';
 }
- 
+
 /* REPORTS */
 function vRep(){
   return '<div class="ph"><div class="pt">Reports</div><div class="phs"></div><div class="pa"><button class="btn" onclick="importExcel()">&#128196; Import</button><button class="btn p" onclick="mNR()">+ New Report</button></div></div>'+
@@ -1414,7 +1483,7 @@ function vRep(){
   '<div class="xc">'+S.reports.map(r=>{const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);return'<div class="xcd" onclick="showView(\'report-detail\',\''+r.id+'\')"><div class="xcic">&#128203;</div><div class="xcb"><div class="xcn">'+esc(r.name)+'</div><div class="xcm">'+esc(r.category)+' &middot; '+badge(r.status)+'</div></div><div style="text-align:right"><div class="xca">'+fmt(tx.tot)+'</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">'+ex.length+' lines</div></div></div>';}).join('')+'</div>')+
   '</div>';
 }
- 
+
 /* ALL EXPENSES */
 function vExp(){
   return '<div class="ph"><div class="pt">All Expenses</div></div>'+
@@ -1451,7 +1520,7 @@ function vExp(){
     '<div style="text-align:right"><div class="xca">'+fmt(tx.tot)+'</div>'+((!r||r.status==='Open')?'<div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px"><button class="ib" style="font-size:12px" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><button class="ib" style="font-size:12px" onclick="delE(\''+e.id+'\')">&#128465;</button></div>':'')+'</div></div>';}).join('')+'</div>')+
   '</div>';
 }
- 
+
 /* REPORT DETAIL */
 function vDet(rid){
   const r=S.reports.find(r=>r.id===rid);
@@ -1472,7 +1541,7 @@ function vDet(rid){
           '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M8 4l2 2" stroke="currentColor" stroke-width="1.2"/></svg>'+
         '</button>'+
       '</div>'+
-      '<div class="ps">'+esc(r.category)+' &middot; '+fd(r.startDate)+' &ndash; '+fd(r.endDate)+'</div>'+
+      '<div class="ps">'+esc(r.category)+' &middot; '+fd(r.startDate)+' &ndash; '+fd(r.endDate)+' &middot; <strong>'+(r.currency||'CAD')+'</strong></div>'+
     '</div>'+
     '<div class="phs"></div>'+
     '<div class="pa">'+badge(r.status)+
@@ -1499,7 +1568,7 @@ function vDet(rid){
         '<td style="color:var(--tx2)">'+esc(e.category)+'</td><td>'+fmt(e.amount)+'</td>'+
         '<td style="color:var(--tx2)">'+(e.taxIncluded?'Y':'N')+'</td>'+
         '<td>'+fmt(et.sub)+'</td><td>'+(et.xmt?'&mdash;':fmt(et.gst))+'</td><td>'+(et.xmt?'&mdash;':fmt(et.qst))+'</td>'+
-        '<td style="font-weight:600">'+fmt(et.tot)+'</td>'+
+        '<td style="font-weight:600">'+fmtS(et.tot,expCurrency(e))+'</td>'+
         '<td><div style="display:flex;gap:4px">'+(e.receipts?.length?e.receipts.map(rc=>rcptThumb(rc,34)).join(''):'&mdash;')+'</div></td>'+
         (locked?'':'<td style="white-space:nowrap"><button class="ib" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><button class="ib" onclick="delE(\''+e.id+'\')">&#128465;</button></td>')+
       '</tr>';}).join('')+
@@ -1513,18 +1582,21 @@ function vDet(rid){
   '</div>'+
   (r.notes?'<div class="card" style="padding:14px 16px"><div style="font-size:11px;color:var(--tx2);font-weight:700;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">Notes</div><div style="font-size:13px">'+esc(r.notes)+'</div></div>':'');
 }
- 
+
 /* ══════════════════════════════════════════════════════ MODALS */
 const mR = $('mR');
 function closeM(){mR.innerHTML='';}
- 
+
 function mNR(){
   closeFab();
   mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div>'+
   '<div class="mhd"><h2>New Report</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
   '<div class="mb">'+
     '<div class="fld"><label>Report Name *</label><input class="fi2" id="rN" placeholder="e.g. Q2 Travel &mdash; Paris Showroom"/></div>'+
-    '<div class="fld"><label>Category</label><select class="fse" id="rC"><option>Auto Expense</option><option>Travel &amp; Buying</option><option>Travel &amp; Selling</option><option>Samples</option><option>Mobile</option><option>Meals &amp; Entertainment</option><option>Office</option><option>Computer</option><option>Other</option></select></div>'+
+    '<div class="r2">'+
+      '<div class="fld"><label>Category</label><select class="fse" id="rC"><option>Auto Expense</option><option>Travel &amp; Buying</option><option>Travel &amp; Selling</option><option>Samples</option><option>Mobile</option><option>Meals &amp; Entertainment</option><option>Office</option><option>Computer</option><option>Other</option></select></div>'+
+      '<div class="fld"><label>Currency</label><select class="fse" id="rCur">'+currencyOpts('CAD')+'</select></div>'+
+    '</div>'+
     '<div class="r2"><div class="fld"><label>Start Date</label><input class="fi2" type="date" id="rS"/></div><div class="fld"><label>End Date</label><input class="fi2" type="date" id="rE"/></div></div>'+
     '<div class="fld"><label>Notes</label><textarea class="fta" id="rNt" placeholder="Optional&hellip;"></textarea></div>'+
   '</div>'+
@@ -1532,50 +1604,56 @@ function mNR(){
   '</div></div>';
   setTimeout(()=>$('rN')?.focus(),100);
 }
- 
+
 function mRenameReport(rid) {
   const r = S.reports.find(r=>r.id===rid); if(!r) return;
   mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div>'+
-  '<div class="mhd"><h2>&#9998; Rename Report</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
+  '<div class="mhd"><h2>&#9998; Edit Report</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
   '<div class="mb">'+
     '<div class="fld"><label>Report Name</label>'+
       '<input class="fi2" id="rnInput" value="'+esc(r.name)+'" placeholder="Report name"/></div>'+
-    '<div class="fld"><label>Category</label>'+
-      '<select class="fse" id="rnCat">'+
-        ['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Other']
-          .map(c=>'<option'+(r.category===c?' selected':'')+'>'+c+'</option>').join('')+
-      '</select></div>'+
+    '<div class="r2">'+
+      '<div class="fld"><label>Category</label>'+
+        '<select class="fse" id="rnCat">'+
+          ['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Other']
+            .map(c=>'<option'+(r.category===c?' selected':'')+'>'+c+'</option>').join('')+
+        '</select></div>'+
+      '<div class="fld"><label>Currency</label>'+
+        '<select class="fse" id="rnCur">'+currencyOpts(r.currency||'CAD')+'</select>'+
+      '</div>'+
+    '</div>'+
     '<div class="r2">'+
       '<div class="fld"><label>Start Date</label><input class="fi2" type="date" id="rnS" value="'+(r.startDate||'')+'"/></div>'+
       '<div class="fld"><label>End Date</label><input class="fi2" type="date" id="rnE" value="'+(r.endDate||'')+'"/></div>'+
     '</div>'+
   '</div>'+
-  '<div class="mf"><button class="btn" onclick="closeM()">Cancel</button><button class="btn p" onclick="saveRename(\''+rid+'\')">Save</button></div>'+
+  '<div class="mf"><button class="btn" onclick="closeM()">Cancel</button><button class="btn p" onclick="saveRename(\''+rid+'\')" >Save</button></div>'+
   '</div></div>';
   setTimeout(()=>{ const i=$('rnInput'); if(i){i.focus();i.select();} },100);
 }
- 
+
 function saveRename(rid) {
   const r = S.reports.find(r=>r.id===rid); if(!r) return;
   const name = ($('rnInput')?.value||'').trim();
   if (!name) { toast('Name cannot be empty','#BA7517'); return; }
   r.name     = name;
   r.category = $('rnCat')?.value  || r.category;
+  r.currency = $('rnCur')?.value  || r.currency || 'CAD';
   r.startDate= $('rnS')?.value    || r.startDate;
   r.endDate  = $('rnE')?.value    || r.endDate;
-  save(); closeM(); toast('Report renamed');
+  save(); closeM(); toast('Report updated');
   
   render();
 }
- 
+
 function saveR(){
   const name=$('rN').value.trim(); if(!name){alert('Report name required.');return;}
-  const r={id:uid('R'),name,category:$('rC').value,startDate:$('rS').value,endDate:$('rE').value,notes:$('rNt').value.trim(),status:'Open',_ts:Date.now()};
+  const r={id:uid('R'),name,category:$('rC').value,currency:$('rCur')?.value||'CAD',startDate:$('rS').value,endDate:$('rE').value,notes:$('rNt').value.trim(),status:'Open',_ts:Date.now()};
   S.reports.push(r); save(); closeM(); toast('Report created');
   
   showView('report-detail',r.id);
 }
- 
+
 function mAE(rid, preImg, scanned) {
   closeFab(); window._rec=preImg?[preImg]:[];
   const today=new Date().toISOString().slice(0,10);
@@ -1601,7 +1679,16 @@ function mAE(rid, preImg, scanned) {
       '<div class="tpr rec"><span>GST recoverable (ITC)</span><span id="tp5">&mdash;</span></div>'+
       '<div class="tpr rec"><span>QST recoverable (ITR)</span><span id="tp6">&mdash;</span></div>'+
     '</div>'+
-    '<div class="fld"><label>Notes</label><input class="fi2" id="eNo" placeholder="Optional&hellip;" value="'+esc(sc.notes||'')+'"/></div>'+
+    '<div class="r2">'+
+      '<div class="fld"><label>Notes</label><input class="fi2" id="eNo" placeholder="Optional&hellip;" value="'+esc(sc.notes||'')+'"/></div>'+
+      '<div class="fld"><label>Currency Override</label>'+
+        '<select class="fse" id="eCur">'+
+          '<option value="">— Use report default —</option>'+
+          currencyOpts(sc.currency||'')+
+        '</select>'+
+        '<div style="font-size:11px;color:var(--tx3);margin-top:3px">Leave blank to use report currency</div>'+
+      '</div>'+
+    '</div>'+
     '<div class="fld"><label>Receipts</label>'+
       '<div class="dz" id="dz" onclick="$(\'fi4\').click()" ondragover="event.preventDefault();this.classList.add(\'ov\')" ondragleave="this.classList.remove(\'ov\')" ondrop="onDp(event)">'+
         '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="display:block;margin:0 auto;color:var(--tx2)"><path d="M12 16V8M12 8l-3 3M12 8l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.4"/></svg>'+
@@ -1616,7 +1703,7 @@ function mAE(rid, preImg, scanned) {
   setTimeout(()=>{ if(sc.amount) updT(); if(!sc.merchant) $('eM')?.focus(); }, 100);
   if(preImg) renderT();
 }
- 
+
 function updT(){
   const a=parseFloat(($('eA')&&$('eA').value)||'0')||0;
   const c=($('eCt')&&$('eCt').value)||'Other';
@@ -1633,7 +1720,7 @@ function updT(){
   $('tp6').textContent=tx.xmt?'—':fmt(tx.qR);
   $('tpM').style.display=tx.meal?'flex':'none';
 }
- 
+
 window._rec=[];
 function onFi(files){
   Array.from(files).forEach(f=>{
@@ -1659,7 +1746,7 @@ function renderT(){
   }).join('');
 }
 function rmT(i){window._rec.splice(i,1);renderT();}
- 
+
 // Return thumbnail HTML for a receipt src — handles both images and PDFs
 function rcptThumb(src, size, onclick) {
   const s = size||32;
@@ -1670,11 +1757,12 @@ function rcptThumb(src, size, onclick) {
   if (isPdf) return '<div'+oc+' style="width:'+s+'px;height:'+s+'px;background:var(--blbg);border-radius:4px;border:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;'+cl+'"><span style="font-size:'+(s*0.45)+'px">📄</span><span style="font-size:'+(s*0.22)+'px;font-weight:700;color:var(--bl)">PDF</span></div>';
   return '<img src="'+src+'"'+oc+' style="width:'+s+'px;height:'+s+'px;object-fit:cover;border-radius:4px;border:1px solid var(--bd);'+cl+'"/>';
 }
- 
+
 async function saveE(rid){
   const m=$('eM').value.trim(),a=$('eA').value,d=$('eD').value;
   if(!m||!a||!d){alert('Merchant, date and amount are required.');return;}
-  const e={id:uid('E'),reportId:rid,merchant:m,date:d,amount:parseFloat(a),category:$('eCt').value,notes:$('eNo').value.trim(),taxIncluded:!!($('tI')&&$('tI').checked),receipts:[...window._rec],_ts:Date.now()};
+  const eCurVal=$('eCur')?.value||'';
+  const e={id:uid('E'),reportId:rid,merchant:m,date:d,amount:parseFloat(a),category:$('eCt').value,notes:$('eNo').value.trim(),taxIncluded:!!($('tI')&&$('tI').checked),currency:eCurVal||undefined,receipts:[...window._rec],_ts:Date.now()};
   S.expenses.push(e);
   closeM();
   toast('Saving…');
@@ -1683,7 +1771,7 @@ async function saveE(rid){
   render();
 }
 function delE(id){if(!confirm('Remove this expense?'))return;S.expenses=S.expenses.filter(e=>e.id!==id);save().then(()=>render());toast('Removed');}
- 
+
 function mEditE(eid) {
   const e=S.expenses.find(e=>e.id===eid); if(!e) return;
   window._rec=[...(e.receipts||[])];
@@ -1710,7 +1798,16 @@ function mEditE(eid) {
       '<div class="tpr rec"><span>GST recoverable (ITC)</span><span id="tp5">&mdash;</span></div>'+
       '<div class="tpr rec"><span>QST recoverable (ITR)</span><span id="tp6">&mdash;</span></div>'+
     '</div>'+
-    '<div class="fld"><label>Notes</label><input class="fi2" id="eNo" placeholder="Optional&hellip;" value="'+esc(e.notes||'')+'"/></div>'+
+    '<div class="r2">'+
+      '<div class="fld"><label>Notes</label><input class="fi2" id="eNo" placeholder="Optional&hellip;" value="'+esc(e.notes||'')+'"/></div>'+
+      '<div class="fld"><label>Currency Override</label>'+
+        '<select class="fse" id="eCur">'+
+          '<option value="">— Use report default —</option>'+
+          currencyOpts(e.currency||'')+
+        '</select>'+
+        '<div style="font-size:11px;color:var(--tx3);margin-top:3px">Leave blank to use report currency</div>'+
+      '</div>'+
+    '</div>'+
     (openReports.length>1
       ? '<div class="fld"><label>Move to Report</label>'+
           '<select class="fse" id="eRep">'+reportOpts+'</select>'+
@@ -1730,7 +1827,7 @@ function mEditE(eid) {
   '</div></div>';
   setTimeout(()=>{ updT(); renderT(); $('eM')?.focus(); }, 100);
 }
- 
+
 async function saveEditE(eid) {
   const e=S.expenses.find(e=>e.id===eid); if(!e) return;
   const m=($('eM')?.value||'').trim(), a=$('eA')?.value, d=$('eD')?.value;
@@ -1744,6 +1841,7 @@ async function saveEditE(eid) {
   e.category    = $('eCt')?.value || e.category;
   e.notes       = ($('eNo')?.value||'').trim();
   e.taxIncluded = !!($('tI')&&$('tI').checked);
+  e.currency    = $('eCur')?.value || undefined;
   e.receipts    = [...window._rec];
   e.reportId    = newReportId||e.reportId;
   e._ts         = Date.now();
@@ -1787,7 +1885,7 @@ function pRec(src){
   }
   mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div><div class="mhd"><h2>Receipt</h2><button class="ib" onclick="closeM()">&#10005;</button></div><div style="padding:14px;text-align:center;max-height:80vh;overflow:auto"><img src="'+src+'" style="max-width:100%;border-radius:8px"/></div></div></div>';
 }
- 
+
 /* ══════════════════════════════════════════════════════
    EXCEL EXPORT — v1.5.7
    Pure Office Open XML (SpreadsheetML) builder — no library needed.
@@ -1796,10 +1894,10 @@ function pRec(src){
    Sheet 2 : Tax Summary
    Sheet 3 : Summary
 ══════════════════════════════════════════════════════ */
- 
+
 /* ── OOXML helpers ── */
 function xEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
- 
+
 /* Build shared-strings table and return index map */
 function buildSST(strings){
   const map={}, arr=[];
@@ -1810,7 +1908,7 @@ function buildSST(strings){
     +'</sst>';
   return {map, xml};
 }
- 
+
 /* Style index constants — order must match buildStyles() arrays */
 const XST = {
   DEFAULT:0, TITLE:1, META_LBL:2, META_VAL:3,
@@ -1824,14 +1922,14 @@ const XST = {
   RECOV_L:24, RECOV_R:25, NET_L:26, NET_R:27,
   SUM_HDR:28, SUM_LBL:29, SUM_VAL:30, SUM_VAL_R:31,
 };
- 
+
 function buildStyles(){
   // numFmts
   const numFmts=`<numFmts count="2">
     <numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0.00"/>
     <numFmt numFmtId="165" formatCode="yyyy-mm-dd"/>
   </numFmts>`;
- 
+
   // fonts  0=default 1=title 2=metaLbl 3=metaVal 4=colHdr 5=catHdr 6=catSub 7=grand 8=row 9=mealTag 10=secHdr 11=txRow 12=recov 13=net 14=sumHdr 15=sumLbl 16=sumVal
   const fonts=`<fonts count="17">
     <font><sz val="10"/><name val="Calibri"/></font>
@@ -1852,7 +1950,7 @@ function buildStyles(){
     <font><b/><sz val="10"/><color rgb="FF333333"/><name val="Calibri"/></font>
     <font><sz val="10"/><color rgb="FF1A1917"/><name val="Calibri"/></font>
   </fonts>`;
- 
+
   // fills  0=none 1=gray(required) 2=titleGreen 3=colHdrGreen 4=catMint 5=catSubPale 6=grandGreen 7=white 8=altGreen 9=mealAmber 10=secBlue 11=txAlt 12=recovBlue 13=netAmber 14=sumHdrGreen
   const fills=`<fills count="15">
     <fill><patternFill patternType="none"/></fill>
@@ -1871,7 +1969,7 @@ function buildStyles(){
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFF3CD"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FF1D9E75"/></patternFill></fill>
   </fills>`;
- 
+
   const thinBorder='<left style="thin"><color rgb="FFCCCCCC"/></left><right style="thin"><color rgb="FFCCCCCC"/></right><top style="thin"><color rgb="FFCCCCCC"/></top><bottom style="thin"><color rgb="FFCCCCCC"/></bottom>';
   const medBot='<left style="thin"><color rgb="FFCCCCCC"/></left><right style="thin"><color rgb="FFCCCCCC"/></right><top style="thin"><color rgb="FFCCCCCC"/></top><bottom style="medium"><color rgb="FF1D6B4A"/></bottom>';
   const borders=`<borders count="3">
@@ -1879,17 +1977,17 @@ function buildStyles(){
     <border>${thinBorder}<diagonal/></border>
     <border>${medBot}<diagonal/></border>
   </borders>`;
- 
+
   // cellStyleXfs (required)
   const cellStyleXfs=`<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>`;
- 
+
   // xf: numFmtId fontId fillId borderId applyFont applyFill applyBorder applyAlignment + alignment
   const L='<alignment horizontal="left" wrapText="1"/>',
         R='<alignment horizontal="right" wrapText="1"/>',
         C='<alignment horizontal="center" wrapText="1"/>',
         NF_CAD='numFmtId="164"', NF_0='numFmtId="0"', NF_DATE='numFmtId="165"';
   function xf(nf,fi,fill,bord,al){ return `<xf ${nf} fontId="${fi}" fillId="${fill}" borderId="${bord}" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">${al}</xf>`; }
- 
+
   const cellXfs=[
     xf(NF_0,  0, 0,0,L),           // 0  DEFAULT
     xf(NF_0,  1, 2,1,L),           // 1  TITLE
@@ -1924,7 +2022,7 @@ function buildStyles(){
     xf(NF_0, 16, 0,1,L),           // 30 SUM_VAL
     xf(NF_CAD,16,0,1,R),           // 31 SUM_VAL_R
   ];
- 
+
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 ${numFmts}${fonts}${fills}${borders}${cellStyleXfs}
@@ -1932,7 +2030,7 @@ ${numFmts}${fonts}${fills}${borders}${cellStyleXfs}
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 }
- 
+
 /* Build a worksheet XML from a rows array.
    Each row is an array of cell objects: {v, s, t} where
    t = 's' (shared string index), 'n' (number), 'b' (blank)
@@ -1944,13 +2042,13 @@ function colAddr(ci){
   return s;
 }
 function cellAddr(ci,ri){ return colAddr(ci)+(ri+1); }
- 
+
 function buildSheet(rows, colWidths, merges){
   const colsXml = colWidths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('');
   const mergesXml = merges && merges.length
     ? '<mergeCells count="'+merges.length+'">'+merges.map(m=>`<mergeCell ref="${m}"/>`).join('')+'</mergeCells>'
     : '';
- 
+
   let rowsXml='';
   rows.forEach((row,ri)=>{
     let cellsXml='';
@@ -1968,10 +2066,10 @@ function buildSheet(rows, colWidths, merges){
     });
     if(cellsXml) rowsXml+=`<row r="${ri+1}">${cellsXml}</row>`;
   });
- 
+
   const maxC = Math.max(...rows.map(r=>r.length))-1;
   const ref=`A1:${colAddr(maxC)}${rows.length}`;
- 
+
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <sheetViews><sheetView workbookViewId="0"><selection activeCell="A1" sqref="A1"/></sheetView></sheetViews>
@@ -1981,7 +2079,7 @@ function buildSheet(rows, colWidths, merges){
 ${mergesXml}
 </worksheet>`;
 }
- 
+
 /* ZIP builder — uses JSZip for reliable, validated ZIP output */
 async function buildXlsx(sheets, sst, styles){
   const zip = new JSZip();
@@ -1989,7 +2087,7 @@ async function buildXlsx(sheets, sst, styles){
   const ws  = xl.folder('worksheets');
   const r   = zip.folder('_rels');
   const xlr = xl.folder('_rels');
- 
+
   zip.file('[Content_Types].xml',
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
     '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
@@ -2000,19 +2098,19 @@ async function buildXlsx(sheets, sst, styles){
     '<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>'+
     '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+
     '</Types>');
- 
+
   r.file('.rels',
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
     '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'+
     '</Relationships>');
- 
+
   xl.file('workbook.xml',
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
     '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
     '<sheets>'+sheets.map((s,i)=>`<sheet name="${xEsc(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')+'</sheets>'+
     '</workbook>');
- 
+
   xlr.file('workbook.xml.rels',
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
@@ -2020,14 +2118,14 @@ async function buildXlsx(sheets, sst, styles){
     `<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>` +
     `<Relationship Id="rId${sheets.length+2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
     '</Relationships>');
- 
+
   xl.file('styles.xml', styles);
   xl.file('sharedStrings.xml', sst);
   sheets.forEach((s,i) => ws.file(`sheet${i+1}.xml`, s.xml));
- 
+
   return await zip.generateAsync({type:'uint8array', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
- 
+
 /* ── Main export function ── */
 async function expR(rid){
   const r=S.reports.find(r=>r.id===rid); if(!r)return;
@@ -2037,18 +2135,18 @@ async function expR(rid){
   const sp='Downloads/'+fn+'/';
   const stx=TAX.sum(exps);
   const fname=r.name.replace(/[^a-z0-9]/gi,'_')+'_'+CFG.APP_VERSION+'_Report.xlsx';
- 
+
   // All shared strings collected here
   const allStrings=[];
   function si(s){ const str=String(s==null?'':s); if(!allStrings.includes(str))allStrings.push(str); return str; }
- 
+
   // Helper: string cell
   function sc(v,s){ const str=si(v); return {t:'s',_str:str,s}; }
   // Helper: number cell
   function nc(v,s){ return {t:'n',v:Number(v)||0,s}; }
   // Helper: blank cell
   function bc(s){ return {t:'b',s:s||XST.DEFAULT}; }
- 
+
   /* ══ SHEET 1: EXPENSES — category columns layout ══
      Columns: # | Date | Merchant | Notes | [Cat1] | [Cat2] … | TOTAL | GST | QST | ITC | Net
      Rows:    one per expense, amount in matching category col, blank in others
@@ -2056,23 +2154,31 @@ async function expR(rid){
   ══════════════════════════════════════════════════════ */
   const sheet1rows=[];
   const s1merges=[];
- 
+
   // All categories present in this report, sorted
   const catList=[...new Set(exps.map(e=>e.category||'Other'))].sort();
-  // Fixed left cols: # | Date | Merchant | Notes
+  // Fixed left cols: # | Date | Merchant | Notes | Currency
   // Category cols: one per catList entry
   // Fixed right cols: TOTAL | GST (5%) | QST (9.975%) | ITC Recov. | Net After ITC
-  const NL=4, NR=5;
-  const NC1=NL+catList.length+NR;
+  // Per-currency total cols (if mixed currencies): [CUR] Total | [CUR] GST | [CUR] QST
+  const NL=5, NR=5;
+  const NC1=NL+catList.length+NR+(multiCurrency ? expCurs.length*3 : 0);
   const lastC1=colAddr(NC1-1);
- 
+
   // Row 1: Title — merged full width
   sheet1rows.push([sc('RD International — Expense Report · Québec, Canada',XST.TITLE),...Array(NC1-1).fill(bc(XST.TITLE))]);
   s1merges.push(`A1:${lastC1}1`);
- 
+
   // Rows 2+: Meta block
+  const rCur = rptCurrency(r);
+  const expCurs = [...new Set(exps.map(e=>expCurrency(e)))].sort((a,b)=>
+    a==='CAD'?-1:b==='CAD'?1:a==='USD'?-1:b==='USD'?1:a.localeCompare(b));
+  const multiCurrency = expCurs.length > 1 || (expCurs.length===1 && expCurs[0]!==rCur);
+
   const meta=[
-    ['Report',r.name],['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
+    ['Report',r.name],
+    ['Currency',multiCurrency ? expCurs.join(', ')+' (mixed)' : rCur],
+    ['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
     ['Status',r.status],['Jurisdiction','Québec, Canada — GST 5% + QST 9.975%'],
     ['Exported',new Date().toLocaleString('en-CA')],['App Version',CFG.APP_VERSION]
   ];
@@ -2080,47 +2186,59 @@ async function expR(rid){
     sheet1rows.push([sc(l,XST.META_LBL),sc(v,XST.META_VAL),...Array(NC1-2).fill(bc(XST.META_VAL))]);
     s1merges.push(`B${sheet1rows.length}:${lastC1}${sheet1rows.length}`);
   });
- 
+
   // Blank spacer
   sheet1rows.push(Array(NC1).fill(bc()));
- 
+
   // Column header row
   const hdrRow=[
     sc('#',        XST.COL_HDR),
     sc('Date',     XST.COL_HDR),
     sc('Merchant', XST.COL_HDR),
     sc('Notes',    XST.COL_HDR),
+    sc('Currency', XST.COL_HDR),
     ...catList.map(cat=>sc(cat, XST.CAT_HDR)),
     sc('TOTAL',        XST.GRAND_R),
     sc('GST (5%)',     XST.COL_HDR_R),
     sc('QST (9.975%)', XST.COL_HDR_R),
     sc('ITC Recov.',   XST.RECOV_R),
     sc('Net After ITC',XST.NET_R),
+    ...(multiCurrency ? expCurs.flatMap(cur=>[
+      sc(cur+' Total', XST.GRAND_R),
+      sc(cur+' GST',   XST.COL_HDR_R),
+      sc(cur+' QST',   XST.COL_HDR_R),
+    ]) : []),
   ];
   sheet1rows.push(hdrRow);
- 
+
   // Expense rows
   exps.forEach((e,li)=>{
     const et=TAX.calc(Number(e.amount),e.category,e.taxIncluded||false);
     const alt=li%2===1;
     const L=alt?XST.ROW_ALT_L:XST.ROW_L, R=alt?XST.ROW_ALT_R:XST.ROW_R;
+    const eCur = expCurrency(e);
     sheet1rows.push([
       nc(li+1, L),
       sc(e.date||'', L),
       sc(e.merchant||'', L),
       sc(e.notes||'', L),
+      sc(eCur, L),
       ...catList.map(cat=>(e.category||'Other')===cat ? nc(et.tot,R) : bc(R)),
       nc(et.tot, R),
       nc(et.xmt?0:et.gst, R),
       nc(et.xmt?0:et.qst, R),
       nc(r2(et.gR+et.qR), R),
       nc(r2(et.tot-et.gR-et.qR), R),
+      ...(multiCurrency ? expCurs.flatMap(cur=>{
+        if(eCur!==cur) return [bc(R),bc(R),bc(R)];
+        return [nc(et.tot,R), nc(et.xmt?0:et.gst,R), nc(et.xmt?0:et.qst,R)];
+      }) : []),
     ]);
   });
- 
+
   // Blank spacer before totals
   sheet1rows.push(Array(NC1).fill(bc()));
- 
+
   // TOTAL row — grand green
   sheet1rows.push([
     bc(XST.GRAND), sc('TOTAL',XST.GRAND), bc(XST.GRAND), bc(XST.GRAND),
@@ -2133,8 +2251,13 @@ async function expR(rid){
     nc(stx.qst,         XST.GRAND_R),
     nc(r2(stx.gR+stx.qR), XST.GRAND_R),
     nc(r2(stx.tot-stx.gR-stx.qR), XST.GRAND_R),
+    ...(multiCurrency ? expCurs.flatMap(cur=>{
+      const curExps = exps.filter(e=>expCurrency(e)===cur);
+      const ct = TAX.sum(curExps);
+      return [nc(ct.tot,XST.GRAND_R), nc(ct.gst,XST.GRAND_R), nc(ct.qst,XST.GRAND_R)];
+    }) : []),
   ]);
- 
+
   // GST row — mint subtotal style
   sheet1rows.push([
     bc(XST.CAT_SUB), sc('GST (5%)',XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB),
@@ -2145,7 +2268,7 @@ async function expR(rid){
     nc(stx.gst,XST.CAT_SUB_R), bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
     bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
   ]);
- 
+
   // QST row
   sheet1rows.push([
     bc(XST.CAT_SUB), sc('QST (9.975%)',XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB),
@@ -2156,7 +2279,7 @@ async function expR(rid){
     nc(stx.qst,XST.CAT_SUB_R), bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
     bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
   ]);
- 
+
   // ITC Recoverable row — blue
   sheet1rows.push([
     bc(XST.RECOV_L), sc('ITC Recoverable',XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L),
@@ -2167,7 +2290,7 @@ async function expR(rid){
     nc(r2(stx.gR+stx.qR),XST.RECOV_R), bc(XST.RECOV_R), bc(XST.RECOV_R),
     bc(XST.RECOV_R), bc(XST.RECOV_R),
   ]);
- 
+
   // Net After ITC row — amber
   sheet1rows.push([
     bc(XST.NET_L), sc('Net After ITC',XST.NET_L), bc(XST.NET_L), bc(XST.NET_L),
@@ -2178,15 +2301,15 @@ async function expR(rid){
     nc(r2(stx.tot-stx.gR-stx.qR),XST.NET_R), bc(XST.NET_R), bc(XST.NET_R),
     bc(XST.NET_R), bc(XST.NET_R),
   ]);
- 
+
   // Col widths: # | Date | Merchant | Notes | cats... | TOTAL | GST | QST | ITC | Net
   const s1colWidths=[4,11,24,22,...catList.map(()=>14),13,10,12,12,14];
- 
+
   /* ══ SHEET 3: TAX SUMMARY ══ */
   const sheet3rows=[];
   const s3merges=[];
   let tr=0;
- 
+
   function tsHdr(label, ncols){
     sheet3rows.push([sc(label,XST.SEC_HDR),...Array(ncols-1).fill(bc(XST.SEC_HDR))]);
     if(ncols>1) s3merges.push(`A${tr+2}:${colAddr(ncols-1)}${tr+2}`);
@@ -2196,7 +2319,7 @@ async function expR(rid){
     sheet3rows.push([sc(lbl,stL),nc(val,stR)]);tr++;
   }
   function tsBlank(){ sheet3rows.push([bc(),bc()]); tr++; }
- 
+
   sheet3rows.push([sc('Québec Tax Summary — GST 5% + QST 9.975%',XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR)]);
   s3merges.push('A1:G1'); tr++;
   [[r.name,'Report'],[r.status,'Status'],[(r.startDate||'')+(r.endDate?' to '+r.endDate:''),'Period'],[exps.length,'Items']].forEach(([v,l])=>{
@@ -2204,7 +2327,7 @@ async function expR(rid){
     s3merges.push(`B${tr+2}:G${tr+2}`); tr++;
   });
   tsBlank();
- 
+
   tsHdr('TAX BREAKDOWN',2);
   sheet3rows.push([sc('Item',XST.COL_HDR),sc('Amount (CAD)',XST.COL_HDR_R)]);tr++;
   [[' Subtotal (before tax)',stx.sub,XST.TX_ROW_L,XST.TX_ROW_R],
@@ -2213,25 +2336,25 @@ async function expR(rid){
   ].forEach(([l,v,sL,sR])=>tsRow(l,v,sL,sR));
   sheet3rows.push([sc('Total including taxes',XST.TX_GRAND_L),nc(stx.tot,XST.TX_GRAND_R)]);tr++;
   tsBlank();
- 
+
   tsHdr('INPUT TAX CREDITS / REFUNDS',2);
   sheet3rows.push([sc('Item',XST.COL_HDR),sc('Recoverable (CAD)',XST.COL_HDR_R)]);tr++;
   tsRow(' GST recoverable (ITC — federal)',stx.gR,XST.RECOV_L,XST.RECOV_R);
   tsRow(' QST recoverable (ITR — provincial)',stx.qR,XST.RECOV_L,XST.RECOV_R);
   sheet3rows.push([sc('Total recoverable',XST.TX_GRAND_L),nc(r2(stx.gR+stx.qR),XST.TX_GRAND_R)]);tr++;
   tsBlank();
- 
+
   tsHdr('NET COST AFTER RECOVERY',2);
   sheet3rows.push([sc('Net cost (after ITC/ITR)',XST.NET_L),nc(r2(stx.tot-stx.gR-stx.qR),XST.NET_R)]);tr++;
   tsBlank();
- 
+
   tsHdr('NOTES',2);
   [['Meals & Entertainment','50% ITC/ITR — CRA & Revenu Québec (ARQ)'],
    ['GST rate','5% federal — administered by CRA'],
    ['QST rate','9.975% provincial — administered by ARQ'],
    ['App Version',CFG.APP_VERSION],['Exported',new Date().toLocaleString('en-CA')]
   ].forEach(([l,v])=>{ sheet3rows.push([sc(l,XST.META_LBL),sc(v,XST.META_VAL)]); tr++; });
- 
+
   /* ══ SHEET 4: SUMMARY ══ */
   const sheet4rows=[];
   sheet4rows.push([sc('Report Summary',XST.SUM_HDR),bc(XST.SUM_HDR)]);
@@ -2247,7 +2370,7 @@ async function expR(rid){
   [['Storage','Firebase (Cloud)'],
    ['User',CU?.email||'—'],['App Version',CFG.APP_VERSION],['Exported',new Date().toLocaleString('en-CA')]
   ].forEach(([l,v])=>sheet4rows.push([sc(l,XST.SUM_LBL),sc(v,XST.SUM_VAL)]));
- 
+
   // Resolve shared string indices now that all strings are collected
   const sstObj=buildSST(allStrings);
   function resolveSheet(rows){
@@ -2256,11 +2379,11 @@ async function expR(rid){
       return {...cell, v:sstObj.map[cell._str]};
     }));
   }
- 
+
   const s1xml=buildSheet(resolveSheet(sheet1rows), s1colWidths, s1merges);
   const s3xml=buildSheet(resolveSheet(sheet3rows), [36,16,14,14,14,13,13], s3merges);
   const s4xml=buildSheet(resolveSheet(sheet4rows), [30,38],[]);
- 
+
   const stylesXml=buildStyles();
   let blob;
   try {
@@ -2273,7 +2396,7 @@ async function expR(rid){
     toast('Export failed: '+(err.message||err),'#A32D2D');
     return;
   }
- 
+
   // Collect receipt lines — images and PDFs, base64 or Firebase Storage URLs
   const lines=[];
   exps.forEach((e,i)=>(e.receipts||[]).forEach((src,ri)=>{
@@ -2285,11 +2408,11 @@ async function expR(rid){
       lines.push({src, isPdf, name:r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(ri+1)+'.'+ext, path:sp});
     }
   }));
- 
+
   // Always show export modal with 3 options
   showExportModal(r, fname, blob, lines, fn, sp, rid);
 }
- 
+
 function doDownloadXlsx(blob, fname) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2297,7 +2420,7 @@ function doDownloadXlsx(blob, fname) {
   document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
 }
- 
+
 function showExportModal(r, fname, blob, lines, fn, sp, rid) {
   // Stash for action handlers
   window._expBlob  = blob;
@@ -2307,9 +2430,9 @@ function showExportModal(r, fname, blob, lines, fn, sp, rid) {
   window._expSp    = sp;
   window._expRid   = rid;
   window._expR     = r;
- 
+
   const hasReceipts = lines && lines.length > 0;
- 
+
   function opt(ico, title, desc, onclick, primary, disabled) {
     const border  = primary  ? 'border:2px solid var(--g);background:var(--gbg)' : 'border:1px solid var(--bd2)';
     const titleC  = primary  ? 'color:var(--gdk)' : disabled ? 'color:var(--tx3)' : '';
@@ -2322,7 +2445,7 @@ function showExportModal(r, fname, blob, lines, fn, sp, rid) {
       '<div style="font-size:12px;margin-top:2px;'+descC+'">'+desc+'</div></div>'+
     '</div>';
   }
- 
+
   mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()">'+
   '<div class="modal"><div class="mh2"></div>'+
   '<div class="mhd"><h2>&#11015; Export Report</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
@@ -2335,14 +2458,14 @@ function showExportModal(r, fname, blob, lines, fn, sp, rid) {
   '<div class="mf"><button class="btn" onclick="closeM()">Cancel</button></div>'+
   '</div></div>';
 }
- 
+
 /* ── Export: Excel only ── */
 function doExportExcel() {
   closeM();
   doDownloadXlsx(window._expBlob, window._expFname);
   toast('Excel report downloaded ✓');
 }
- 
+
 /* ── Export: PDF of receipts only ── */
 async function doExportPDF() {
   closeM();
@@ -2357,7 +2480,7 @@ async function doExportPDF() {
     toast('PDF generation failed: '+(e.message||e),'#A32D2D');
   }
 }
- 
+
 /* ── Export: Both Excel + PDF ── */
 async function doExportBoth() {
   closeM();
@@ -2374,7 +2497,7 @@ async function doExportBoth() {
     toast('Export failed: '+(e.message||e),'#A32D2D');
   }
 }
- 
+
 /* ── Build receipts PDF using jsPDF ── */
 async function buildReceiptsPDF(r, lines) {
   if (typeof window.jspdf === 'undefined' && typeof jsPDF === 'undefined') {
@@ -2384,7 +2507,7 @@ async function buildReceiptsPDF(r, lines) {
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
   const PW = 210, PH = 297, M = 14;
   const IW = PW - M*2, IH = PH - 60;
- 
+
   // Cover page
   doc.setFillColor(29,158,117);
   doc.rect(0,0,PW,28,'F');
@@ -2394,7 +2517,7 @@ async function buildReceiptsPDF(r, lines) {
   doc.setFontSize(10); doc.setFont('helvetica','normal');
   doc.text(r.name, M, 19);
   doc.text('Exported: '+new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'}), M, 25);
- 
+
   // Summary box
   const exps  = S.expenses.filter(e=>e.reportId===r.id);
   const stx   = TAX.sum(exps);
@@ -2417,12 +2540,12 @@ async function buildReceiptsPDF(r, lines) {
   });
   doc.setDrawColor(200,200,200);
   doc.line(M, y+2, PW-M, y+2);
- 
+
   // Receipt pages
   for (let i=0; i<lines.length; i++) {
     const line = lines[i];
     doc.addPage();
- 
+
     // Header bar
     doc.setFillColor(240,237,232);
     doc.rect(0,0,PW,20,'F');
@@ -2432,7 +2555,7 @@ async function buildReceiptsPDF(r, lines) {
     doc.setFontSize(9); doc.setFont('helvetica','normal');
     doc.setTextColor(100,100,100);
     doc.text(line.name, M, 16);
- 
+
     // Expense details if available
     const expLine = exps[Math.floor(i / Math.max(1, lines.length/exps.length))];
     if (expLine) {
@@ -2445,14 +2568,14 @@ async function buildReceiptsPDF(r, lines) {
       ].filter(Boolean).join('  ·  ');
       if (details) doc.text(details, M, 26);
     }
- 
+
     // Image or PDF receipt
     try {
       const src    = line.src;
       const isPdfR = src.startsWith('data:application/pdf');
       const imgY   = expLine ? 30 : 24;
       const imgH   = PH - imgY - M;
- 
+
       if (isPdfR) {
         // Can't embed PDF-in-PDF with jsPDF — render a clear info box instead
         doc.setFillColor(230,241,251);
@@ -2480,15 +2603,15 @@ async function buildReceiptsPDF(r, lines) {
       doc.setFontSize(8); doc.setTextColor(120,120,120);
       doc.text(imgErr.message||'Unknown error', M, 48);
     }
- 
+
     // Page number footer
     doc.setFontSize(8); doc.setTextColor(160,160,160);
     doc.text('Page '+(i+2)+' — RD Expense '+CFG.APP_VERSION, M, PH-5);
   }
- 
+
   return doc.output('blob');
 }
- 
+
 /* ── Download a generic blob ── */
 function doDownloadBlob(blob, fname) {
   const url = URL.createObjectURL(blob);
@@ -2497,7 +2620,7 @@ function doDownloadBlob(blob, fname) {
   document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
 }
- 
+
 /* ══════════════════════════════════════════════════════
    IMPORT EXCEL — reads the "Expenses" sheet produced by v1.6.0+
    Layout: # | Date | Merchant | Notes | [Cat cols…] | TOTAL | GST | QST | ITC | Net
@@ -2515,7 +2638,7 @@ function importExcel() {
       const ws=wb.Sheets['Expenses'];
       if(!ws){toast('Could not find an "Expenses" sheet in this file','#A32D2D');return;}
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
- 
+
       // ── Read meta block (scan first 20 rows for key:value pairs) ──
       let reportName='', reportCat='Other', startDate='', endDate='';
       for(let i=0;i<Math.min(20,rows.length);i++){
@@ -2528,7 +2651,7 @@ function importExcel() {
         }
       }
       if(!reportName){toast('Could not read Report name from the file','#A32D2D');return;}
- 
+
       // ── Find header row ──
       // New layout: col[0]='#', col[1]='Date', col[2]='Merchant', col[3]='Notes'
       // Legacy layout: col[0]='#', col[2]='Merchant', col[3]='Category'
@@ -2542,18 +2665,18 @@ function importExcel() {
         }
       }
       if(hdrIdx===-1){toast('Could not find expense header row in the file','#A32D2D');return;}
- 
+
       const hdr=rows[hdrIdx].map(h=>String(h).trim());
- 
+
       // ── Known non-category right-side columns ──
       const rightCols=new Set(['TOTAL','GST (5%)','QST (9.975%)','ITC Recov.','Net After ITC',
         'Amount (entered)','Tax Incl.?','Subtotal','GST (5%)','QST (9.975%)','Total',
         'ITC (GST)','ITR (QST)','Meals Rule','Receipt(s)','']);
- 
+
       // ── Parse expense rows ──
       const newExps=[];
       const today=new Date().toISOString().slice(0,10);
- 
+
       for(let i=hdrIdx+1;i<rows.length;i++){
         const row=rows[i];
         const num=row[0];
@@ -2562,7 +2685,7 @@ function importExcel() {
         const numStr=String(num).trim();
         if(!numStr||numStr==='TOTAL'||numStr==='GST (5%)'||numStr==='QST (9.975%)'||
            numStr==='ITC Recoverable'||numStr==='Net After ITC'||numStr==='TOTALS') break;
- 
+
         // Date
         const dateVal=row[1]; let dateStr=today;
         if(dateVal){
@@ -2571,9 +2694,9 @@ function importExcel() {
             dateStr=d.toISOString().slice(0,10);
           } else { dateStr=String(dateVal).trim()||today; }
         }
- 
+
         const merchant=String(row[2]||'Unknown').trim();
- 
+
         if(isNewLayout){
           // New layout: Notes in col3, then category columns
           const notes=String(row[3]||'').trim();
@@ -2606,9 +2729,9 @@ function importExcel() {
           }
         }
       }
- 
+
       if(!newExps.length){toast('No expense rows found in the file','#BA7517');return;}
- 
+
       // ── Preview modal ──
       mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal wide"><div class="mh2"></div>'+
       '<div class="mhd"><h2>&#128196; Import Excel</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
@@ -2644,9 +2767,9 @@ function importExcel() {
         '<button class="btn p" onclick="doImport('+JSON.stringify(reportName)+','+JSON.stringify(reportCat)+','+JSON.stringify(startDate)+','+JSON.stringify(endDate)+',true)">Replace</button>'+
       '</div>'+
       '</div></div>';
- 
+
       window._importExps=newExps;
- 
+
     } catch(err) {
       console.error('Import error',err);
       toast('Import failed: '+(err.message||err),'#A32D2D');
@@ -2654,22 +2777,22 @@ function importExcel() {
   };
   inp.click();
 }
- 
+
 function doImport(reportName, reportCat, startDate, endDate, replace) {
   const exps=window._importExps||[]; window._importExps=null;
   if(!exps.length){closeM();return;}
- 
+
   // Find or create the matching report
   let r=S.reports.find(r=>r.name.trim()===reportName.trim());
   if(!r){
     r={id:uid('R'),name:reportName,category:reportCat||'Other',startDate,endDate,notes:'Imported',status:'Open',_ts:Date.now()};
     S.reports.push(r);
   }
- 
+
   if(replace){
     S.expenses=S.expenses.filter(e=>e.reportId!==r.id);
   }
- 
+
   // Assign report ID to all imported expenses
   exps.forEach(e=>{ e.reportId=r.id; });
   S.expenses.push(...exps);
@@ -2678,7 +2801,7 @@ function doImport(reportName, reportCat, startDate, endDate, replace) {
   save();
   toast(exps.length+' expenses imported into "'+reportName+'"');
 }
- 
+
 /* ══════════════════════════════════════════════════════ INIT */
 window.addEventListener('load', () => {
   if (typeof firebase === 'undefined') {
@@ -2703,20 +2826,20 @@ window.addEventListener('load', () => {
   FB.auth    = firebase.auth();
   FB.db      = firebase.firestore();
   FB.storage = firebase.storage();
- 
+
   // Register auth listener then boot
   FB.auth.onAuthStateChanged(async user => {
     if (user) {
       const isAdmin = user.email === CFG.ADMIN_EMAIL;
       CU = { uid: user.uid, email: user.email, displayName: user.displayName||user.email.split('@')[0], isAdmin };
- 
+
       if (isAdmin && $('adminScreen').style.display === 'flex') return;
- 
+
       $('loginScreen').style.display = 'none';
       $('adminScreen').style.display = 'none';
       closeAdminLogin();
       $('app').style.display = 'flex';
- 
+
       const initials = CU.displayName.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)||'U';
       $('uAv').textContent  = initials;
       $('uTx').textContent  = CU.displayName;
@@ -2726,7 +2849,7 @@ window.addEventListener('load', () => {
       $('vBdg').textContent = CFG.APP_VERSION;
       $('vDt').textContent  = CFG.APP_RELEASED;
       updSyncChip('syncing');
- 
+
       await load();
       render();
       updSyncChip('synced');
@@ -2740,7 +2863,7 @@ window.addEventListener('load', () => {
       if(btn){btn.disabled=false;btn.innerHTML='Sign In';}
     }
   });
- 
+
   boot();
 });
 </script>
