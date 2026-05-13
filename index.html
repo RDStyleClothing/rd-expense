@@ -68,7 +68,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .udiv{height:1px;background:var(--bd)}
 
 /* ── BODY LAYOUT ── */
-.body{display:flex;flex:1;overflow:hidden}
+.body{display:flex;flex:1;min-height:0;overflow:hidden}
 
 /* ── SIDEBAR ── */
 .sb{width:216px;flex-shrink:0;background:var(--sf);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;transition:transform .22s ease}
@@ -95,7 +95,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .sbov.show{display:block}
 
 /* ── MAIN ── */
-.main{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:18px;padding-bottom:calc(var(--fab) + 60px);-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
+.main{flex:1;min-height:0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:18px;padding-bottom:calc(var(--fab) + 80px);-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
 
 /* ── BOTTOM NAV ── */
 .bnn{display:none;flex-shrink:0;background:var(--sf);border-top:1px solid var(--bd)}
@@ -270,7 +270,7 @@ tr.trc:active td{background:var(--bg)}
   .vbar-right{display:none}
   .fw{bottom:calc(var(--bn) + var(--safe) + 16px);right:16px}
   .toast{bottom:calc(var(--bn) + var(--safe) + var(--fab) + 18px)}
-  .main{padding:14px 12px;padding-bottom:calc(var(--bn) + var(--fab) + var(--safe) + 24px)}
+  .main{padding:14px 12px;min-height:0;padding-bottom:calc(var(--bn) + var(--fab) + var(--safe) + 40px)}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .dt{display:none!important}
   .xc{display:flex}
@@ -485,7 +485,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.1.3</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.1.4</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -512,7 +512,7 @@ tr.trc:active td{background:var(--bg)}
    CFG — V2.0 Firebase Edition
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v2.1.3',
+  APP_VERSION:    'v2.1.4',
   APP_RELEASED:   'April 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca', // Change to your admin email
 };
