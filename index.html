@@ -485,7 +485,7 @@ tr.trc:active td{background:var(--bg)}
 
   <!-- VERSION BAR -->
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.1.2</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.1.3</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">April 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -512,7 +512,7 @@ tr.trc:active td{background:var(--bg)}
    CFG — V2.0 Firebase Edition
 ══════════════════════════════════════════════════════ */
 const CFG = {
-  APP_VERSION:    'v2.1.2',
+  APP_VERSION:    'v2.1.3',
   APP_RELEASED:   'April 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca', // Change to your admin email
 };
@@ -984,7 +984,7 @@ function openFab(){
   let opts='';
   if(onDet&&!locked) opts+=fo('📋','Add to "'+r.name.slice(0,20)+(r.name.length>20?'…':'')+'"', ()=>{closeFab();mAE(rid0);});
   opts+=fo('🤖','SmartScan Receipt', ()=>{closeFab();ensureReport(rid=>fabDoSnap('smart',rid));});
-  opts+=fo('📸','Batch Scan',        ()=>{closeFab();fabBatch();});
+  opts+=fo('📸','Batch Scan (Images + PDFs)', ()=>{closeFab();fabBatch();});
   opts+=fo('➕','Manual Entry',      ()=>{closeFab();ensureReport(rid=>mAE(rid));});
   opts+=fo('📁','New Report',        ()=>{mNR();closeFab();});
   const m=$('fabM');
@@ -1179,8 +1179,11 @@ function saveQuickKey() {
 function fabBatch() {
   closeM();
   const inp = document.createElement('input');
-  inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+  inp.type='file'; inp.accept='image/*,application/pdf'; inp.multiple=true;
+  inp.style.cssText='position:fixed;top:-100px;left:-100px;opacity:0';
+  document.body.appendChild(inp);
   inp.onchange = e => {
+    document.body.removeChild(inp);
     if (!e.target.files.length) return;
     ensureReport(rid => startBatch(e.target.files, rid));
   };
@@ -1189,7 +1192,7 @@ function fabBatch() {
 
 async function startBatch(files, rid) {
   const fileArr = Array.from(files);
-  const total = fileArr.length;
+  const total   = fileArr.length;
   let done = 0, added = 0;
 
   mR.innerHTML = '<div class="mbg">'+
@@ -1202,80 +1205,111 @@ async function startBatch(files, rid) {
     '<div style="width:100%;background:var(--s2);border-radius:20px;height:8px;overflow:hidden">'+
       '<div id="batchBar" style="height:100%;background:var(--g);border-radius:20px;width:0%;transition:width .4s"></div>'+
     '</div>'+
-    '<div id="batchLog" style="font-size:11px;color:var(--tx3);max-height:120px;overflow-y:auto;width:100%;text-align:left"></div>'+
+    '<div id="batchLog" style="font-size:11px;color:var(--tx3);max-height:160px;overflow-y:auto;width:100%;text-align:left;line-height:1.7"></div>'+
   '</div></div></div>';
 
+  const apiKey = getApiKey();
+
   for (const file of fileArr) {
-    const imgData = await new Promise(res => {
-      const fr = new FileReader(); fr.onload=ev=>res(ev.target.result); fr.readAsDataURL(file);
-    });
     const logEl = $('batchLog');
+    const isPdf = file.type === 'application/pdf';
+    const fileIcon = isPdf ? '📄' : '🖼';
+
+    // Update progress label with current file
+    const titleEl = $('batchTitle');
+    if(titleEl) titleEl.textContent = (isPdf ? 'Reading PDF' : 'Scanning image') + ' ' + (done+1) + ' of ' + total + '…';
+
+    const dataUrl = await new Promise(res => {
+      const fr = new FileReader();
+      fr.onload = ev => res(ev.target.result);
+      fr.readAsDataURL(file);
+    });
 
     try {
-      const base64 = imgData.split(',')[1];
-      const mediaType = imgData.split(';')[0].split(':')[1] || 'image/jpeg';
-      const apiKey = getApiKey();
-      if (!apiKey) { if(logEl) logEl.innerHTML += '<div style="padding:2px 0;color:var(--rd)">&#10007; No API key — open Settings &rarr; SmartScan API Key</div>'; done++; continue; }
+      if (!apiKey) {
+        if(logEl) logEl.innerHTML += '<div style="color:var(--rd)">✗ No API key — add it via Settings → SmartScan API Key</div>';
+        done++; continue;
+      }
+
+      const base64    = dataUrl.split(',')[1];
+      const mediaType = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+
+      // PDFs use type:'document', images use type:'image'
+      const fileBlock = isPdf
+        ? { type:'document', source:{ type:'base64', media_type:'application/pdf', data:base64 } }
+        : { type:'image',    source:{ type:'base64', media_type:mediaType,          data:base64 } };
+
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
           'x-api-key': apiKey,
           'anthropic-version': '2023-06-01',
           'anthropic-dangerous-direct-browser-access': 'true'
         },
-        body:JSON.stringify({
-          model:'claude-haiku-4-5-20251001', max_tokens:400,
-          messages:[{role:'user',content:[
-            {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
-            {type:'text',text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true}'}
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 400,
+          messages: [{ role:'user', content:[
+            fileBlock,
+            { type:'text', text:'Extract from this receipt or invoice. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true}' }
           ]}]
         })
       });
-      if(!resp.ok){const eb=await resp.json().catch(()=>({error:{message:'HTTP '+resp.status}}));throw new Error(eb?.error?.message||'HTTP '+resp.status);}
+
+      if(!resp.ok) {
+        const eb = await resp.json().catch(()=>({error:{message:'HTTP '+resp.status}}));
+        throw new Error(eb?.error?.message || 'HTTP '+resp.status);
+      }
       const rdata = await resp.json();
-      if(rdata.error) throw new Error(rdata.error.message||JSON.stringify(rdata.error));
-      let parsed;
-      try { parsed = JSON.parse((rdata.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim()); } catch(e){parsed={};}
+      if(rdata.error) throw new Error(rdata.error.message || JSON.stringify(rdata.error));
+
+      let parsed = {};
+      try { parsed = JSON.parse((rdata.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim()); } catch(e){}
+
       const today = new Date().toISOString().slice(0,10);
-      const e = {
-        id:uid('E'), reportId:rid,
-        merchant:parsed.merchant||file.name.replace(/\.[^.]+$/,''),
-        date:parsed.date||today,
-        amount:parseFloat(parsed.amount)||0,
-        category:parsed.category||'Other',
-        notes:parsed.notes||'',
-        taxIncluded:!!parsed.taxIncluded,
-        receipts:[imgData],
-        _ts:Date.now()
+      const exp = {
+        id:          uid('E'),
+        reportId:    rid,
+        merchant:    parsed.merchant || file.name.replace(/\.[^.]+$/,''),
+        date:        parsed.date     || today,
+        amount:      parseFloat(parsed.amount) || 0,
+        category:    parsed.category || 'Other',
+        notes:       parsed.notes    || '',
+        taxIncluded: !!parsed.taxIncluded,
+        receipts:    [dataUrl],   // kept in memory; uploaded to Storage on save()
+        _ts:         Date.now()
       };
-      S.expenses.push(e); added++;
-      if(logEl) logEl.innerHTML += '<div style="padding:2px 0">&#10003; '+esc(e.merchant)+' &mdash; '+fmt(e.amount)+'</div>';
+      S.expenses.push(exp);
+      added++;
+      if(logEl) logEl.innerHTML += '<div>'+fileIcon+' <strong>'+esc(exp.merchant)+'</strong> &mdash; '+fmt(exp.amount)+(isPdf?' <span style="color:var(--bl);font-size:10px">PDF</span>':'')+'</div>';
+
     } catch(err) {
-      console.error('Batch scan item failed', err);
-      if(logEl) logEl.innerHTML += '<div style="padding:2px 0;color:var(--rd)">&#10007; '+esc(file.name)+': '+(err.message||'scan failed')+'</div>';
+      console.error('Batch item failed:', file.name, err);
+      if(logEl) logEl.innerHTML += '<div style="color:var(--rd)">✗ '+esc(file.name)+': '+(err.message||'scan failed')+'</div>';
     }
 
     done++;
     const pct = Math.round(done/total*100);
     const bar=$('batchBar'), sub=$('batchSub');
-    if(bar) bar.style.width=pct+'%';
-    if(sub) sub.textContent=done+' of '+total+' complete';
+    if(bar) bar.style.width = pct+'%';
+    if(sub) sub.textContent = done+' of '+total+' complete';
   }
 
-  save();
-  
+  // Save once after all files processed — await to ensure receipts upload before render
+  const titleEl2=$('batchTitle'), subEl=$('batchSub');
+  if(titleEl2) titleEl2.textContent = 'Saving to Firebase…';
+  await save();
 
-  // Done — show summary
-  const title=$('batchTitle'), sub=$('batchSub');
-  if(title) title.textContent='&#10003; Batch complete';
-  if(sub)   sub.textContent=added+' expenses added to report';
+  // Show summary then navigate to report
+  if(titleEl2) titleEl2.innerHTML = '&#10003; Batch complete';
+  if(subEl)    subEl.textContent  = added+' of '+total+' receipts added';
 
   setTimeout(()=>{
     closeM();
     render();
     showView('report-detail', rid);
-    toast(added+' receipts scanned and added ✓');
+    toast(added+' receipt'+(added!==1?'s':'')+' scanned and added ✓');
   }, 1800);
 }
 function pickR(){
@@ -1571,7 +1605,7 @@ function mAE(rid, preImg, scanned) {
     '<div class="fld"><label>Receipts</label>'+
       '<div class="dz" id="dz" onclick="$(\'fi4\').click()" ondragover="event.preventDefault();this.classList.add(\'ov\')" ondragleave="this.classList.remove(\'ov\')" ondrop="onDp(event)">'+
         '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="display:block;margin:0 auto;color:var(--tx2)"><path d="M12 16V8M12 8l-3 3M12 8l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.4"/></svg>'+
-        '<p>Tap to upload or drag receipt here</p>'+
+        '<p>Tap to upload image or PDF receipt</p>'+
         '<input type="file" id="fi4" multiple accept="image/*,.pdf" onchange="onFi(this.files)"/>'+
       '</div>'+
       '<div class="tgr" id="tg" style="margin-top:8px"></div>'+
@@ -1686,7 +1720,7 @@ function mEditE(eid) {
     '<div class="fld"><label>Receipts</label>'+
       '<div class="dz" id="dz" onclick="$(\'fi4\').click()" ondragover="event.preventDefault();this.classList.add(\'ov\')" ondragleave="this.classList.remove(\'ov\')" ondrop="onDp(event)">'+
         '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="display:block;margin:0 auto;color:var(--tx2)"><path d="M12 16V8M12 8l-3 3M12 8l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.4"/></svg>'+
-        '<p>Tap to upload or drag receipt here</p>'+
+        '<p>Tap to upload image or PDF receipt</p>'+
         '<input type="file" id="fi4" multiple accept="image/*,.pdf" onchange="onFi(this.files)"/>'+
       '</div>'+
       '<div class="tgr" id="tg" style="margin-top:8px"></div>'+
