@@ -415,7 +415,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.2</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.2.2</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -437,7 +437,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v2.2',
+  APP_VERSION:    'v2.2.2',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
 };
@@ -638,7 +638,15 @@ function rcptSrc(r) {
   return r;
 }
 
-async function save() {
+// Saves are serialized: if one is still in flight, the next waits its turn.
+// Prevents two concurrent save()s from clobbering each other's S.expenses snapshot.
+let _saveChain = Promise.resolve();
+function save() {
+  _saveChain = _saveChain.catch(()=>{}).then(()=>_saveImpl());
+  return _saveChain;
+}
+
+async function _saveImpl() {
   if (!CU) return;
   updSyncChip('syncing');
   S._pendingBlobs = S._pendingBlobs || {};
@@ -1138,7 +1146,7 @@ function fabDoSnap(mode, ridDirect) {
         const dataUrl = ev.target.result;
         if (file.type === 'application/pdf') {
           if (mode === 'smart') doSmartScan(dataUrl, rid);
-          else { mAE(rid, null, false, dataUrl); toast('PDF attached — fill in details'); }
+          else { mAE(rid, dataUrl); toast('PDF attached — fill in details'); }
           return;
         }
         if (mode === 'smart') doSmartScan(dataUrl, rid);
@@ -2285,7 +2293,7 @@ async function expR(rid){
   sheet1rows.push(Array(NC1).fill(bc()));
 
   sheet1rows.push([
-    bc(XST.GRAND), sc('TOTAL',XST.GRAND), bc(XST.GRAND), bc(XST.GRAND),
+    bc(XST.GRAND), sc('TOTAL',XST.GRAND), bc(XST.GRAND), bc(XST.GRAND), bc(XST.GRAND),
     ...catList.map(cat=>{
       const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
       return nc(ct.tot, XST.GRAND_R);
@@ -2303,43 +2311,47 @@ async function expR(rid){
   ]);
 
   sheet1rows.push([
-    bc(XST.CAT_SUB), sc('GST (5%)',XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB),
+    bc(XST.CAT_SUB), sc('GST (5%)',XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB),
     ...catList.map(cat=>{
       const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
       return nc(ct.gst, XST.CAT_SUB_R);
     }),
     nc(stx.gst,XST.CAT_SUB_R), bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
     bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
+    ...(multiCurrency ? expCurs.flatMap(()=>[bc(XST.CAT_SUB_R),bc(XST.CAT_SUB_R),bc(XST.CAT_SUB_R)]) : []),
   ]);
 
   sheet1rows.push([
-    bc(XST.CAT_SUB), sc('QST (9.975%)',XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB),
+    bc(XST.CAT_SUB), sc('QST (9.975%)',XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB),
     ...catList.map(cat=>{
       const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
       return nc(ct.qst, XST.CAT_SUB_R);
     }),
     nc(stx.qst,XST.CAT_SUB_R), bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
     bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
+    ...(multiCurrency ? expCurs.flatMap(()=>[bc(XST.CAT_SUB_R),bc(XST.CAT_SUB_R),bc(XST.CAT_SUB_R)]) : []),
   ]);
 
   sheet1rows.push([
-    bc(XST.RECOV_L), sc('ITC Recoverable',XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L),
+    bc(XST.RECOV_L), sc('ITC Recoverable',XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L),
     ...catList.map(cat=>{
       const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
       return nc(r2(ct.gR+ct.qR), XST.RECOV_R);
     }),
     nc(r2(stx.gR+stx.qR),XST.RECOV_R), bc(XST.RECOV_R), bc(XST.RECOV_R),
     bc(XST.RECOV_R), bc(XST.RECOV_R),
+    ...(multiCurrency ? expCurs.flatMap(()=>[bc(XST.RECOV_R),bc(XST.RECOV_R),bc(XST.RECOV_R)]) : []),
   ]);
 
   sheet1rows.push([
-    bc(XST.NET_L), sc('Net After ITC',XST.NET_L), bc(XST.NET_L), bc(XST.NET_L),
+    bc(XST.NET_L), sc('Net After ITC',XST.NET_L), bc(XST.NET_L), bc(XST.NET_L), bc(XST.NET_L),
     ...catList.map(cat=>{
       const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
       return nc(r2(ct.tot-ct.gR-ct.qR), XST.NET_R);
     }),
     nc(r2(stx.tot-stx.gR-stx.qR),XST.NET_R), bc(XST.NET_R), bc(XST.NET_R),
     bc(XST.NET_R), bc(XST.NET_R),
+    ...(multiCurrency ? expCurs.flatMap(()=>[bc(XST.NET_R),bc(XST.NET_R),bc(XST.NET_R)]) : []),
   ]);
 
   const s1colWidths=[4,11,24,22,9,...catList.map(()=>14),13,10,12,12,14,...(multiCurrency?expCurs.flatMap(()=>[13,11,11]):[])];
@@ -2444,7 +2456,7 @@ async function expR(rid){
     const isImg  = src.startsWith('data:image') || src.startsWith('https://') || src.startsWith('http://');
     if(isPdf || isImg) {
       const ext  = isPdf ? 'pdf' : 'jpg';
-      lines.push({src, isPdf, name:r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(ri+1)+'.'+ext, path:sp});
+      lines.push({src, isPdf, expIdx:i, name:r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(ri+1)+'.'+ext, path:sp});
     }
   }));
 
@@ -2585,7 +2597,7 @@ async function buildReceiptsPDF(r, lines) {
     doc.setTextColor(100,100,100);
     doc.text(line.name, M, 16);
 
-    const expLine = exps[Math.floor(i / Math.max(1, lines.length/exps.length))];
+    const expLine = exps[line.expIdx];
     if (expLine) {
       doc.setFontSize(9); doc.setTextColor(80,80,80);
       const details = [
@@ -2620,7 +2632,20 @@ async function buildReceiptsPDF(r, lines) {
         let fmt2 = 'JPEG';
         if (src.includes('data:image/png') || src.toLowerCase().includes('.png')) fmt2 = 'PNG';
         else if (src.includes('data:image/webp') || src.toLowerCase().includes('.webp')) fmt2 = 'WEBP';
-        doc.addImage(src, fmt2, M, imgY, IW, imgH, undefined, 'MEDIUM');
+        // Preserve aspect ratio: scale the image to fit inside the IW x imgH box,
+        // then center it horizontally. Falls back to box-fit if dimensions are unavailable.
+        let dw = IW, dh = imgH, dx = M, dy = imgY;
+        try {
+          const props = doc.getImageProperties(src);
+          if (props && props.width && props.height) {
+            const scale = Math.min(IW/props.width, imgH/props.height);
+            dw = props.width  * scale;
+            dh = props.height * scale;
+            dx = M + (IW - dw)/2;
+            dy = imgY;
+          }
+        } catch(_) {}
+        doc.addImage(src, fmt2, dx, dy, dw, dh, undefined, 'MEDIUM');
       }
     } catch(imgErr) {
       doc.setFontSize(10); doc.setTextColor(180,50,50);
