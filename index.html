@@ -415,7 +415,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.2.2</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.2.3</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -437,7 +437,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v2.2.2',
+  APP_VERSION:    'v2.2.3',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
 };
@@ -2354,7 +2354,7 @@ async function expR(rid){
     ...(multiCurrency ? expCurs.flatMap(()=>[bc(XST.NET_R),bc(XST.NET_R),bc(XST.NET_R)]) : []),
   ]);
 
-  const s1colWidths=[4,11,24,22,9,...catList.map(()=>14),13,10,12,12,14,...(multiCurrency?expCurs.flatMap(()=>[13,11,11]):[])];
+  const s1colWidths=[14,11,24,22,9,...catList.map(()=>14),13,10,12,12,14,...(multiCurrency?expCurs.flatMap(()=>[13,11,11]):[])];
 
   /* SHEET: TAX SUMMARY */
   const sheet3rows=[];
