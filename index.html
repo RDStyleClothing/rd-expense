@@ -415,7 +415,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.2.3</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.2.4</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -437,7 +437,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v2.2.3',
+  APP_VERSION:    'v2.2.4',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
 };
@@ -638,15 +638,7 @@ function rcptSrc(r) {
   return r;
 }
 
-// Saves are serialized: if one is still in flight, the next waits its turn.
-// Prevents two concurrent save()s from clobbering each other's S.expenses snapshot.
-let _saveChain = Promise.resolve();
-function save() {
-  _saveChain = _saveChain.catch(()=>{}).then(()=>_saveImpl());
-  return _saveChain;
-}
-
-async function _saveImpl() {
+async function save() {
   if (!CU) return;
   updSyncChip('syncing');
   S._pendingBlobs = S._pendingBlobs || {};
@@ -776,6 +768,50 @@ async function load() {
     console.error('Load failed',e);
     updSyncChip('err');
   }
+}
+
+// Apply a Firestore snapshot from the cloud (e.g. a change made on another device) to local state.
+async function applyRemoteData(d) {
+  if (!d) return;
+  if (d.reports)  S.reports  = d.reports;
+  if (d.expenses) {
+    S.expenses = d.expenses.map(e => ({
+      ...e,
+      taxIncluded: e.taxIncluded ?? false,
+      receipts: (e.receipts||[]).filter(r => r && r !== '__pending__' && r !== '[pending-upload]')
+    }));
+  }
+  // Pull any pending-receipt blobs we don't already hold locally so they display on this device.
+  S._pendingBlobs = S._pendingBlobs || {};
+  const need = new Set();
+  S.expenses.forEach(e => (e.receipts||[]).forEach(r => {
+    if (r && r.startsWith(PENDING_PREFIX) && !S._pendingBlobs[r.slice(PENDING_PREFIX.length)])
+      need.add(r.slice(PENDING_PREFIX.length));
+  }));
+  if (need.size) {
+    try {
+      const snap = await FB.db.collection('users').doc(CU.uid).collection('pendingReceipts').get();
+      snap.forEach(d2 => { if (need.has(d2.id)) S._pendingBlobs[d2.id] = (d2.data()||{}).data; });
+    } catch(_) {}
+  }
+  render();
+}
+
+// Live cross-device sync: watch the user's doc and apply remote changes as they arrive.
+function startRealtimeSync() {
+  if (!CU || S._unsub) return;
+  S._unsub = FB.db.collection('users').doc(CU.uid).onSnapshot(snap => {
+    // Skip our own un-acknowledged writes — applying them would clobber in-progress local state.
+    if (snap.metadata.hasPendingWrites || !snap.exists) return;
+    // Don't overwrite a form the user is actively editing; apply once the modal closes.
+    if (mR.innerHTML.trim()) { S._pendingRemote = snap.data(); return; }
+    applyRemoteData(snap.data());
+  }, err => console.error('Realtime sync error', err && (err.code||err.message)));
+}
+
+function stopRealtimeSync() {
+  if (S._unsub) { try { S._unsub(); } catch(_){} S._unsub = null; }
+  S._pendingRemote = null;
 }
 
 // Re-attempt Storage upload for any pending receipts we have a local copy of.
@@ -1650,7 +1686,10 @@ function vDet(rid){
 
 /* ══════════════════════════════════════════════════════ MODALS */
 const mR = $('mR');
-function closeM(){mR.innerHTML='';}
+function closeM(){
+  mR.innerHTML='';
+  if (S._pendingRemote) { const d = S._pendingRemote; S._pendingRemote = null; applyRemoteData(d); }
+}
 
 // Optional "original foreign price" field block, shared by Add + Edit
 function origAmtBlock(oCur, oAmt){
@@ -2880,7 +2919,9 @@ window.addEventListener('load', () => {
       await load();
       render();
       updSyncChip('synced');
+      startRealtimeSync();
     } else {
+      stopRealtimeSync();
       CU = null;
       S.reports=[]; S.expenses=[]; S._pendingBlobs={};
       $('app').style.display = 'none';
