@@ -415,7 +415,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.2.4</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.2.5</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -437,7 +437,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v2.2.4',
+  APP_VERSION:    'v2.2.5',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
 };
@@ -695,14 +695,9 @@ async function save() {
     // Step 2: commit resolved receipts to in-memory state.
     S.expenses = uploadedExpenses;
 
-    // Step 3: write the main user doc (only short URLs / pending refs — never base64).
-    await FB.db.collection('users').doc(CU.uid).set({
-      reports:   S.reports,
-      expenses:  S.expenses,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-
-    // Step 4: write each fallback receipt as its own small doc so other devices can see it.
+    // Step 3: write fallback receipt blobs FIRST. Other devices receive the user doc
+    // (Step 4) the instant it's written and immediately try to hydrate the pending refs
+    // it contains, so those blob docs must already exist by then.
     for (const pw of pendingWrites) {
       try {
         await FB.db.collection('users').doc(CU.uid)
@@ -712,6 +707,13 @@ async function save() {
         console.error('Pending-receipt write failed', e2 && (e2.code||e2.message));
       }
     }
+
+    // Step 4: write the main user doc (only short URLs / pending refs — never base64).
+    await FB.db.collection('users').doc(CU.uid).set({
+      reports:   S.reports,
+      expenses:  S.expenses,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
 
     updSyncChip('synced');
     if (failed > 0) {
@@ -781,20 +783,29 @@ async function applyRemoteData(d) {
       receipts: (e.receipts||[]).filter(r => r && r !== '__pending__' && r !== '[pending-upload]')
     }));
   }
-  // Pull any pending-receipt blobs we don't already hold locally so they display on this device.
+  render();            // show the line items right away
+  hydratePending();    // then fetch any pending receipt blobs and re-render when they land
+}
+
+// Pull pending-receipt blobs we don't already hold locally so they display on this device.
+// Retries a few times to absorb the brief lag before a freshly-written blob propagates.
+async function hydratePending(attempt) {
+  if (!CU) return;
+  attempt = attempt || 0;
   S._pendingBlobs = S._pendingBlobs || {};
   const need = new Set();
   S.expenses.forEach(e => (e.receipts||[]).forEach(r => {
     if (r && r.startsWith(PENDING_PREFIX) && !S._pendingBlobs[r.slice(PENDING_PREFIX.length)])
       need.add(r.slice(PENDING_PREFIX.length));
   }));
-  if (need.size) {
-    try {
-      const snap = await FB.db.collection('users').doc(CU.uid).collection('pendingReceipts').get();
-      snap.forEach(d2 => { if (need.has(d2.id)) S._pendingBlobs[d2.id] = (d2.data()||{}).data; });
-    } catch(_) {}
-  }
+  if (!need.size) return;
+  try {
+    const snap = await FB.db.collection('users').doc(CU.uid).collection('pendingReceipts').get();
+    snap.forEach(d2 => { if (need.has(d2.id)) S._pendingBlobs[d2.id] = (d2.data()||{}).data; });
+  } catch(_) {}
   render();
+  const stillMissing = [...need].some(id => !S._pendingBlobs[id]);
+  if (stillMissing && attempt < 3) setTimeout(()=>hydratePending(attempt+1), 2000);
 }
 
 // Live cross-device sync: watch the user's doc and apply remote changes as they arrive.
@@ -1852,15 +1863,22 @@ function onDp(ev){ev.preventDefault();$('dz').classList.remove('ov');onFi(ev.dat
 function renderT(){
   const g=$('tg'); if(!g)return;
   window._recPrev = window._rec.slice();
-  g.innerHTML=window._rec.map((src,i)=>{
-    const isPdf = src.startsWith('data:application/pdf') || src.startsWith('pdf::');
+  g.innerHTML=window._rec.map((raw,i)=>{
+    const rm = '<button class="tx" onclick="rmT('+i+')">&#10005;</button>';
+    // Pending upload with no local copy on this device yet — placeholder, not a broken image.
+    if(raw.startsWith(PENDING_PREFIX) && !rcptSrc(raw)) return '<div class="tw">'+
+      '<div style="width:100%;aspect-ratio:1;background:var(--ambg);border-radius:6px;border:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px" title="Receipt upload pending — syncs once online">'+
+        '<span style="font-size:20px">\u{23F3}</span>'+
+        '<span style="font-size:9px;font-weight:700;color:var(--bl)">PENDING</span>'+
+      '</div>'+rm+'</div>';
+    const src = rcptSrc(raw) || raw;
+    const isPdf = src.startsWith('data:application/pdf') || src.startsWith('pdf::') || raw.startsWith('pdf::');
     if(isPdf) return '<div class="tw">'+
       '<div style="width:100%;aspect-ratio:1;background:var(--blbg);border-radius:6px;border:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer" onclick="pRec(window._recPrev['+i+'])">'+
         '<span style="font-size:20px">\u{1F4C4}</span>'+
         '<span style="font-size:9px;font-weight:700;color:var(--bl)">PDF</span>'+
-      '</div>'+
-      '<button class="tx" onclick="rmT('+i+')">&#10005;</button></div>';
-    return '<div class="tw"><img src="'+src+'" onclick="pRec(window._recPrev['+i+'])" style="cursor:pointer"/><button class="tx" onclick="rmT('+i+')">&#10005;</button></div>';
+      '</div>'+rm+'</div>';
+    return '<div class="tw"><img src="'+src+'" onclick="pRec(window._recPrev['+i+'])" style="cursor:pointer"/>'+rm+'</div>';
   }).join('');
 }
 function rmT(i){window._rec.splice(i,1);renderT();}
