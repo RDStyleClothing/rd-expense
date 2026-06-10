@@ -6,7 +6,9 @@
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
-<meta name="theme-color" content="#ffffff"/>
+<meta name="theme-color" content="#1D9E75"/>
+<link rel="apple-touch-icon" href="apple-touch-icon.png"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2322B585'/%3E%3Cstop offset='1' stop-color='%230F6E56'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='120' height='120' rx='26' fill='url(%23g)'/%3E%3Ctext x='60' y='64' text-anchor='middle' dominant-baseline='middle' font-family='Segoe UI,system-ui,sans-serif' font-size='44' font-weight='700' fill='%23fff' letter-spacing='-2'%3ERD%3C/text%3E%3Crect x='38' y='84' width='44' height='5' rx='2.5' fill='%23AEF0D8'/%3E%3C/svg%3E"/>
 <title>RD Expense</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -80,8 +82,8 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .sbov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200}
 .sbov.show{display:block}
 .main{flex:1;min-height:0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:18px;padding-bottom:calc(var(--fab) + 32px);-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
-.bnn{display:none;flex-shrink:0;background:var(--sf);border-top:1px solid var(--bd)}
-.bni2{display:flex;height:var(--bn)}
+.bnn{display:none;flex-shrink:0;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--bd);padding-bottom:var(--safe)}
+.bni2{display:flex;height:var(--bn);position:relative}
 .bni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--tx3);font-size:10px;font-weight:500;padding:6px 4px;border:none;background:none;font-family:var(--font)}
 .bni.active{color:var(--gdk)}
 .bni svg{width:22px;height:22px}
@@ -212,7 +214,7 @@ tr.trc:active td{background:var(--bg)}
   .vbar-right{display:none}
   .fw{bottom:calc(var(--bn) + var(--safe) + 16px);right:16px}
   .toast{bottom:calc(var(--bn) + var(--safe) + var(--fab) + 18px)}
-  .main{padding:14px 12px;min-height:0;padding-bottom:calc(var(--fab) + var(--safe) + 24px)}
+  .main{padding:14px 12px;min-height:0;padding-bottom:calc(var(--fab) + var(--safe) + 40px)}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .dt{display:none!important}
   .xc{display:flex}
@@ -255,9 +257,47 @@ tr.trc:active td{background:var(--bg)}
 .adbl{background:var(--rdbg);color:var(--rd);border:1px solid #F7C1C1;font-size:12px;padding:4px 10px;border-radius:var(--rsm);cursor:pointer;font-family:var(--font);font-weight:600}
 .adbl:active{background:#F7C1C1}
 .adempty{text-align:center;padding:28px;color:var(--tx3);font-size:13px}
+/* ═══ v2.2.7 mobile polish ═══ */
+:root{--spring:cubic-bezier(.32,1.3,.45,1)}
+.main>*{flex-shrink:0}                                   /* fix: flex column squashing+clipping tall cards */
+#mainC.vt>*{animation:vtIn .26s var(--spring) both}      /* view transition on navigation */
+@keyframes vtIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.btn,.stat,.xcd,.sto,.fo,.umi,.ni{transition:transform .12s ease,background .12s ease}
+.btn:active,.stat:active,.xcd:active,.sto:active,.fo:active{transform:scale(.97)}
+.mbg{animation:mbgIn .25s ease both}
+@keyframes mbgIn{from{background:rgba(0,0,0,0)}to{background:rgba(0,0,0,.32)}}
+.modal{animation:shIn .38s var(--spring) both}
+@keyframes shIn{from{transform:translateY(104%)}to{transform:translateY(0)}}
+@media(min-width:600px){.modal{animation:shInD .2s ease both}}
+@keyframes shInD{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+.mbg.mclose{background:rgba(0,0,0,0)!important;transition:background .2s ease;pointer-events:none;animation:none}
+.mbg.mclose .modal{transform:translateY(104%);transition:transform .2s ease-in;animation:none}
+@media(min-width:600px){.mbg.mclose .modal{transform:scale(.97);opacity:0;transition:.15s ease}}
+.bnPill{position:absolute;top:8px;height:30px;width:58px;background:var(--gbg);border-radius:16px;transition:left .32s var(--spring);z-index:0;display:none}
+@media(max-width:700px){.bnPill{display:block}}
+.bni{position:relative;z-index:1;transition:color .2s}
+.bni svg{transition:transform .25s var(--spring)}
+.bni .ic-f{display:none}
+.bni.active{font-weight:700}
+.bni.active .ic-o{display:none}
+.bni.active .ic-f{display:block}
+.bni.active svg{transform:translateY(-1px) scale(1.06)}
+#splash{position:fixed;inset:0;z-index:2000;background:linear-gradient(160deg,#1D9E75,#0F6E56);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;transition:opacity .4s ease}
+#splash.hide{opacity:0;pointer-events:none}
+#splash .spl{color:#fff;font-size:30px;font-weight:700;letter-spacing:-.8px;opacity:0;transform:scale(.86);animation:splIn .7s var(--spring) .12s forwards}
+#splash .spl em{color:#aef0d8;font-style:normal}
+#splash .sps{color:rgba(255,255,255,.75);font-size:12.5px;opacity:0;animation:splIn2 .5s ease .5s forwards}
+@keyframes splIn{to{opacity:1;transform:scale(1)}}
+@keyframes splIn2{to{opacity:1}}
+@media(prefers-reduced-motion:reduce){
+  .modal,.mbg,#mainC.vt>*,#splash .spl,#splash .sps,.fm{animation:none!important}
+  #splash .spl,#splash .sps{opacity:1;transform:none}
+  .bnPill,.bni svg,.btn,.stat,.xcd,.sto,.fo{transition:none!important}
+}
 </style>
 </head>
 <body>
+  <div id="splash"><div class="spl">RD <em>Expense</em></div><div class="sps">RD International &middot; Qu&eacute;bec</div></div>
 
 <div id="loginScreen">
   <div class="lbox">
@@ -400,22 +440,26 @@ tr.trc:active td{background:var(--bg)}
   </div>
 
   <div class="bnn"><div class="bni2">
+    <div class="bnPill" id="bnPill"></div>
     <button class="bni active" id="bn-dashboard" onclick="navTo('dashboard')">
-      <svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" opacity=".5"/><rect x="11.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="1.5" y="11.5" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="11.5" y="11.5" width="7" height="7" rx="1.5" fill="currentColor" opacity=".5"/></svg>
+      <svg class="ic-o" viewBox="0 0 20 20" fill="none"><rect x="1.5" y="1.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11.5" y="1.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="11.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11.5" y="11.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+      <svg class="ic-f" viewBox="0 0 20 20" fill="none"><rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" opacity=".5"/><rect x="11.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="1.5" y="11.5" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="11.5" y="11.5" width="7" height="7" rx="1.5" fill="currentColor" opacity=".5"/></svg>
       Home
     </button>
     <button class="bni" id="bn-reports" onclick="navTo('reports')">
-      <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="1" width="14" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="6" y1="10.5" x2="14" y2="10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="6" y1="14" x2="10" y2="14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <svg class="ic-o" viewBox="0 0 20 20" fill="none"><rect x="3" y="1" width="14" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="6" y1="10.5" x2="14" y2="10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="6" y1="14" x2="10" y2="14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <svg class="ic-f" viewBox="0 0 20 20" fill="none"><rect x="3" y="1" width="14" height="18" rx="2" fill="currentColor"/><line x1="6" y1="7" x2="14" y2="7" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/><line x1="6" y1="10.5" x2="14" y2="10.5" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/><line x1="6" y1="14" x2="10" y2="14" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>
       Reports
     </button>
     <button class="bni" id="bn-expenses" onclick="navTo('expenses')">
-      <svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="4" width="17" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><line x1="1.5" y1="8.5" x2="18.5" y2="8.5" stroke="currentColor" stroke-width="1.4"/><circle cx="5" cy="12.5" r="1.2" fill="currentColor"/></svg>
+      <svg class="ic-o" viewBox="0 0 20 20" fill="none"><rect x="1.5" y="4" width="17" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><line x1="1.5" y1="8.5" x2="18.5" y2="8.5" stroke="currentColor" stroke-width="1.4"/><circle cx="5" cy="12.5" r="1.2" fill="currentColor"/></svg>
+      <svg class="ic-f" viewBox="0 0 20 20" fill="none"><rect x="1.5" y="4" width="17" height="12" rx="2" fill="currentColor"/><line x1="1.5" y1="8.5" x2="18.5" y2="8.5" stroke="#fff" stroke-width="1.4"/><circle cx="5" cy="12.5" r="1.2" fill="#fff"/></svg>
       Expenses
     </button>
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.2.6</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.2.7</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -437,7 +481,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v2.2.6',
+  APP_VERSION:    'v2.2.7',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
 };
@@ -839,7 +883,9 @@ function startRealtimeSync() {
     // Skip our own un-acknowledged writes — applying them would clobber in-progress local state.
     if (snap.metadata.hasPendingWrites || !snap.exists) return;
     // Don't overwrite a form the user is actively editing; apply once the modal closes.
-    if (mR.innerHTML.trim()) { S._pendingRemote = snap.data(); return; }
+    // A modal animating closed (.mclose) no longer counts as open — closeM() already ran.
+    const openModal = mR.firstElementChild && !mR.firstElementChild.classList.contains('mclose');
+    if (openModal) { S._pendingRemote = snap.data(); return; }
     applyRemoteData(snap.data());
   }, err => console.error('Realtime sync error', err && (err.code||err.message)));
 }
@@ -1553,7 +1599,20 @@ function showView(v,id){
   const k=v==='report-detail'?'reports':v;
   $('nav-'+k)?.classList.add('active'); $('bn-'+k)?.classList.add('active');
   S.view=v; S.rid=id||null; render();
+  const m=$('mainC'); m.classList.remove('vt'); void m.offsetWidth; m.classList.add('vt');
+  clearTimeout(S._vtT); S._vtT=setTimeout(()=>m.classList.remove('vt'),320);
+  placeBnPill();
 }
+/* Slide the bottom-nav pill under the active tab (mobile only) */
+function placeBnPill(){
+  const p=$('bnPill'); if(!p) return;
+  const a=document.querySelector('.bni.active');
+  if(!a || !a.offsetParent){ p.style.display='none'; return; }
+  p.style.display='';
+  p.style.left=(a.offsetLeft + (a.offsetWidth-58)/2)+'px';
+}
+window.addEventListener('resize',placeBnPill);
+window.addEventListener('orientationchange',()=>setTimeout(placeBnPill,120));
 function render(){
   $('navRC').textContent=S.reports.length; $('navEC').textContent=S.expenses.length;
   const m=$('mainC');
@@ -1811,7 +1870,13 @@ function vDet(rid){
 /* ══════════════════════════════════════════════════════ MODALS */
 const mR = $('mR');
 function closeM(){
-  mR.innerHTML='';
+  const el = mR.firstElementChild;
+  if (el && !el.classList.contains('mclose')) {
+    el.classList.add('mclose');
+    setTimeout(()=>{ if (mR.firstElementChild===el) mR.innerHTML=''; }, 220);
+  } else if (!el) {
+    mR.innerHTML='';
+  }
   if (S._pendingRemote) { const d = S._pendingRemote; S._pendingRemote = null; applyRemoteData(d); }
 }
 
@@ -3097,6 +3162,18 @@ window.addEventListener('load', () => {
 
   boot();
 });
+
+/* ═══ v2.2.7: branded splash — fades out once the app is ready, status bar tint follows ═══ */
+function hideSplash(){
+  const s=document.getElementById('splash');
+  if(!s || s.classList.contains('hide')) return;
+  s.classList.add('hide');
+  const tc=document.querySelector('meta[name="theme-color"]');
+  if(tc) tc.setAttribute('content','#ffffff');
+  setTimeout(()=>{ s.remove(); }, 450);
+}
+window.addEventListener('load', ()=>setTimeout(hideSplash, 700));
+setTimeout(hideSplash, 3000);   // safety: never trap the user behind the splash
 </script>
 </body>
 </html>
