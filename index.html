@@ -481,196 +481,51 @@ const S = {
   view:'dashboard', rid:null,
   reports:[], expenses:[],
   fabOpen:false,
+  q:{text:'',cat:'',sort:'date-desc'},
   _saving:false,
   _pendingBlobs:{}
 };
 
 const r2  = n => Math.round(n*100)/100;
 const uid = p => p+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-// Full ISO 4217 coverage so SmartScan can map any detected currency.
-// Order matters: CAD first, USD second (currencyOpts pins these two on top),
-// then alphabetical by code for the rest.
 const CURRENCIES = [
   {code:'CAD',symbol:'$',name:'Canadian Dollar'},
   {code:'USD',symbol:'$',name:'US Dollar'},
-  {code:'AED',symbol:'د.إ',name:'UAE Dirham'},
-  {code:'AFN',symbol:'؋',name:'Afghan Afghani'},
-  {code:'ALL',symbol:'L',name:'Albanian Lek'},
-  {code:'AMD',symbol:'֏',name:'Armenian Dram'},
-  {code:'ANG',symbol:'ƒ',name:'Netherlands Antillean Guilder'},
-  {code:'AOA',symbol:'Kz',name:'Angolan Kwanza'},
-  {code:'ARS',symbol:'$',name:'Argentine Peso'},
-  {code:'AUD',symbol:'$',name:'Australian Dollar'},
-  {code:'AWG',symbol:'ƒ',name:'Aruban Florin'},
-  {code:'AZN',symbol:'₼',name:'Azerbaijani Manat'},
-  {code:'BAM',symbol:'KM',name:'Bosnia-Herzegovina Convertible Mark'},
-  {code:'BBD',symbol:'$',name:'Barbadian Dollar'},
-  {code:'BDT',symbol:'৳',name:'Bangladeshi Taka'},
-  {code:'BGN',symbol:'лв',name:'Bulgarian Lev'},
-  {code:'BHD',symbol:'.د.ب',name:'Bahraini Dinar'},
-  {code:'BIF',symbol:'FBu',name:'Burundian Franc'},
-  {code:'BMD',symbol:'$',name:'Bermudan Dollar'},
-  {code:'BND',symbol:'$',name:'Brunei Dollar'},
-  {code:'BOB',symbol:'Bs',name:'Bolivian Boliviano'},
-  {code:'BRL',symbol:'R$',name:'Brazilian Real'},
-  {code:'BSD',symbol:'$',name:'Bahamian Dollar'},
-  {code:'BTN',symbol:'Nu.',name:'Bhutanese Ngultrum'},
-  {code:'BWP',symbol:'P',name:'Botswanan Pula'},
-  {code:'BYN',symbol:'Br',name:'Belarusian Ruble'},
-  {code:'BZD',symbol:'$',name:'Belize Dollar'},
-  {code:'CDF',symbol:'FC',name:'Congolese Franc'},
-  {code:'CHF',symbol:'Fr',name:'Swiss Franc'},
-  {code:'CLP',symbol:'$',name:'Chilean Peso'},
-  {code:'CNY',symbol:'¥',name:'Chinese Yuan'},
-  {code:'COP',symbol:'$',name:'Colombian Peso'},
-  {code:'CRC',symbol:'₡',name:'Costa Rican Colón'},
-  {code:'CUP',symbol:'$',name:'Cuban Peso'},
-  {code:'CVE',symbol:'$',name:'Cape Verdean Escudo'},
-  {code:'CZK',symbol:'Kč',name:'Czech Koruna'},
-  {code:'DJF',symbol:'Fdj',name:'Djiboutian Franc'},
-  {code:'DKK',symbol:'kr',name:'Danish Krone'},
-  {code:'DOP',symbol:'RD$',name:'Dominican Peso'},
-  {code:'DZD',symbol:'دج',name:'Algerian Dinar'},
-  {code:'EGP',symbol:'£',name:'Egyptian Pound'},
-  {code:'ERN',symbol:'Nfk',name:'Eritrean Nakfa'},
-  {code:'ETB',symbol:'Br',name:'Ethiopian Birr'},
   {code:'EUR',symbol:'€',name:'Euro'},
-  {code:'FJD',symbol:'$',name:'Fijian Dollar'},
-  {code:'FKP',symbol:'£',name:'Falkland Islands Pound'},
   {code:'GBP',symbol:'£',name:'British Pound'},
-  {code:'GEL',symbol:'₾',name:'Georgian Lari'},
-  {code:'GHS',symbol:'₵',name:'Ghanaian Cedi'},
-  {code:'GIP',symbol:'£',name:'Gibraltar Pound'},
-  {code:'GMD',symbol:'D',name:'Gambian Dalasi'},
-  {code:'GNF',symbol:'FG',name:'Guinean Franc'},
-  {code:'GTQ',symbol:'Q',name:'Guatemalan Quetzal'},
-  {code:'GYD',symbol:'$',name:'Guyanaese Dollar'},
-  {code:'HKD',symbol:'$',name:'Hong Kong Dollar'},
-  {code:'HNL',symbol:'L',name:'Honduran Lempira'},
-  {code:'HRK',symbol:'kn',name:'Croatian Kuna'},
-  {code:'HTG',symbol:'G',name:'Haitian Gourde'},
-  {code:'HUF',symbol:'Ft',name:'Hungarian Forint'},
-  {code:'IDR',symbol:'Rp',name:'Indonesian Rupiah'},
-  {code:'ILS',symbol:'₪',name:'Israeli Shekel'},
-  {code:'INR',symbol:'₹',name:'Indian Rupee'},
-  {code:'IQD',symbol:'ع.د',name:'Iraqi Dinar'},
-  {code:'IRR',symbol:'﷼',name:'Iranian Rial'},
-  {code:'ISK',symbol:'kr',name:'Icelandic Króna'},
-  {code:'JMD',symbol:'$',name:'Jamaican Dollar'},
-  {code:'JOD',symbol:'د.ا',name:'Jordanian Dinar'},
-  {code:'JPY',symbol:'¥',name:'Japanese Yen'},
-  {code:'KES',symbol:'KSh',name:'Kenyan Shilling'},
-  {code:'KGS',symbol:'лв',name:'Kyrgystani Som'},
-  {code:'KHR',symbol:'៛',name:'Cambodian Riel'},
-  {code:'KMF',symbol:'CF',name:'Comorian Franc'},
-  {code:'KRW',symbol:'₩',name:'South Korean Won'},
-  {code:'KWD',symbol:'د.ك',name:'Kuwaiti Dinar'},
-  {code:'KYD',symbol:'$',name:'Cayman Islands Dollar'},
-  {code:'KZT',symbol:'₸',name:'Kazakhstani Tenge'},
-  {code:'LAK',symbol:'₭',name:'Laotian Kip'},
-  {code:'LBP',symbol:'ل.ل',name:'Lebanese Pound'},
-  {code:'LKR',symbol:'₨',name:'Sri Lankan Rupee'},
-  {code:'LRD',symbol:'$',name:'Liberian Dollar'},
-  {code:'LSL',symbol:'L',name:'Lesotho Loti'},
-  {code:'LYD',symbol:'ل.د',name:'Libyan Dinar'},
-  {code:'MAD',symbol:'د.م.',name:'Moroccan Dirham'},
-  {code:'MDL',symbol:'L',name:'Moldovan Leu'},
-  {code:'MGA',symbol:'Ar',name:'Malagasy Ariary'},
-  {code:'MKD',symbol:'ден',name:'Macedonian Denar'},
-  {code:'MMK',symbol:'K',name:'Myanmar Kyat'},
-  {code:'MNT',symbol:'₮',name:'Mongolian Tugrik'},
-  {code:'MOP',symbol:'MOP$',name:'Macanese Pataca'},
-  {code:'MUR',symbol:'₨',name:'Mauritian Rupee'},
-  {code:'MVR',symbol:'Rf',name:'Maldivian Rufiyaa'},
-  {code:'MWK',symbol:'MK',name:'Malawian Kwacha'},
   {code:'MXN',symbol:'$',name:'Mexican Peso'},
-  {code:'MYR',symbol:'RM',name:'Malaysian Ringgit'},
-  {code:'MZN',symbol:'MT',name:'Mozambican Metical'},
-  {code:'NAD',symbol:'$',name:'Namibian Dollar'},
-  {code:'NGN',symbol:'₦',name:'Nigerian Naira'},
-  {code:'NIO',symbol:'C$',name:'Nicaraguan Córdoba'},
-  {code:'NOK',symbol:'kr',name:'Norwegian Krone'},
-  {code:'NPR',symbol:'₨',name:'Nepalese Rupee'},
-  {code:'NZD',symbol:'$',name:'New Zealand Dollar'},
-  {code:'OMR',symbol:'﷼',name:'Omani Rial'},
-  {code:'PAB',symbol:'B/.',name:'Panamanian Balboa'},
-  {code:'PEN',symbol:'S/',name:'Peruvian Sol'},
-  {code:'PGK',symbol:'K',name:'Papua New Guinean Kina'},
-  {code:'PHP',symbol:'₱',name:'Philippine Peso'},
-  {code:'PKR',symbol:'₨',name:'Pakistani Rupee'},
-  {code:'PLN',symbol:'zł',name:'Polish Zloty'},
-  {code:'PYG',symbol:'₲',name:'Paraguayan Guarani'},
-  {code:'QAR',symbol:'﷼',name:'Qatari Rial'},
-  {code:'RON',symbol:'lei',name:'Romanian Leu'},
-  {code:'RSD',symbol:'дин',name:'Serbian Dinar'},
-  {code:'RUB',symbol:'₽',name:'Russian Ruble'},
-  {code:'RWF',symbol:'FRw',name:'Rwandan Franc'},
-  {code:'SAR',symbol:'﷼',name:'Saudi Riyal'},
-  {code:'SBD',symbol:'$',name:'Solomon Islands Dollar'},
-  {code:'SCR',symbol:'₨',name:'Seychellois Rupee'},
-  {code:'SDG',symbol:'ج.س.',name:'Sudanese Pound'},
-  {code:'SEK',symbol:'kr',name:'Swedish Krona'},
+  {code:'AUD',symbol:'$',name:'Australian Dollar'},
+  {code:'JPY',symbol:'¥',name:'Japanese Yen'},
+  {code:'CNY',symbol:'¥',name:'Chinese Yuan'},
+  {code:'CHF',symbol:'Fr',name:'Swiss Franc'},
+  {code:'HKD',symbol:'$',name:'Hong Kong Dollar'},
   {code:'SGD',symbol:'$',name:'Singapore Dollar'},
-  {code:'SHP',symbol:'£',name:'Saint Helena Pound'},
-  {code:'SLL',symbol:'Le',name:'Sierra Leonean Leone'},
-  {code:'SOS',symbol:'S',name:'Somali Shilling'},
-  {code:'SRD',symbol:'$',name:'Surinamese Dollar'},
-  {code:'SSP',symbol:'£',name:'South Sudanese Pound'},
-  {code:'STN',symbol:'Db',name:'São Tomé & Príncipe Dobra'},
-  {code:'SVC',symbol:'$',name:'Salvadoran Colón'},
-  {code:'SYP',symbol:'£',name:'Syrian Pound'},
-  {code:'SZL',symbol:'L',name:'Swazi Lilangeni'},
-  {code:'THB',symbol:'฿',name:'Thai Baht'},
-  {code:'TJS',symbol:'ЅМ',name:'Tajikistani Somoni'},
-  {code:'TMT',symbol:'m',name:'Turkmenistani Manat'},
-  {code:'TND',symbol:'د.ت',name:'Tunisian Dinar'},
-  {code:'TOP',symbol:'T$',name:'Tongan Paʻanga'},
-  {code:'TRY',symbol:'₺',name:'Turkish Lira'},
-  {code:'TTD',symbol:'$',name:'Trinidad & Tobago Dollar'},
-  {code:'TWD',symbol:'NT$',name:'New Taiwan Dollar'},
-  {code:'TZS',symbol:'TSh',name:'Tanzanian Shilling'},
-  {code:'UAH',symbol:'₴',name:'Ukrainian Hryvnia'},
-  {code:'UGX',symbol:'USh',name:'Ugandan Shilling'},
-  {code:'UYU',symbol:'$U',name:'Uruguayan Peso'},
-  {code:'UZS',symbol:'лв',name:'Uzbekistani Som'},
-  {code:'VES',symbol:'Bs',name:'Venezuelan Bolívar'},
-  {code:'VND',symbol:'₫',name:'Vietnamese Dong'},
-  {code:'VUV',symbol:'VT',name:'Vanuatu Vatu'},
-  {code:'WST',symbol:'WS$',name:'Samoan Tala'},
-  {code:'XAF',symbol:'FCFA',name:'Central African CFA Franc'},
-  {code:'XCD',symbol:'$',name:'East Caribbean Dollar'},
-  {code:'XOF',symbol:'CFA',name:'West African CFA Franc'},
-  {code:'XPF',symbol:'₣',name:'CFP Franc'},
-  {code:'YER',symbol:'﷼',name:'Yemeni Rial'},
+  {code:'SEK',symbol:'kr',name:'Swedish Krona'},
+  {code:'NOK',symbol:'kr',name:'Norwegian Krone'},
+  {code:'DKK',symbol:'kr',name:'Danish Krone'},
+  {code:'NZD',symbol:'$',name:'New Zealand Dollar'},
+  {code:'KRW',symbol:'₩',name:'South Korean Won'},
+  {code:'INR',symbol:'₹',name:'Indian Rupee'},
+  {code:'BRL',symbol:'R$',name:'Brazilian Real'},
   {code:'ZAR',symbol:'R',name:'South African Rand'},
-  {code:'ZMW',symbol:'ZK',name:'Zambian Kwacha'},
-  {code:'ZWL',symbol:'$',name:'Zimbabwean Dollar'},
+  {code:'AED',symbol:'د.إ',name:'UAE Dirham'},
+  {code:'SAR',symbol:'﷼',name:'Saudi Riyal'},
+  {code:'TRY',symbol:'₺',name:'Turkish Lira'},
+  {code:'RUB',symbol:'₽',name:'Russian Ruble'},
+  {code:'THB',symbol:'฿',name:'Thai Baht'},
+  {code:'MYR',symbol:'RM',name:'Malaysian Ringgit'},
+  {code:'IDR',symbol:'Rp',name:'Indonesian Rupiah'},
+  {code:'PHP',symbol:'₱',name:'Philippine Peso'},
+  {code:'VND',symbol:'₫',name:'Vietnamese Dong'},
+  {code:'CZK',symbol:'Kč',name:'Czech Koruna'},
+  {code:'PLN',symbol:'zł',name:'Polish Zloty'},
+  {code:'HUF',symbol:'Ft',name:'Hungarian Forint'},
+  {code:'ILS',symbol:'₪',name:'Israeli Shekel'},
+  {code:'CLP',symbol:'$',name:'Chilean Peso'},
+  {code:'COP',symbol:'$',name:'Colombian Peso'},
+  {code:'PEN',symbol:'S/',name:'Peruvian Sol'},
+  {code:'ARS',symbol:'$',name:'Argentine Peso'},
 ];
-
-// Resolve a currency code to its display object, degrading gracefully for any
-// code not in the table (shows the bare code instead of masquerading as CAD).
-function curObj(code) {
-  const cc = code || 'CAD';
-  return CURRENCIES.find(x => x.code === cc) || {code: cc, symbol: '', name: cc};
-}
-
-// Normalise a detected currency code (e.g. from SmartScan) to an uppercase
-// ISO 4217 form and register it on the fly if it's valid but not yet listed,
-// so the override dropdown and formatters can render it. Returns '' if invalid.
-function ensureCurrency(code) {
-  if (!code) return '';
-  const cc = String(code).trim().toUpperCase();
-  if (!/^[A-Z]{3}$/.test(cc)) return '';
-  if (!CURRENCIES.some(x => x.code === cc)) {
-    const head = CURRENCIES.slice(0, 2);
-    const rest = CURRENCIES.slice(2);
-    rest.push({code: cc, symbol: '', name: cc});
-    rest.sort((a, b) => a.code.localeCompare(b.code));
-    CURRENCIES.length = 0;
-    CURRENCIES.push(...head, ...rest);
-  }
-  return cc;
-}
 
 function currencyOpts(selected) {
   const top  = CURRENCIES.slice(0,2);
@@ -682,12 +537,12 @@ function currencyOpts(selected) {
 }
 
 const fmt = (n, currency) => {
-  const c = curObj(currency);
+  const c = CURRENCIES.find(x=>x.code===(currency||'CAD')) || CURRENCIES[0];
   const num = Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
   return c.symbol+num+' '+c.code;
 };
 const fmtS = (n, currency) => {
-  const c = curObj(currency);
+  const c = CURRENCIES.find(x=>x.code===(currency||'CAD')) || CURRENCIES[0];
   return c.symbol+Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
 };
 const ftx = (n, currency) => n===0?'—':fmt(n, currency);
@@ -707,6 +562,11 @@ function badge(s) {
 
 // Sort currencies: CAD first, USD second, then alphabetical
 function curSort(a,b){ return a==='CAD'?-1:b==='CAD'?1:a==='USD'?-1:b==='USD'?1:a.localeCompare(b); }
+
+const CATS=['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Other'];
+
+// Validate a 3-letter currency code coming from untrusted input (e.g. SmartScan output)
+function validCur(c){ if(typeof c!=='string') return null; const u=c.trim().toUpperCase(); return CURRENCIES.some(x=>x.code===u)?u:null; }
 
 /* ══════════════════════════════════════════════════════ PERSIST — Firestore + Storage
    Receipt entries in expense.receipts are one of:
@@ -784,12 +644,20 @@ function rcptSrc(r) {
   return r;
 }
 
+// True for any receipt reference that is a PDF — base64 data URL, legacy pdf:: ref,
+// or a Firebase Storage download URL whose path ends in .pdf (post-upload case).
+function isPdfRef(s){
+  if(!s) return false;
+  if(s.startsWith('data:application/pdf') || s.startsWith('pdf::')) return true;
+  return /\.pdf$/i.test(String(s).split('?')[0].split('#')[0]);
+}
+
 async function save() {
   if (!CU) return;
   updSyncChip('syncing');
   S._pendingBlobs = S._pendingBlobs || {};
   const pendingWrites = [];   // {receiptId, base64} to persist into the subcollection
-  let failed = 0, tooBig = 0;
+  let failed = 0, tooBig = 0, lastUpCode = null;
   try {
     // Step 1: resolve every receipt to a Storage URL where possible.
     const uploadedExpenses = await Promise.all(S.expenses.map(async e => {
@@ -821,12 +689,19 @@ async function save() {
             return await uploadReceiptToStorage(compressed, e.id, i);
           } catch (err) {
             failed++;
+            lastUpCode = (err && err.code) || lastUpCode;
             console.error('Storage upload failed for', e.id, 'receipt', i, '—', err && (err.code||err.message));
             const rid = uid('RC');
             S._pendingBlobs[rid] = compressed;
-            // Fallback copy goes into its own Firestore doc only if it fits.
-            if (compressed.length < 1300000) {
-              pendingWrites.push({ receiptId: rid, base64: compressed });
+            // Fallback copy goes into its own Firestore doc — Firestore caps documents at
+            // 1 MiB, so keep the cached copy safely under ~900K chars, recompressing
+            // harder if needed (the old 1.3M threshold silently exceeded the limit and
+            // the fallback write failed, which is why photos never reached other devices).
+            let cacheable = compressed;
+            if (cacheable.length > 900000) cacheable = await compressImage(r, 1200, 0.6);
+            if (cacheable.length > 900000) cacheable = await compressImage(r, 900, 0.5);
+            if (cacheable.length < 900000) {
+              pendingWrites.push({ receiptId: rid, base64: cacheable });
             } else {
               tooBig++;
             }
@@ -864,7 +739,10 @@ async function save() {
     updSyncChip('synced');
     if (failed > 0) {
       const extra = tooBig > 0 ? ' ('+tooBig+' too large to cache — open that expense on the original device once online)' : '';
-      toast(failed+' receipt'+(failed>1?'s':'')+" couldn't reach Storage — cached to cloud, will retry automatically"+extra, '#BA7517');
+      const hint  = lastUpCode === 'storage/unauthorized'
+        ? ' — Storage rules are blocking uploads (Firebase Console → Storage → Rules)'
+        : (lastUpCode ? ' ['+lastUpCode+']' : '');
+      toast(failed+' receipt'+(failed>1?'s':'')+" couldn't reach Storage — cached to cloud, will retry automatically"+extra+hint, '#BA7517');
     }
   } catch (e) {
     console.error('Save failed', e);
@@ -1003,6 +881,38 @@ async function retryPendingUploads() {
     render();
     toast(healed+' pending receipt'+(healed>1?'s':'')+' uploaded ✓');
   }
+}
+
+// Best-effort cloud cleanup when an expense/report is deleted — removes Storage files
+// and pendingReceipts fallback docs so orphaned blobs don't accumulate (and cost money).
+function cleanupReceiptRefs(receipts){
+  (receipts||[]).forEach(rc=>{
+    if(!rc) return;
+    if(/^https?:\/\//.test(rc)){
+      try { FB.storage.refFromURL(rc).delete().catch(()=>{}); } catch(_){}
+    } else if(rc.startsWith(PENDING_PREFIX)){
+      const id = rc.slice(PENDING_PREFIX.length);
+      delete (S._pendingBlobs||{})[id];
+      try { FB.db.collection('users').doc(CU.uid).collection('pendingReceipts').doc(id).delete().catch(()=>{}); } catch(_){}
+    }
+  });
+}
+
+// Explains the ⏳ tile and offers a manual retry when this device holds a cached copy.
+function pendingInfo(){
+  const n = Object.keys(S._pendingBlobs||{}).length;
+  mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div>'+
+  '<div class="mhd"><h2>&#9203; Pending Receipt</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
+  '<div class="mb">'+
+    '<div class="info am" style="font-size:12px;line-height:1.6">This receipt has not reached cloud Storage yet. '+
+      'It is cached and the app retries automatically — when you come back online, every 2 minutes, and at each sign-in.</div>'+
+    (n
+      ? '<div class="info bl" style="font-size:12px;line-height:1.6">This device holds '+n+' cached receipt cop'+(n>1?'ies':'y')+' — you can retry the upload right now.</div>'
+      : '<div class="info bl" style="font-size:12px;line-height:1.6">No cached copy is on this device. The retry will happen from the device where the photo was taken, or the cloud cache will hydrate here shortly — pull up the app on the original device once online.</div>')+
+  '</div>'+
+  '<div class="mf"><button class="btn" onclick="closeM()">Close</button>'+
+    (n?'<button class="btn p" onclick="closeM();toast(\'Retrying uploads\u2026\');retryPendingUploads()">Retry Now</button>':'')+
+  '</div></div></div>';
 }
 
 /* ══════════════════════════════════════════════════════ API KEY */
@@ -1250,9 +1160,11 @@ async function adminDeleteUser(uid, email) {
 
 function clearData() {
   if(!confirm('Clear ALL reports and expenses?\nThis will permanently delete your data from the cloud.\nThis cannot be undone.')) return;
+  S.expenses.forEach(e=>cleanupReceiptRefs(e.receipts));
   S.reports  = [];
   S.expenses = [];
   S._pendingBlobs = {};
+  S._pendingRemote = null;
   save();
   closeM(); render();
   toast('All data cleared');
@@ -1286,8 +1198,9 @@ function openFab(){
   window._fabActs=[];
   const rid0 = r?.id;
   let opts='';
-  if(onDet&&!locked) opts+=fo('📋','Add to "'+r.name.slice(0,20)+(r.name.length>20?'…':'')+'"', ()=>{closeFab();mAE(rid0);});
+  if(onDet&&!locked) opts+=fo('📋','Add to "'+esc(r.name.slice(0,20))+(r.name.length>20?'…':'')+'"', ()=>{closeFab();mAE(rid0);});
   opts+=fo('🤖','SmartScan Receipt', ()=>{closeFab();ensureReport(rid=>fabDoSnap('smart',rid));});
+  opts+=fo('📷','Camera SmartScan', ()=>{closeFab();ensureReport(rid=>fabDoSnap('smart',rid,true));});
   opts+=fo('📸','Batch Scan (Images + PDFs)', ()=>{closeFab();fabBatch();});
   opts+=fo('➕','Manual Entry',      ()=>{closeFab();ensureReport(rid=>mAE(rid));});
   opts+=fo('📁','New Report',        ()=>{mNR();closeFab();});
@@ -1312,8 +1225,10 @@ function ensureReport(cb) {
   if (S.view==='report-detail' && S.rid) { cb(S.rid); return; }
   if (op.length === 1) { cb(op[0].id); return; }
   if (op.length > 1) {
-    const latest = op.sort((a,b)=>(b._ts||0)-(a._ts||0))[0];
-    cb(latest.id);
+    // Several reports are open — let the user choose instead of silently guessing.
+    window._snap = null;
+    window._afterReport = cb;
+    pickR();
     return;
   }
   const today = new Date().toISOString().slice(0,10);
@@ -1324,10 +1239,11 @@ function ensureReport(cb) {
   cb(r.id);
 }
 
-function fabDoSnap(mode, ridDirect) {
+function fabDoSnap(mode, ridDirect, useCamera) {
   const doIt = rid => {
     const inp = document.createElement('input');
-    inp.type='file'; inp.accept='image/*,application/pdf';
+    inp.type='file'; inp.accept = useCamera ? 'image/*' : 'image/*,application/pdf';
+    if (useCamera) inp.setAttribute('capture','environment');
     inp.style.cssText='position:fixed;top:-100px;left:-100px;opacity:0';
     document.body.appendChild(inp);
     inp.onchange = e => {
@@ -1420,7 +1336,7 @@ async function doSmartScan(imgData, rid) {
           role: 'user',
           content: [
             fileBlock,
-            { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"currency":"ISO 4217 code","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true}\n\nCURRENCY: set "currency" to the 3-letter ISO 4217 code of the money charged (e.g. CAD, USD, EUR, GBP, JPY, MXN, CHF, AUD). Decide using every clue: an explicit code, the currency symbol, the merchant country / address / postal code / phone country code / language, and the tax wording — GST, QST, HST, TPS or TVQ means CAD; VAT/TVA in France means EUR; VAT in the UK means GBP; MwSt means EUR; IVA points to the local European or Latin-American currency. The "$" sign is ambiguous, so lean on the other clues: prefer CAD when you see GST/QST/HST/TPS/TVQ or a Canadian address, USD for a US address, otherwise pick the most likely. If you truly cannot determine it, use "".' }
+            { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true}' }
           ]
         }]
       })
@@ -1438,7 +1354,6 @@ async function doSmartScan(imgData, rid) {
     const raw = data.content?.[0]?.text || '{}';
     let parsed;
     try { parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); } catch(e) { parsed = {}; }
-    if (parsed) parsed.currency = ensureCurrency(parsed.currency);
 
     closeM();
     mAE(rid, imgData, parsed);
@@ -1479,9 +1394,12 @@ function fabBatch() {
 }
 
 async function startBatch(files, rid) {
+  if (!getApiKey()) { toast('SmartScan needs your Anthropic API key first \u2014 opening settings','#BA7517'); openApiKeySettings(); return; }
+  window._batchCancel = false;
+  const rptCurDef = rptCurrency(S.reports.find(x=>x.id===rid));
   const fileArr = Array.from(files);
   const total   = fileArr.length;
-  let done = 0, added = 0;
+  let done = 0, added = 0, skippedDup = 0;
 
   mR.innerHTML = '<div class="mbg">'+
   '<div class="modal"><div class="mh2"></div>'+
@@ -1494,11 +1412,13 @@ async function startBatch(files, rid) {
       '<div id="batchBar" style="height:100%;background:var(--g);border-radius:20px;width:0%;transition:width .4s"></div>'+
     '</div>'+
     '<div id="batchLog" style="font-size:11px;color:var(--tx3);max-height:160px;overflow-y:auto;width:100%;text-align:left;line-height:1.7"></div>'+
+    '<button class="btn" id="batchCancelBtn" style="width:100%;justify-content:center" onclick="window._batchCancel=true;this.disabled=true;this.textContent=\'Stopping\u2026\'">Cancel</button>'+
   '</div></div></div>';
 
   const apiKey = getApiKey();
 
   for (const file of fileArr) {
+    if (window._batchCancel) break;
     const logEl = $('batchLog');
     const isPdf = file.type === 'application/pdf';
     const fileIcon = isPdf ? '📄' : '🖼';
@@ -1538,7 +1458,7 @@ async function startBatch(files, rid) {
           max_tokens: 400,
           messages: [{ role:'user', content:[
             fileBlock,
-            { type:'text', text:'Extract from this receipt or invoice. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"currency":"ISO 4217 code","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true}\n\nCURRENCY: set "currency" to the 3-letter ISO 4217 code of the money charged (e.g. CAD, USD, EUR, GBP, JPY, MXN, CHF, AUD). Decide using every clue: an explicit code, the currency symbol, the merchant country / address / postal code / phone country code / language, and the tax wording — GST, QST, HST, TPS or TVQ means CAD; VAT/TVA in France means EUR; VAT in the UK means GBP; MwSt means EUR; IVA points to the local European or Latin-American currency. The "$" sign is ambiguous, so lean on the other clues: prefer CAD when you see GST/QST/HST/TPS/TVQ or a Canadian address, USD for a US address, otherwise pick the most likely. If you truly cannot determine it, use "".' }
+            { type:'text', text:'Extract from this receipt or invoice. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true}' }
           ]}]
         })
       });
@@ -1554,8 +1474,6 @@ async function startBatch(files, rid) {
       try { parsed = JSON.parse((rdata.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim()); } catch(e){}
 
       const today = new Date().toISOString().slice(0,10);
-      const detCur = ensureCurrency(parsed.currency);
-      const rptCur = (S.reports.find(r=>r.id===rid)||{}).currency || 'CAD';
       const exp = {
         id:          uid('E'),
         reportId:    rid,
@@ -1563,15 +1481,21 @@ async function startBatch(files, rid) {
         date:        parsed.date     || today,
         amount:      parseFloat(parsed.amount) || 0,
         category:    parsed.category || 'Other',
+        currency:    (function(){ const c=validCur(parsed.currency); return (c && c!==rptCurDef) ? c : undefined; })(),
         notes:       parsed.notes    || '',
         taxIncluded: !!parsed.taxIncluded,
-        currency:    (detCur && detCur!==rptCur) ? detCur : undefined,
         receipts:    [dataUrl],
         _ts:         Date.now()
       };
-      S.expenses.push(exp);
-      added++;
-      if(logEl) logEl.innerHTML += '<div>'+fileIcon+' <strong>'+esc(exp.merchant)+'</strong> &mdash; '+fmt(exp.amount, detCur||rptCur)+(isPdf?' <span style="color:var(--bl);font-size:10px">PDF</span>':'')+'</div>';
+      const dup = exp.amount>0 && S.expenses.find(x=>(x.merchant||'').trim().toLowerCase()===(exp.merchant||'').trim().toLowerCase() && x.date===exp.date && Math.abs((x.amount||0)-exp.amount)<0.005);
+      if (dup) {
+        skippedDup++;
+        if(logEl) logEl.innerHTML += '<div style="color:var(--am)">&#9888; Skipped duplicate: '+esc(exp.merchant)+' &mdash; '+fmt(exp.amount)+'</div>';
+      } else {
+        S.expenses.push(exp);
+        added++;
+        if(logEl) logEl.innerHTML += '<div>'+fileIcon+' <strong>'+esc(exp.merchant)+'</strong> &mdash; '+fmt(exp.amount)+(isPdf?' <span style="color:var(--bl);font-size:10px">PDF</span>':'')+'</div>';
+      }
 
     } catch(err) {
       console.error('Batch item failed:', file.name, err);
@@ -1586,11 +1510,12 @@ async function startBatch(files, rid) {
   }
 
   const titleEl2=$('batchTitle'), subEl=$('batchSub');
+  const cbtn=$('batchCancelBtn'); if(cbtn) cbtn.style.display='none';
   if(titleEl2) titleEl2.textContent = 'Saving to Firebase…';
   await save();
 
-  if(titleEl2) titleEl2.innerHTML = '&#10003; Batch complete';
-  if(subEl)    subEl.textContent  = added+' of '+total+' receipts added';
+  if(titleEl2) titleEl2.innerHTML = window._batchCancel ? '&#9209;&#65039; Batch stopped' : '&#10003; Batch complete';
+  if(subEl)    subEl.textContent  = added+' of '+total+' receipts added'+(skippedDup?' \u00b7 '+skippedDup+' duplicate'+(skippedDup>1?'s':'')+' skipped':'');
 
   setTimeout(()=>{
     closeM();
@@ -1671,20 +1596,28 @@ function taxBox(exps){
     curs.map(c=>taxBoxOne(exps.filter(e=>expCurrency(e)===c), c)).join('');
 }
 
+/* Per-currency stat value — single currency keeps the original look; mixed currencies stack */
+function statTotalHtml(exps){
+  const curs=[...new Set(exps.map(e=>expCurrency(e)))].sort(curSort);
+  if(curs.length<=1) return fmt(TAX.sum(exps).tot, curs[0]||'CAD');
+  return curs.map((c,i)=>{
+    const v=fmt(TAX.sum(exps.filter(e=>expCurrency(e)===c)).tot, c);
+    return i===0 ? v : '<div style="font-size:12px;font-weight:600;color:var(--tx2);margin-top:2px">'+v+'</div>';
+  }).join('');
+}
+
 /* DASHBOARD */
 function vDash(){
-  const t=TAX.sum(S.expenses);
   const open=S.reports.filter(r=>r.status==='Open').length;
   const aw=S.reports.filter(r=>r.status==='Awaiting Payment').length;
   const pX=S.expenses.filter(e=>{const r=S.reports.find(r=>r.id===e.reportId);return r&&r.status==='Paid';});
-  const paid=TAX.sum(pX).tot;
   const rec=[...S.reports].sort((a,b)=>b._ts-a._ts).slice(0,6);
   return '<div class="ph"><div><div class="pt">Dashboard</div><div class="ps">RD International &middot; Qu&eacute;bec, CA</div></div><div class="phs"></div><div class="pa"><button class="btn p" onclick="mNR()">+ New Report</button></div></div>'+
   '<div class="stats">'+
-    '<div class="stat"><div class="slbl">Grand Total (incl. tax)</div><div class="sval">'+fmt(t.tot)+'</div></div>'+
+    '<div class="stat"><div class="slbl">Grand Total (incl. tax)</div><div class="sval">'+statTotalHtml(S.expenses)+'</div></div>'+
     '<div class="stat"><div class="slbl">Open Reports</div><div class="sval cb">'+open+'</div></div>'+
     '<div class="stat"><div class="slbl">Awaiting Payment</div><div class="sval ca">'+aw+'</div></div>'+
-    '<div class="stat"><div class="slbl">Total Paid</div><div class="sval cg">'+fmt(paid)+'</div></div>'+
+    '<div class="stat"><div class="slbl">Total Paid</div><div class="sval cg">'+statTotalHtml(pX)+'</div></div>'+
   '</div>'+
   taxBox(S.expenses)+
   '<div class="card"><div class="chd"><div class="ctl">Recent Reports</div><div class="csp"></div><button class="btn sm" onclick="showView(\'reports\')">All &rarr;</button></div>'+
@@ -1720,12 +1653,42 @@ function vRep(){
 }
 
 /* ALL EXPENSES */
+// Debounced search: re-render, then restore focus + caret to the search box
+function qText(v){
+  S.q.text=v; clearTimeout(S._qt);
+  S._qt=setTimeout(()=>{ render(); const i=$('qTx'); if(i){ i.focus(); const l=i.value.length; try{ i.setSelectionRange(l,l); }catch(_){} } },250);
+}
+function sortExps(list,mode){
+  const c=[...list], m=mode||'date-desc';
+  if(m==='date-asc')         c.sort((a,b)=>(a.date||'').localeCompare(b.date||'')||((a._ts||0)-(b._ts||0)));
+  else if(m==='amount-desc') c.sort((a,b)=>(b.amount||0)-(a.amount||0));
+  else if(m==='merchant')    c.sort((a,b)=>(a.merchant||'').localeCompare(b.merchant||''));
+  else                       c.sort((a,b)=>(b.date||'').localeCompare(a.date||'')||((b._ts||0)-(a._ts||0)));
+  return c;
+}
 function vExp(){
-  return '<div class="ph"><div class="pt">All Expenses</div></div>'+
+  const q=S.q||(S.q={text:'',cat:'',sort:'date-desc'});
+  let list=[...S.expenses];
+  if(q.text){ const t=q.text.toLowerCase(); list=list.filter(e=>((e.merchant||'')+' '+(e.notes||'')).toLowerCase().includes(t)); }
+  if(q.cat) list=list.filter(e=>(e.category||'Other')===q.cat);
+  list=sortExps(list,q.sort);
+  const isFiltered=!!(q.text||q.cat);
+  const ctrls='<div class="card" style="padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+    '<input class="fi2" id="qTx" style="flex:2 1 160px;font-size:13px;padding:8px 10px" placeholder="Search merchant or notes&hellip;" value="'+esc(q.text)+'" oninput="qText(this.value)"/>'+
+    '<select class="fse" style="flex:1 1 130px;width:auto;font-size:13px;padding:8px 10px" onchange="S.q.cat=this.value;render()">'+
+      '<option value="">All categories</option>'+CATS.map(c=>'<option value="'+esc(c)+'"'+(q.cat===c?' selected':'')+'>'+esc(c)+'</option>').join('')+
+    '</select>'+
+    '<select class="fse" style="flex:1 1 130px;width:auto;font-size:13px;padding:8px 10px" onchange="S.q.sort=this.value;render()">'+
+      [['date-desc','Newest first'],['date-asc','Oldest first'],['amount-desc','Amount high&rarr;low'],['merchant','Merchant A&ndash;Z']].map(o=>'<option value="'+o[0]+'"'+(q.sort===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+
+    '</select>'+
+    '<span style="font-size:11px;color:var(--tx3);white-space:nowrap">'+list.length+(isFiltered?' of '+S.expenses.length:'')+'</span>'+
+  '</div>';
+  return '<div class="ph"><div class="pt">All Expenses</div></div>'+ctrls+
   '<div class="card">'+
   (S.expenses.length===0?'<div class="empty"><div class="eic">&#128179;</div>No expenses yet.</div>'
+  :list.length===0?'<div class="empty"><div class="eic">&#128269;</div>No expenses match your search.</div>'
   :'<table class="dt"><thead><tr><th>Date</th><th>Merchant</th><th>Category</th><th>Subtotal</th><th>GST</th><th>QST</th><th>Total</th><th>Report</th><th>Rcpt</th><th></th></tr></thead><tbody>'+
-    S.expenses.map(e=>{
+    list.map(e=>{
       const r=S.reports.find(r=>r.id===e.reportId);
       const locked=r&&r.status!=='Open';
       const cur=expCurrency(e);
@@ -1742,7 +1705,7 @@ function vExp(){
         '<td style="white-space:nowrap">'+(locked?'':'<button class="ib" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><button class="ib" onclick="delE(\''+e.id+'\')">&#128465;</button>')+'</td>'+
       '</tr>';}).join('')+
   '</tbody></table>'+
-  '<div class="xc">'+S.expenses.map(e=>{
+  '<div class="xc">'+list.map(e=>{
     const r=S.reports.find(r=>r.id===e.reportId);
     const cur=expCurrency(e);
     const tx=TAX.calc(e.amount,e.category,e.taxIncluded||false);
@@ -1750,8 +1713,8 @@ function vExp(){
     const src0=rcptSrc(img0);
     const isPend0=img0&&img0.startsWith(PENDING_PREFIX)&&!src0;
     const imgHtml=isPend0
-      ?'<div class="xcic" style="background:var(--ambg)" title="Receipt upload pending">⏳</div>'
-      :src0?((src0.startsWith('data:application/pdf'))
+      ?'<div class="xcic" style="background:var(--ambg);cursor:pointer" onclick="pendingInfo()" title="Receipt upload pending — tap for details">⏳</div>'
+      :src0?((isPdfRef(src0))
         ?'<div class="xcth" style="background:var(--blbg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px" onclick="pRec(\''+esc(img0)+'\')"><span style="font-size:18px">📄</span><span style="font-size:8px;font-weight:700;color:var(--bl)">PDF</span></div>'
         :'<img class="xcth" src="'+src0+'" onclick="pRec(\''+esc(img0)+'\')"/>')
       :'<div class="xcic">&#128179;</div>';
@@ -1766,7 +1729,7 @@ function vExp(){
 function vDet(rid){
   const r=S.reports.find(r=>r.id===rid);
   if(!r) return '<div class="empty">Report not found.</div>';
-  const exps=S.expenses.filter(e=>e.reportId===rid);
+  const exps=sortExps(S.expenses.filter(e=>e.reportId===rid),'date-asc');
   const tx=TAX.sum(exps);
   const locked=r.status!=='Open';
   const flow={Open:['Close & Approve','Approved'],Approved:['Mark Awaiting Payment','Awaiting Payment'],'Awaiting Payment':['Mark as Paid','Paid']};
@@ -1800,7 +1763,7 @@ function vDet(rid){
           '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M8 4l2 2" stroke="currentColor" stroke-width="1.2"/></svg>'+
         '</button>'+
       '</div>'+
-      '<div class="ps">'+esc(r.category)+' &middot; '+fd(r.startDate)+' &ndash; '+fd(r.endDate)+' &middot; <strong>'+esc(r.currency||'CAD')+'</strong>'+(detCurs.length>1?' &middot; <span style="color:var(--am)">mixed currencies</span>':'')+'</div>'+
+      '<div class="ps">'+esc(r.category)+' &middot; '+fd(r.startDate)+' &ndash; '+fd(r.endDate)+' &middot; <strong>'+esc(r.currency||'CAD')+'</strong>'+(detCurs.length>1?' &middot; <span style="color:var(--am)">mixed currencies</span>':'')+(r.statusAt&&r.statusAt[r.status]?' &middot; '+esc(r.status)+' '+fd(r.statusAt[r.status]):'')+'</div>'+
     '</div>'+
     '<div class="phs"></div>'+
     '<div class="pa">'+badge(r.status)+
@@ -1832,8 +1795,8 @@ function vDet(rid){
     '</tbody></table>')+
   '</div>'+
     '<div class="xc">'+exps.map((e,i)=>{const et=TAX.calc(e.amount,e.category,e.taxIncluded||false);const cur=expCurrency(e);const img0=e.receipts?.[0];const src0=rcptSrc(img0);const isPend0=img0&&img0.startsWith(PENDING_PREFIX)&&!src0;
-      const thumb0=isPend0?'<div class="xcic" style="background:var(--ambg)" title="Receipt upload pending">⏳</div>'
-        :src0?(src0.startsWith('data:application/pdf')
+      const thumb0=isPend0?'<div class="xcic" style="background:var(--ambg);cursor:pointer" onclick="pendingInfo()" title="Receipt upload pending — tap for details">⏳</div>'
+        :src0?(isPdfRef(src0)
             ?'<div class="xcth" style="background:var(--blbg);display:flex;flex-direction:column;align-items:center;justify-content:center" onclick="pRec(\''+esc(img0)+'\')"><span style="font-size:16px">📄</span><span style="font-size:7px;font-weight:700;color:var(--bl)">PDF</span></div>'
             :'<img class="xcth" src="'+src0+'" onclick="pRec(\''+esc(img0)+'\')"/>')
         :'<div class="xcic">&#128179;</div>';
@@ -1861,7 +1824,7 @@ function origAmtBlock(oCur, oAmt){
         '<option value="">— none —</option>'+
         currencyOpts(oCur||'__none__')+
       '</select>'+
-      '<input class="fi2" id="eOAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" value="'+(oAmt||'')+'" style="flex:1"/>'+
+      '<input class="fi2" id="eOAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" value="'+esc(oAmt||'')+'" style="flex:1"/>'+
     '</div>'+
     '<div style="font-size:11px;color:var(--tx3);margin-top:3px">Use this to record the price in its original currency (e.g. USD) when the <strong>Amount</strong> above is the converted value that counts toward the report total.</div>'+
   '</div>';
@@ -1921,6 +1884,7 @@ function saveRename(rid) {
   r.currency = $('rnCur')?.value  || r.currency || 'CAD';
   r.startDate= $('rnS')?.value    || r.startDate;
   r.endDate  = $('rnE')?.value    || r.endDate;
+  S._pendingRemote=null;
   save(); closeM(); toast('Report updated');
   render();
 }
@@ -1928,17 +1892,17 @@ function saveRename(rid) {
 function saveR(){
   const name=$('rN').value.trim(); if(!name){alert('Report name required.');return;}
   const r={id:uid('R'),name,category:$('rC').value,currency:$('rCur')?.value||'CAD',startDate:$('rS').value,endDate:$('rE').value,notes:$('rNt').value.trim(),status:'Open',_ts:Date.now()};
-  S.reports.push(r); save(); closeM(); toast('Report created');
+  S.reports.push(r); S._pendingRemote=null; save(); closeM(); toast('Report created');
   showView('report-detail',r.id);
 }
 
 function mAE(rid, preImg, scanned) {
-  closeFab(); window._rec=preImg?[preImg]:[];
+  closeFab(); window._modalRid=rid; window._rec=preImg?[preImg]:[];
   const today=new Date().toISOString().slice(0,10);
   const sc=scanned||{};
-  const rptCur=(S.reports.find(r=>r.id===rid)||{}).currency||'CAD';
-  const scCur=sc.currency?ensureCurrency(sc.currency):'';
-  const preCur=(scCur&&scCur!==rptCur)?scCur:'__none__';
+  // Pre-select SmartScan's detected currency only when it differs from the report default
+  const scCur=validCur(sc.currency);
+  const ovCur=(scCur && scCur!==rptCurrency(S.reports.find(x=>x.id===rid)))?scCur:null;
   const cats=['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Other'];
   const catOpts=cats.map(c=>'<option'+(sc.category===c?' selected':'')+'>'+c+'</option>').join('');
   const scanBadge=scanned?'<div style="background:var(--gbg);color:var(--gdk);border-radius:var(--rsm);padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:7px"><span style="font-size:16px">&#129302;</span><span><strong>SmartScan complete</strong> &mdash; review and confirm below</span></div>':'';
@@ -1946,8 +1910,8 @@ function mAE(rid, preImg, scanned) {
   '<div class="mhd"><h2>'+(scanned?'&#129302; SmartScan Result':'Add Expense')+'</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
   '<div class="mb">'+
     scanBadge+
-    '<div class="r2"><div class="fld"><label>Merchant *</label><input class="fi2" id="eM" placeholder="e.g. Air France" autocomplete="off" value="'+esc(sc.merchant||'')+'"/></div><div class="fld"><label>Date *</label><input class="fi2" type="date" id="eD" value="'+(sc.date||today)+'"/></div></div>'+
-    '<div class="r2"><div class="fld"><label>Amount *</label><input class="fi2" type="number" id="eA" placeholder="0.00" min="0" step="0.01" inputmode="decimal" value="'+(sc.amount||'')+'" oninput="updT()"/></div>'+
+    '<div class="r2"><div class="fld"><label>Merchant *</label><input class="fi2" id="eM" placeholder="e.g. Air France" autocomplete="off" value="'+esc(sc.merchant||'')+'"/></div><div class="fld"><label>Date *</label><input class="fi2" type="date" id="eD" value="'+esc(sc.date||today)+'"/></div></div>'+
+    '<div class="r2"><div class="fld"><label>Amount *</label><input class="fi2" type="number" id="eA" placeholder="0.00" min="0" step="0.01" inputmode="decimal" value="'+esc(sc.amount||'')+'" oninput="updT()"/></div>'+
     '<div class="fld"><label>Category</label><select class="fse" id="eCt" onchange="updT()">'+catOpts+'</select></div></div>'+
     '<div class="ckr"><input type="checkbox" id="tI" onchange="updT()"'+(sc.taxIncluded?' checked':'')+'/><label for="tI">Amount already includes GST + QST</label></div>'+
     '<div class="tp" id="tPr" style="display:none">'+
@@ -1965,9 +1929,9 @@ function mAE(rid, preImg, scanned) {
       '<div class="fld"><label>Currency Override</label>'+
         '<select class="fse" id="eCur" onchange="updT()">'+
           '<option value="">— Use report default —</option>'+
-          currencyOpts(preCur)+
+          currencyOpts(ovCur||'__none__')+
         '</select>'+
-        '<div style="font-size:11px;color:var(--tx3);margin-top:3px">Leave blank to use report currency'+(scCur?' &middot; <span style="color:var(--g)">SmartScan detected '+esc(scCur)+'</span>':'')+'</div>'+
+        '<div style="font-size:11px;color:var(--tx3);margin-top:3px">Leave blank to use report currency</div>'+
       '</div>'+
     '</div>'+
     origAmtBlock(sc.origCurrency, sc.origAmount)+
@@ -1977,6 +1941,8 @@ function mAE(rid, preImg, scanned) {
         '<p>Tap to upload image or PDF receipt</p>'+
         '<input type="file" id="fi4" multiple accept="image/*,.pdf" onchange="onFi(this.files)"/>'+
       '</div>'+
+      '<button class="btn sm" style="margin-top:8px;width:100%;justify-content:center" onclick="$(\'fi5\').click()">&#128247; Take Photo</button>'+
+      '<input type="file" id="fi5" accept="image/*" capture="environment" onchange="onFi(this.files)" style="display:none"/>'+
       '<div class="tgr" id="tg" style="margin-top:8px"></div>'+
     '</div>'+
   '</div>'+
@@ -1990,7 +1956,8 @@ function updT(){
   const a=parseFloat(($('eA')&&$('eA').value)||'0')||0;
   const c=($('eCt')&&$('eCt').value)||'Other';
   const i=!!($('tI')&&$('tI').checked);
-  const cur=($('eCur')&&$('eCur').value)||'CAD';
+  let cur=($('eCur')&&$('eCur').value)||'';
+  if(!cur){ const selRep=($('eRep')&&$('eRep').value)||window._modalRid; const rr=S.reports.find(x=>x.id===selRep); cur=rr?.currency||'CAD'; }
   const p=$('tPr'); if(!p)return;
   if(a<=0){p.style.display='none';return;}
   p.style.display='block';
@@ -2025,7 +1992,7 @@ function renderT(){
         '<span style="font-size:9px;font-weight:700;color:var(--bl)">PENDING</span>'+
       '</div>'+rm+'</div>';
     const src = rcptSrc(raw) || raw;
-    const isPdf = src.startsWith('data:application/pdf') || src.startsWith('pdf::') || raw.startsWith('pdf::');
+    const isPdf = isPdfRef(src) || isPdfRef(raw);
     if(isPdf) return '<div class="tw">'+
       '<div style="width:100%;aspect-ratio:1;background:var(--blbg);border-radius:6px;border:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer" onclick="pRec(window._recPrev['+i+'])">'+
         '<span style="font-size:20px">\u{1F4C4}</span>'+
@@ -2041,13 +2008,13 @@ function rcptThumb(raw, size, clickRef) {
   const s = size||32;
   if (!raw) return '&mdash;';
   if (raw.startsWith(PENDING_PREFIX) && !rcptSrc(raw)) {
-    return '<div style="width:'+s+'px;height:'+s+'px;background:var(--ambg);border-radius:4px;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:'+Math.round(s*0.45)+'px" title="Receipt upload pending — syncs once online">⏳</div>';
+    return '<div onclick="pendingInfo()" style="cursor:pointer;width:'+s+'px;height:'+s+'px;background:var(--ambg);border-radius:4px;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:'+Math.round(s*0.45)+'px" title="Receipt upload pending — syncs once online">⏳</div>';
   }
   const src = rcptSrc(raw);
   if (!src) return '&mdash;';
   const click = clickRef ? ' onclick="pRec(\''+esc(clickRef)+'\')"' : '';
   const cur = clickRef ? 'cursor:pointer;' : '';
-  const isPdf = src.startsWith('data:application/pdf') || src.startsWith('pdf::');
+  const isPdf = isPdfRef(src);
   if (isPdf) return '<div'+click+' style="'+cur+'width:'+s+'px;height:'+s+'px;background:var(--blbg);border-radius:4px;border:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px"><span style="font-size:'+Math.round(s*0.45)+'px">📄</span><span style="font-size:'+Math.round(s*0.22)+'px;font-weight:700;color:var(--bl)">PDF</span></div>';
   return '<img src="'+src+'"'+click+' style="'+cur+'width:'+s+'px;height:'+s+'px;object-fit:cover;border-radius:4px;border:1px solid var(--bd)"/>';
 }
@@ -2059,19 +2026,23 @@ async function saveE(rid){
   const oCur=$('eOCur')?.value||'';
   const oAmt=parseFloat($('eOAmt')?.value)||0;
   const hasOrig = oCur && oAmt>0;
+  const amtNum=parseFloat(a);
+  const dupX=S.expenses.find(x=>(x.merchant||'').trim().toLowerCase()===m.toLowerCase() && x.date===d && Math.abs((x.amount||0)-amtNum)<0.005);
+  if (dupX && !confirm('Possible duplicate:\n'+(dupX.merchant||'')+' \u2014 '+fd(dupX.date)+' \u2014 '+fmt(dupX.amount,expCurrency(dupX))+'\n\nAdd this expense anyway?')) return;
   const e={id:uid('E'),reportId:rid,merchant:m,date:d,amount:parseFloat(a),category:$('eCt').value,notes:$('eNo').value.trim(),taxIncluded:!!($('tI')&&$('tI').checked),currency:eCurVal||undefined,origCurrency:hasOrig?oCur:undefined,origAmount:hasOrig?oAmt:undefined,receipts:[...window._rec],_ts:Date.now()};
   S.expenses.push(e);
+  S._pendingRemote=null;   // local add wins over any remote snapshot queued while the modal was open
   closeM();
   toast('Saving…');
   await save();
   toast('Expense added ✓');
   render();
 }
-function delE(id){if(!confirm('Remove this expense?'))return;S.expenses=S.expenses.filter(e=>e.id!==id);save().then(()=>render());toast('Removed');}
+function delE(id){if(!confirm('Remove this expense?'))return;const ex=S.expenses.find(e=>e.id===id);if(ex)cleanupReceiptRefs(ex.receipts);S.expenses=S.expenses.filter(e=>e.id!==id);save().then(()=>render());toast('Removed');}
 
 function mEditE(eid) {
   const e=S.expenses.find(e=>e.id===eid); if(!e) return;
-  window._rec=[...(e.receipts||[])];
+  window._modalRid=e.reportId; window._rec=[...(e.receipts||[])];
   const cats=['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Other'];
   const catOpts=cats.map(c=>'<option'+(e.category===c?' selected':'')+'>'+c+'</option>').join('');
   const openReports=S.reports.filter(r=>r.status==='Open');
@@ -2117,6 +2088,8 @@ function mEditE(eid) {
         '<p>Tap to upload image or PDF receipt</p>'+
         '<input type="file" id="fi4" multiple accept="image/*,.pdf" onchange="onFi(this.files)"/>'+
       '</div>'+
+      '<button class="btn sm" style="margin-top:8px;width:100%;justify-content:center" onclick="$(\'fi5\').click()">&#128247; Take Photo</button>'+
+      '<input type="file" id="fi5" accept="image/*" capture="environment" onchange="onFi(this.files)" style="display:none"/>'+
       '<div class="tgr" id="tg" style="margin-top:8px"></div>'+
     '</div>'+
   '</div>'+
@@ -2147,6 +2120,7 @@ async function saveEditE(eid) {
   e.receipts    = [...window._rec];
   e.reportId    = newReportId||e.reportId;
   e._ts         = Date.now();
+  S._pendingRemote=null;   // local edit wins over any remote snapshot queued while the modal was open
   closeM();
   toast('Saving…');
   await save();
@@ -2158,11 +2132,13 @@ async function saveEditE(eid) {
   }
   render();
 }
-function delR(id){if(!confirm('Delete report and all its expenses?'))return;S.reports=S.reports.filter(r=>r.id!==id);S.expenses=S.expenses.filter(e=>e.reportId!==id);save().then(()=>render());toast('Deleted');}
+function delR(id){if(!confirm('Delete report and all its expenses?'))return;S.expenses.filter(e=>e.reportId===id).forEach(e=>cleanupReceiptRefs(e.receipts));S.reports=S.reports.filter(r=>r.id!==id);S.expenses=S.expenses.filter(e=>e.reportId!==id);save().then(()=>render());toast('Deleted');}
 async function advSt(rid, ns) {
   const r = S.reports.find(r=>r.id===rid);
   if (!r) return;
   r.status = ns;
+  r.statusAt = r.statusAt || {};
+  r.statusAt[ns] = new Date().toISOString().slice(0,10);
   toast('Status → ' + ns);
   await save();
   render();
@@ -2170,6 +2146,7 @@ async function advSt(rid, ns) {
 async function revertSt(rid,ps){
   const r=S.reports.find(r=>r.id===rid);if(!r)return;
   if(!confirm('Revert "'+r.name+'" back to '+ps+'?\n\nThis will re-open the report for editing.'))return;
+  if(r.statusAt) delete r.statusAt[r.status];
   r.status=ps;
   toast('Reverting…');
   await save();
@@ -2179,7 +2156,7 @@ async function revertSt(rid,ps){
 function pRec(raw){
   const src = rcptSrc(raw);
   if(!src){ toast('Receipt is still uploading — it will appear once it finishes syncing','#BA7517'); return; }
-  const isPdf = src.startsWith('data:application/pdf') || src.startsWith('pdf::');
+  const isPdf = isPdfRef(src);
   if(isPdf && src.startsWith('data:')) {
     try {
       const b=new Blob([Uint8Array.from(atob(src.split(',')[1]),c=>c.charCodeAt(0))],{type:'application/pdf'});
@@ -2412,7 +2389,7 @@ async function buildXlsx(sheets, sst, styles){
 async function expR(rid){
   const r=S.reports.find(r=>r.id===rid); if(!r)return;
   if(typeof JSZip==='undefined'){toast('Export library loading — try again in a moment','#BA7517');return;}
-  const exps=S.expenses.filter(e=>e.reportId===rid);
+  const exps=sortExps(S.expenses.filter(e=>e.reportId===rid),'date-asc');
   const fn=r.name.replace(/[^a-z0-9]/gi,'_')+'_Receipts';
   const sp='Downloads/'+fn+'/';
   const stx=TAX.sum(exps);
@@ -2619,9 +2596,10 @@ async function expR(rid){
   /* SHEET: SUMMARY */
   const sheet4rows=[];
   sheet4rows.push([sc('Report Summary',XST.SUM_HDR),bc(XST.SUM_HDR)]);
-  [['Report',r.name],['Category',r.category],['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
-   ['Status',r.status],['Line Items',String(exps.length)]
-  ].forEach(([l,v])=>sheet4rows.push([sc(l,XST.SUM_LBL),sc(v,XST.SUM_VAL)]));
+  const ovMeta=[['Report',r.name],['Category',r.category],['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
+   ['Status',r.status],['Line Items',String(exps.length)]];
+  if(r.statusAt) ['Approved','Awaiting Payment','Paid'].forEach(st=>{ if(r.statusAt[st]) ovMeta.push([st+' on', r.statusAt[st]]); });
+  ovMeta.forEach(([l,v])=>sheet4rows.push([sc(l,XST.SUM_LBL),sc(v,XST.SUM_VAL)]));
   sheet4rows.push([bc(),bc()]);
   [['Subtotal (before tax)',stx.sub],['GST (5%)',stx.gst],['QST (9.975%)',stx.qst],
    ['Total incl. tax',stx.tot],['GST Recoverable (ITC)',stx.gR],['QST Recoverable (ITR)',stx.qR],
@@ -2662,8 +2640,8 @@ async function expR(rid){
   exps.forEach((e,i)=>(e.receipts||[]).forEach((raw,ri)=>{
     const src = rcptSrc(raw);
     if(!src) return;
-    const isPdf  = src.startsWith('data:application/pdf');
-    const isImg  = src.startsWith('data:image') || src.startsWith('https://') || src.startsWith('http://');
+    const isPdf  = isPdfRef(src);
+    const isImg  = !isPdf && (src.startsWith('data:image') || src.startsWith('https://') || src.startsWith('http://'));
     if(isPdf || isImg) {
       const ext  = isPdf ? 'pdf' : 'jpg';
       lines.push({src, isPdf, expIdx:i, name:r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(ri+1)+'.'+ext, path:sp});
@@ -2772,7 +2750,7 @@ async function buildReceiptsPDF(r, lines) {
   doc.text(r.name, M, 19);
   doc.text('Exported: '+new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'}), M, 25);
 
-  const exps  = S.expenses.filter(e=>e.reportId===r.id);
+  const exps  = sortExps(S.expenses.filter(e=>e.reportId===r.id),'date-asc');
   const stx   = TAX.sum(exps);
   doc.setTextColor(30,30,30);
   doc.setFontSize(10); doc.setFont('helvetica','normal');
@@ -2821,7 +2799,7 @@ async function buildReceiptsPDF(r, lines) {
 
     try {
       const src    = line.src;
-      const isPdfR = src.startsWith('data:application/pdf');
+      const isPdfR = isPdfRef(src);
       const imgY   = expLine ? 30 : 24;
       const imgH   = PH - imgY - M;
 
@@ -3004,12 +2982,13 @@ function importExcel() {
       '</div>'+
       '<div class="mf">'+
         '<button class="btn" onclick="closeM()">Cancel</button>'+
-        '<button class="btn" onclick="doImport('+JSON.stringify(reportName)+','+JSON.stringify(reportCat)+','+JSON.stringify(startDate)+','+JSON.stringify(endDate)+',false)">Merge</button>'+
-        '<button class="btn p" onclick="doImport('+JSON.stringify(reportName)+','+JSON.stringify(reportCat)+','+JSON.stringify(startDate)+','+JSON.stringify(endDate)+',true)">Replace</button>'+
+        '<button class="btn" onclick="doImport(false)">Merge</button>'+
+        '<button class="btn p" onclick="doImport(true)">Replace</button>'+
       '</div>'+
       '</div></div>';
 
       window._importExps=newExps;
+      window._importMeta={reportName,reportCat,startDate,endDate};
 
     } catch(err) {
       console.error('Import error',err);
@@ -3019,9 +2998,11 @@ function importExcel() {
   inp.click();
 }
 
-function doImport(reportName, reportCat, startDate, endDate, replace) {
+function doImport(replace) {
+  const meta=window._importMeta||{}; window._importMeta=null;
+  const reportName=meta.reportName||'', reportCat=meta.reportCat||'Other', startDate=meta.startDate||'', endDate=meta.endDate||'';
   const exps=window._importExps||[]; window._importExps=null;
-  if(!exps.length){closeM();return;}
+  if(!exps.length||!reportName){closeM();return;}
 
   let r=S.reports.find(r=>r.name.trim()===reportName.trim());
   if(!r){
@@ -3064,6 +3045,9 @@ window.addEventListener('load', () => {
   FB.auth    = firebase.auth();
   FB.db      = firebase.firestore();
   FB.storage = firebase.storage();
+  // Offline cache: reads keep working and writes queue while offline.
+  // Best-effort — silently skipped on unsupported browsers or multi-tab conflicts.
+  try { FB.db.enablePersistence({ synchronizeTabs: true }).catch(()=>{}); } catch(_){}
 
   FB.auth.onAuthStateChanged(async user => {
     if (user) {
@@ -3091,8 +3075,13 @@ window.addEventListener('load', () => {
       render();
       updSyncChip('synced');
       startRealtimeSync();
+      // Self-heal loop: retry pending receipt uploads every 2 minutes while any exist.
+      if (!S._retryTimer) S._retryTimer = setInterval(()=>{
+        if (CU && S.expenses.some(e=>(e.receipts||[]).some(rc=>rc&&rc.startsWith(PENDING_PREFIX)))) retryPendingUploads();
+      }, 120000);
     } else {
       stopRealtimeSync();
+      if (S._retryTimer) { clearInterval(S._retryTimer); S._retryTimer = null; }
       CU = null;
       S.reports=[]; S.expenses=[]; S._pendingBlobs={};
       $('app').style.display = 'none';
@@ -3102,6 +3091,9 @@ window.addEventListener('load', () => {
       if(btn){btn.disabled=false;btn.innerHTML='Sign In';}
     }
   });
+
+  // Retry pending uploads the moment connectivity returns.
+  window.addEventListener('online', ()=>{ if (CU) setTimeout(retryPendingUploads, 1500); });
 
   boot();
 });
