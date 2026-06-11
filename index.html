@@ -297,6 +297,40 @@ tr.trc:active td{background:var(--bg)}
   #splash .spl,#splash .sps{opacity:1;transform:none}
   .bnPill,.bni svg,.btn,.stat,.xcd,.sto,.fo{transition:none!important}
 }
+/* ═══ v2.2.15 capture-first dashboard ═══ */
+.hero{background:linear-gradient(160deg,#1D9E75,#0F6E56);border-radius:16px;padding:14px 15px 13px;color:#fff;box-shadow:var(--sh);margin-bottom:14px}
+.heroT{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#aef0d8;margin-bottom:9px}
+.snapBtn{width:100%;background:#fff;color:var(--gdk);border:none;border-radius:12px;padding:12px;font-family:var(--font);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18);transition:transform .12s ease}
+.snapBtn:active{transform:scale(.97)}
+.snapBtn svg{width:19px;height:19px}
+.heroAlt{display:flex;gap:8px;margin-top:8px}
+.heroAlt button{flex:1;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:9px;padding:7px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:transform .12s ease}
+.heroAlt button:active{transform:scale(.97);background:rgba(255,255,255,.22)}
+.secH{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--tx3);margin:16px 4px 8px;display:flex;align-items:baseline;gap:6px}
+.secH .secSub{font-weight:600;text-transform:none;letter-spacing:0}
+.secLink{font-size:11px;font-weight:700;color:var(--bl);cursor:pointer;text-transform:none;letter-spacing:0;margin-left:auto;white-space:nowrap}
+.inb{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid var(--bd);cursor:pointer;transition:background .12s}
+.inb:last-child{border-bottom:none}
+.inb:active{background:var(--bg)}
+.inbI{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.inbT{flex:1;min-width:0}
+.inbT b{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inbT span{font-size:11.5px;color:var(--tx2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inbChev{color:var(--tx3);font-size:16px;flex-shrink:0}
+.dexp{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid var(--bd);cursor:pointer;transition:background .12s}
+.dexp:last-child{border-bottom:none}
+.dexp:active{background:var(--bg)}
+.dexpC{width:34px;height:34px;border-radius:9px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.dexpM{flex:1;min-width:0}
+.dexpM b{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dexpM span{font-size:11px;color:var(--tx2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dexpA{text-align:right;flex-shrink:0}
+.dexpA b{display:block;font-size:14px;font-weight:700}
+.syc{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:1px 7px;border-radius:10px;margin-top:2px}
+.syc .sycd{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.syc.up{background:var(--ambg);color:var(--amdk)}
+.syc.up .sycd{animation:bl 1s ease-in-out infinite}
+.syc.ok{background:var(--gbg);color:var(--gdk)}
 </style>
 </head>
 <body>
@@ -385,7 +419,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v2.2.14</span>
+      <span class="vbm" id="vBdgM">v2.2.15</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -465,7 +499,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.2.14</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.2.15</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -487,7 +521,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v2.2.14',
+  APP_VERSION:    'v2.2.15',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
 };
@@ -1326,10 +1360,12 @@ function ensureReport(cb) {
   cb(r.id);
 }
 
-function fabDoSnap(mode, ridDirect) {
+function fabDoSnap(mode, ridDirect, camera) {
   const doIt = rid => {
     const inp = document.createElement('input');
-    inp.type='file'; inp.accept = 'image/*,application/pdf';
+    inp.type='file';
+    if (camera) { inp.accept='image/*'; inp.setAttribute('capture','environment'); }
+    else inp.accept = 'image/*,application/pdf';
     inp.style.cssText='position:fixed;top:-100px;left:-100px;opacity:0';
     document.body.appendChild(inp);
     inp.onchange = e => {
@@ -1706,27 +1742,72 @@ function statTotalHtml(exps){
 }
 
 /* DASHBOARD */
+/* ── DASHBOARD (v2.2.15 capture-first home) ── */
+function dashSnap(cam){ ensureReport(rid=>fabDoSnap('smart',rid,cam)); }
+function dashManual(){ ensureReport(rid=>mAE(rid)); }
+function catIco(c){ return ({'Auto Expense':'🚗','Travel & Buying':'✈️','Travel & Selling':'✈️','Samples':'📦','Mobile':'📱','Meals & Entertainment':'🍽️','Office':'🗂️','Computer':'💻'})[c]||'🧾'; }
 function vDash(){
   const open=S.reports.filter(r=>r.status==='Open').length;
   const aw=S.reports.filter(r=>r.status==='Awaiting Payment').length;
   const pX=S.expenses.filter(e=>{const r=S.reports.find(r=>r.id===e.reportId);return r&&r.status==='Paid';});
-  const rec=[...S.reports].sort((a,b)=>b._ts-a._ts).slice(0,6);
-  return '<div class="ph"><div><div class="pt">Dashboard</div><div class="ps">RD International &middot; Qu&eacute;bec, CA</div></div><div class="phs"></div><div class="pa"><button class="btn p" onclick="mNR()">+ New Report</button></div></div>'+
+
+  /* hero — capture first */
+  const today=new Date().toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric'});
+  const hero='<div class="hero"><div class="heroT">'+esc(today)+' &middot; Got a receipt?</div>'+
+    '<button class="snapBtn" onclick="dashSnap(true)">'+
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'+
+    'Snap receipt</button>'+
+    '<div class="heroAlt"><button onclick="dashSnap(false)">From library</button><button onclick="dashManual()">Enter manually</button></div></div>';
+
+  /* inbox — what needs attention */
+  const openIds=new Set(S.reports.filter(r=>r.status==='Open').map(r=>r.id));
+  const noRcpt=S.expenses.filter(e=>openIds.has(e.reportId)&&!(e.receipts&&e.receipts.length));
+  const pendCnt=S.expenses.reduce((n,e)=>n+((e.receipts||[]).filter(rc=>typeof rc==='string'&&rc.startsWith(PENDING_PREFIX)).length),0);
+  const curMonth=new Date().toISOString().slice(0,7);
+  const stale=S.reports.filter(r=>{
+    if(r.status!=='Open')return false;
+    const ex=S.expenses.filter(e=>e.reportId===r.id);
+    if(!ex.length)return false;
+    const last=ex.reduce((m,e)=>((e.date||'')>m?e.date:m),'');
+    return last&&last.slice(0,7)<curMonth;
+  });
+  let inbox='';
+  if(noRcpt.length) inbox+='<div class="inb" onclick="showView(\'expenses\')"><div class="inbI" style="background:var(--ambg)">&#129534;</div><div class="inbT"><b>'+noRcpt.length+' expense'+(noRcpt.length>1?'s':'')+' missing receipt'+(noRcpt.length>1?'s':'')+'</b><span>'+esc(noRcpt.slice(0,3).map(e=>e.merchant||'(no merchant)').join(' · '))+'</span></div><span class="inbChev">&rsaquo;</span></div>';
+  if(pendCnt) inbox+='<div class="inb" onclick="retryPendingUploads();toast(\'Retrying photo uploads&hellip;\')"><div class="inbI" style="background:var(--blbg)">&#9203;</div><div class="inbT"><b>'+pendCnt+' photo'+(pendCnt>1?'s':'')+' waiting to upload</b><span>Tap to retry now</span></div><span class="inbChev">&rsaquo;</span></div>';
+  stale.slice(0,3).forEach(r=>{
+    const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);
+    inbox+='<div class="inb" onclick="showView(\'report-detail\',\''+r.id+'\')"><div class="inbI" style="background:var(--gbg)">&#10003;</div><div class="inbT"><b>'+esc(r.name)+' ready to close</b><span>'+ex.length+' expense'+(ex.length!==1?'s':'')+' &middot; '+fmt(tx.tot,rptCurrency(r))+'</span></div><span class="inbChev">&rsaquo;</span></div>';
+  });
+  const inboxHtml='<div class="secH">Needs your attention</div><div class="card">'+
+    (inbox||'<div class="inb" style="cursor:default"><div class="inbI" style="background:var(--gbg)">&#127881;</div><div class="inbT"><b>You&rsquo;re all caught up</b><span>Nothing needs review right now</span></div></div>')+'</div>';
+
+  /* recent expenses with sync state */
+  const recent=sortExps(S.expenses,'date-desc').slice(0,5);
+  const openReps=S.reports.filter(r=>r.status==='Open');
+  const hdrLink=openReps.length===1
+    ?'<span class="secLink" onclick="showView(\'report-detail\',\''+openReps[0].id+'\')">View report &rsaquo;</span>'
+    :'<span class="secLink" onclick="showView(\'expenses\')">All &rsaquo;</span>';
+  const hdrSub=openReps.length===1?'<span class="secSub">&mdash; '+esc(openReps[0].name)+'</span>':'';
+  const recHtml='<div class="secH">Recent expenses '+hdrSub+hdrLink+'</div><div class="card">'+
+    (recent.length===0
+      ?'<div class="empty"><div class="eic">&#128179;</div>No expenses yet &mdash; snap your first receipt above.</div>'
+      :recent.map(e=>{
+        const cur=expCurrency(e);const tx=TAX.calc(e.amount,e.category,e.taxIncluded||false);
+        const pend=(e.receipts||[]).some(rc=>typeof rc==='string'&&rc.startsWith(PENDING_PREFIX));
+        const chip=pend?'<span class="syc up"><span class="sycd"></span>Uploading photo</span>':'<span class="syc ok"><span class="sycd"></span>Synced</span>';
+        return '<div class="dexp" onclick="showView(\'report-detail\',\''+e.reportId+'\')"><div class="dexpC">'+catIco(e.category)+'</div><div class="dexpM"><b>'+esc(e.merchant||'(no merchant)')+'</b><span>'+fd(e.date)+' &middot; '+esc(e.category||'Other')+'</span></div><div class="dexpA"><b>'+fmt(tx.tot,cur)+'</b>'+chip+'</div></div>';
+      }).join(''))+'</div>';
+
+  /* overview stats */
+  return hero+inboxHtml+recHtml+
+  '<div class="secH">Overview</div>'+
   '<div class="stats">'+
     '<div class="stat"><div class="slbl">Grand Total (incl. tax)</div><div class="sval">'+statTotalHtml(S.expenses)+'</div></div>'+
     '<div class="stat"><div class="slbl">Open Reports</div><div class="sval cb">'+open+'</div></div>'+
     '<div class="stat"><div class="slbl">Awaiting Payment</div><div class="sval ca">'+aw+'</div></div>'+
     '<div class="stat"><div class="slbl">Total Paid</div><div class="sval cg">'+statTotalHtml(pX)+'</div></div>'+
   '</div>'+
-  taxBox(S.expenses)+
-  '<div class="card"><div class="chd"><div class="ctl">Recent Reports</div><div class="csp"></div><button class="btn sm" onclick="showView(\'reports\')">All &rarr;</button></div>'+
-  (rec.length===0
-    ?'<div class="empty"><div class="eic">&#128203;</div>No reports yet &mdash; tap &ldquo;+ New Report&rdquo; to start.</div>'
-    :'<table class="dt"><thead><tr><th>Report</th><th>Category</th><th>Lines</th><th>Total+tax</th><th>Status</th></tr></thead><tbody>'+
-      rec.map(r=>{const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);return'<tr class="trc" onclick="showView(\'report-detail\',\''+r.id+'\')"><td style="font-weight:600">'+esc(r.name)+'</td><td style="color:var(--tx2)">'+esc(r.category)+'</td><td>'+ex.length+'</td><td>'+fmt(tx.tot,rptCurrency(r))+'</td><td>'+badge(r.status)+'</td></tr>';}).join('')+
-    '</tbody></table>'+
-    '<div class="xc">'+rec.map(r=>{const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);return'<div class="xcd" onclick="showView(\'report-detail\',\''+r.id+'\')"><div class="xcic">&#128203;</div><div class="xcb"><div class="xcn">'+esc(r.name)+'</div><div class="xcm">'+esc(r.category)+' &middot; '+ex.length+' lines &middot; '+badge(r.status)+'</div></div><div class="xca">'+fmt(tx.tot,rptCurrency(r))+'</div></div>';}).join('')+'</div>')+
-  '</div>';
+  taxBox(S.expenses);
 }
 
 /* REPORTS */
