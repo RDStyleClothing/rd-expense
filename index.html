@@ -37,6 +37,8 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .tb{height:52px;flex-shrink:0;background:var(--sf);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:10px;padding-top:env(safe-area-inset-top,0)}
 .logo{font-size:15px;font-weight:700;letter-spacing:-.4px}
 .logo em{color:var(--g);font-style:normal}
+.logoW{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;line-height:1.1}
+.vbm{display:none;background:var(--gbg);color:var(--gdk);font-size:9px;font-weight:700;padding:0 6px;border-radius:8px;line-height:13px;letter-spacing:0}
 .tbs{flex:1}
 .hbg{display:none;background:none;border:none;cursor:pointer;padding:6px;color:var(--tx2);border-radius:6px}
 .hbg:active{background:var(--bg)}
@@ -212,6 +214,7 @@ tr.trc:active td{background:var(--bg)}
   .bnn{display:flex;flex-direction:column}
   .vbar{display:none}
   .vbar-right{display:none}
+  .vbm{display:inline-block}
   .fw{bottom:calc(var(--bn) + var(--safe) + 16px);right:16px}
   .toast{bottom:calc(var(--bn) + var(--safe) + var(--fab) + 18px)}
   .main{padding:14px 12px;min-height:0;padding-bottom:calc(var(--fab) + var(--safe) + 40px)}
@@ -380,7 +383,10 @@ tr.trc:active td{background:var(--bg)}
         <line x1="2" y1="15" x2="18" y2="15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
       </svg>
     </button>
-    <div class="logo">RD <em>Expense</em></div>
+    <div class="logoW">
+      <div class="logo">RD <em>Expense</em></div>
+      <span class="vbm" id="vBdgM">v2.2.8</span>
+    </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
     <div class="uc" id="uChip" onclick="toggleUM()">
@@ -459,7 +465,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.2.7</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.2.8</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -481,7 +487,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v2.2.7',
+  APP_VERSION:    'v2.2.8',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
 };
@@ -3133,6 +3139,7 @@ window.addEventListener('load', () => {
       $('uME').textContent  = CU.email;
       $('vUsr').textContent = CU.displayName;
       $('vBdg').textContent = CFG.APP_VERSION;
+      $('vBdgM').textContent = CFG.APP_VERSION;
       $('vDt').textContent  = CFG.APP_RELEASED;
       updSyncChip('syncing');
 
