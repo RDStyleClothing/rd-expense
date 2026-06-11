@@ -385,7 +385,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v2.2.12</span>
+      <span class="vbm" id="vBdgM">v2.2.14</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -465,7 +465,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.2.12</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.2.14</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -487,7 +487,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v2.2.12',
+  APP_VERSION:    'v2.2.14',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
 };
@@ -1288,7 +1288,6 @@ function openFab(){
   let opts='';
   if(onDet&&!locked) opts+=fo('📋','Add to "'+esc(r.name.slice(0,20))+(r.name.length>20?'…':'')+'"', ()=>{closeFab();mAE(rid0);});
   opts+=fo('🤖','SmartScan Receipt', ()=>{closeFab();ensureReport(rid=>fabDoSnap('smart',rid));});
-  opts+=fo('📷','Camera SmartScan', ()=>{closeFab();ensureReport(rid=>fabDoSnap('smart',rid,true));});
   opts+=fo('📸','Batch Scan (Images + PDFs)', ()=>{closeFab();fabBatch();});
   opts+=fo('➕','Manual Entry',      ()=>{closeFab();ensureReport(rid=>mAE(rid));});
   opts+=fo('📁','New Report',        ()=>{mNR();closeFab();});
@@ -1327,11 +1326,10 @@ function ensureReport(cb) {
   cb(r.id);
 }
 
-function fabDoSnap(mode, ridDirect, useCamera) {
+function fabDoSnap(mode, ridDirect) {
   const doIt = rid => {
     const inp = document.createElement('input');
-    inp.type='file'; inp.accept = useCamera ? 'image/*' : 'image/*,application/pdf';
-    if (useCamera) inp.setAttribute('capture','environment');
+    inp.type='file'; inp.accept = 'image/*,application/pdf';
     inp.style.cssText='position:fixed;top:-100px;left:-100px;opacity:0';
     document.body.appendChild(inp);
     inp.onchange = e => {
@@ -2839,6 +2837,57 @@ async function doExportBoth() {
   }
 }
 
+// Resolve any receipt image source (Firebase Storage https URL, or a data URL of
+// any image type) into a clean JPEG/PNG data URL + natural dimensions that jsPDF
+// can embed reliably. jsPDF's own URL handling uses a synchronous XHR that silently
+// yields blank/corrupt image data on iOS Safari — so we always pre-fetch and decode
+// the image ourselves before calling addImage().
+async function rcptImgForPdf(src) {
+  let dataUrl = src, img = null;
+  if (/^https?:\/\//i.test(src)) {
+    try {
+      const resp = await fetch(src);
+      if (!resp.ok) throw new Error('HTTP '+resp.status);
+      const blob = await resp.blob();
+      dataUrl = await new Promise((res,rej)=>{
+        const fr=new FileReader();
+        fr.onload=()=>res(fr.result);
+        fr.onerror=()=>rej(new Error('Receipt read failed'));
+        fr.readAsDataURL(blob);
+      });
+    } catch(_) {
+      // Fetch blocked (offline cache / CORS edge case) — fall back to decoding the
+      // URL directly via an <img> with CORS enabled, then re-encode via canvas.
+      img = await loadImg(src, true);
+      dataUrl = null;
+    }
+  }
+  if (!img) img = await loadImg(dataUrl, false);
+  const w = img.naturalWidth||img.width, h = img.naturalHeight||img.height;
+  if (!w || !h) throw new Error('Receipt image has no dimensions');
+  // jsPDF natively supports JPEG and PNG; re-encode anything else (WEBP, HEIC,
+  // octet-stream blobs) to JPEG via canvas. Also re-encode when we only have an
+  // <img> loaded straight from a URL.
+  if (dataUrl && (dataUrl.startsWith('data:image/jpeg')||dataUrl.startsWith('data:image/jpg')))
+    return {data:dataUrl, fmt:'JPEG', w, h};
+  if (dataUrl && dataUrl.startsWith('data:image/png'))
+    return {data:dataUrl, fmt:'PNG', w, h};
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  const cx=cv.getContext('2d');
+  cx.fillStyle='#fff'; cx.fillRect(0,0,w,h);
+  cx.drawImage(img,0,0);
+  return {data:cv.toDataURL('image/jpeg',0.88), fmt:'JPEG', w, h};
+}
+function loadImg(src, cors){
+  return new Promise((res,rej)=>{
+    const im=new Image();
+    if (cors) im.crossOrigin='anonymous';
+    im.onload=()=>res(im);
+    im.onerror=()=>rej(new Error('Receipt image could not be decoded'));
+    im.src=src;
+  });
+}
+
 async function buildReceiptsPDF(r, lines) {
   if (typeof window.jspdf === 'undefined' && typeof jsPDF === 'undefined') {
     throw new Error('jsPDF library not loaded');
@@ -2924,23 +2973,12 @@ async function buildReceiptsPDF(r, lines) {
         doc.text(line.name, PW/2, imgY+36, {align:'center'});
         doc.text('Open the original PDF file to view this receipt.', PW/2, imgY+43, {align:'center'});
       } else {
-        let fmt2 = 'JPEG';
-        if (src.includes('data:image/png') || src.toLowerCase().includes('.png')) fmt2 = 'PNG';
-        else if (src.includes('data:image/webp') || src.toLowerCase().includes('.webp')) fmt2 = 'WEBP';
-        // Preserve aspect ratio: scale the image to fit inside the IW x imgH box,
-        // then center it horizontally. Falls back to box-fit if dimensions are unavailable.
-        let dw = IW, dh = imgH, dx = M, dy = imgY;
-        try {
-          const props = doc.getImageProperties(src);
-          if (props && props.width && props.height) {
-            const scale = Math.min(IW/props.width, imgH/props.height);
-            dw = props.width  * scale;
-            dh = props.height * scale;
-            dx = M + (IW - dw)/2;
-            dy = imgY;
-          }
-        } catch(_) {}
-        doc.addImage(src, fmt2, dx, dy, dw, dh, undefined, 'MEDIUM');
+        // Pre-fetch + decode the image ourselves; never hand jsPDF a raw URL.
+        const im = await rcptImgForPdf(src);
+        const scale = Math.min(IW/im.w, imgH/im.h);
+        const dw = im.w*scale, dh = im.h*scale;
+        const dx = M + (IW-dw)/2, dy = imgY;
+        doc.addImage(im.data, im.fmt, dx, dy, dw, dh, undefined, 'MEDIUM');
       }
     } catch(imgErr) {
       doc.setFontSize(10); doc.setTextColor(180,50,50);
