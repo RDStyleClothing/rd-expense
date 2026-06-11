@@ -385,7 +385,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v2.2.8</span>
+      <span class="vbm" id="vBdgM">v2.2.12</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -465,7 +465,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.2.8</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.2.12</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -487,7 +487,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v2.2.8',
+  APP_VERSION:    'v2.2.12',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
 };
@@ -702,97 +702,119 @@ function isPdfRef(s){
   return /\.pdf$/i.test(String(s).split('?')[0].split('#')[0]);
 }
 
-async function save() {
+// Firestore rejects undefined field values. Reports/expenses are plain JSON
+// (strings/numbers/booleans/arrays), so a JSON round-trip safely drops any
+// undefined optional fields (currency/origCurrency/origAmount) before writing.
+function stripUndef(v){ return JSON.parse(JSON.stringify(v)); }
+
+// Bound a Storage upload so it can never hold up the Firestore doc write. On slow
+// mobile networks put() can internally retry for minutes; if the page is suspended
+// (phone locked / app switched) before it resolves, the doc write never happens and
+// the expense exists only on that device until the next successful save.
+function withTimeout(p, ms){
+  return Promise.race([ p, new Promise((_,rej)=>setTimeout(()=>rej(Object.assign(new Error('upload timed out'),{code:'app/upload-timeout'})), ms)) ]);
+}
+const UPLOAD_BUDGET_MS = 6000;
+
+// All saves run strictly one-after-another. Adding expenses back-to-back while a
+// prior save is still compressing photos queues the new save instead of letting two
+// interleave — the last save in a burst always carries the complete current state.
+let _saveQ = Promise.resolve();
+function save(){
+  const run = _saveQ.then(()=>_doSave());
+  _saveQ = run.catch(()=>{});   // a failed save must never jam the queue
+  return run;
+}
+
+// Cloud-safe copy: never let raw base64 (an expense added mid-save whose photo
+// hasn't been processed yet) into the user doc — it would risk the 1 MiB doc cap.
+// It stays in memory and the queued follow-up save writes it properly.
+function cloudExpenses(){
+  return S.expenses.map(e => ({ ...e, receipts:(e.receipts||[]).filter(r => r && !String(r).startsWith('data:')) }));
+}
+
+async function _doSave() {
   if (!CU) return;
   updSyncChip('syncing');
   S._pendingBlobs = S._pendingBlobs || {};
-  const pendingWrites = [];   // {receiptId, base64} to persist into the subcollection
-  let failed = 0, tooBig = 0, lastUpCode = null;
+  const blobWrites = [];      // in-flight pendingReceipts doc writes
+  let deferred = 0, uncacheable = 0;
   try {
-    // Step 1: resolve every receipt to a Storage URL where possible.
-    const uploadedExpenses = await Promise.all(S.expenses.map(async e => {
-      const receipts = await Promise.all((e.receipts||[]).map(async (r, i) => {
-        if (!r) return r;
+    // Step 1: make every receipt cloud-representable WITHOUT touching Storage.
+    // Fresh photos become pending refs backed by a small Firestore blob doc; the
+    // Storage upload happens afterwards in the background (retryPendingUploads).
+    // This keeps the critical path pure-Firestore: those writes are durably queued
+    // by offline persistence, so even locking the phone the instant after tapping
+    // Save cannot lose the expense — it flushes next time the app wakes.
+    const ucol = FB.db.collection('users').doc(CU.uid).collection('pendingReceipts');
+    // Mutate each expense's receipts IN PLACE — never reassign S.expenses here.
+    // An expense pushed by the user while this loop awaits compression stays in the
+    // array untouched and is written by its own queued save right after this one.
+    await Promise.all(S.expenses.slice().map(async e => {
+      const recs = e.receipts || [];
+      await Promise.all(recs.map(async (r, i) => {
+        if (!r) return;
 
         // Already a Storage URL — leave as-is.
-        if (/^https?:\/\//.test(r)) return r;
+        if (/^https?:\/\//.test(r)) return;
 
-        // A pending ref — try to heal it (re-upload from its local base64).
-        if (r.startsWith(PENDING_PREFIX)) {
-          const rid = r.slice(PENDING_PREFIX.length);
-          const b64 = S._pendingBlobs[rid];
-          if (!b64) return r; // no local copy to retry with — keep the ref
-          try {
-            const url = await uploadReceiptToStorage(b64, e.id, i);
-            delete S._pendingBlobs[rid];
-            return url;
-          } catch (err) {
-            pendingWrites.push({ receiptId: rid, base64: b64 });
-            return r;
-          }
-        }
+        // An existing pending ref — leave it; the background retry will heal it.
+        if (r.startsWith(PENDING_PREFIX)) return;
 
-        // Fresh base64 captured this session — compress, then upload.
+        // Fresh base64 captured this session — compress and cache to Firestore.
+        // Firestore caps documents at 1 MiB, so keep the cached copy safely under
+        // ~900K chars, recompressing harder if needed.
         if (r.startsWith('data:')) {
-          const compressed = await compressImage(r);
-          try {
-            return await uploadReceiptToStorage(compressed, e.id, i);
-          } catch (err) {
-            failed++;
-            lastUpCode = (err && err.code) || lastUpCode;
-            console.error('Storage upload failed for', e.id, 'receipt', i, '—', err && (err.code||err.message));
-            const rid = uid('RC');
-            S._pendingBlobs[rid] = compressed;
-            // Fallback copy goes into its own Firestore doc — Firestore caps documents at
-            // 1 MiB, so keep the cached copy safely under ~900K chars, recompressing
-            // harder if needed (the old 1.3M threshold silently exceeded the limit and
-            // the fallback write failed, which is why photos never reached other devices).
-            let cacheable = compressed;
-            if (cacheable.length > 900000) cacheable = await compressImage(r, 1200, 0.6);
-            if (cacheable.length > 900000) cacheable = await compressImage(r, 900, 0.5);
-            if (cacheable.length < 900000) {
-              pendingWrites.push({ receiptId: rid, base64: cacheable });
-            } else {
-              tooBig++;
-            }
-            return PENDING_PREFIX + rid;
+          let cacheable = await compressImage(r);
+          if (cacheable.length > 900000) cacheable = await compressImage(r, 1200, 0.6);
+          if (cacheable.length > 900000) cacheable = await compressImage(r, 900, 0.5);
+          if (cacheable.length > 900000) {
+            // Can't cache (doc cap) — one bounded direct Storage attempt; if that
+            // fails, keep a pending ref backed only by this device's memory.
+            uncacheable++;
+            const ridB = uid('RC');
+            S._pendingBlobs[ridB] = cacheable;
+            try {
+              const url = await withTimeout(uploadReceiptToStorage(cacheable, e.id, i, 1), UPLOAD_BUDGET_MS);
+              delete S._pendingBlobs[ridB];
+              recs[i] = url;
+            } catch(_) { recs[i] = PENDING_PREFIX + ridB; }
+            return;
           }
+          const rid = uid('RC');
+          S._pendingBlobs[rid] = cacheable;
+          deferred++;
+          // Issue the blob write BEFORE the user-doc write below — Firestore sends
+          // queued mutations in order, so the blob doc lands first and other
+          // devices can hydrate the pending ref the instant the doc arrives.
+          blobWrites.push(
+            ucol.doc(rid).set({ data: cacheable, expenseUid: CU.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
+              .catch(e2 => console.error('Pending-receipt write failed', e2 && (e2.code||e2.message)))
+          );
+          recs[i] = PENDING_PREFIX + rid;
         }
-        return r;
       }));
-      return { ...e, receipts: receipts.filter(Boolean) };
+      e.receipts = recs.filter(Boolean);
     }));
 
-    // Step 2: commit resolved receipts to in-memory state.
-    S.expenses = uploadedExpenses;
-
-    // Step 3: write fallback receipt blobs FIRST. Other devices receive the user doc
-    // (Step 4) the instant it's written and immediately try to hydrate the pending refs
-    // it contains, so those blob docs must already exist by then.
-    for (const pw of pendingWrites) {
-      try {
-        await FB.db.collection('users').doc(CU.uid)
-          .collection('pendingReceipts').doc(pw.receiptId)
-          .set({ data: pw.base64, expenseUid: CU.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-      } catch (e2) {
-        console.error('Pending-receipt write failed', e2 && (e2.code||e2.message));
-      }
-    }
-
-    // Step 4: write the main user doc (only short URLs / pending refs — never base64).
+    // Step 2: write the main user doc (only short URLs / pending refs — never base64).
     await FB.db.collection('users').doc(CU.uid).set({
-      reports:   S.reports,
-      expenses:  S.expenses,
+      reports:   stripUndef(S.reports),
+      expenses:  stripUndef(cloudExpenses()),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
+    await Promise.all(blobWrites);
 
     updSyncChip('synced');
-    if (failed > 0) {
-      const extra = tooBig > 0 ? ' ('+tooBig+' too large to cache — open that expense on the original device once online)' : '';
-      const hint  = lastUpCode === 'storage/unauthorized'
-        ? ' — Storage rules are blocking uploads (Firebase Console → Storage → Rules)'
-        : (lastUpCode ? ' ['+lastUpCode+']' : '');
-      toast(failed+' receipt'+(failed>1?'s':'')+" couldn't reach Storage — cached to cloud, will retry automatically"+extra+hint, '#BA7517');
+
+    // Step 3: upgrade pending refs to real Storage URLs in the background.
+    // The report data is already synced; this just swaps ⏳ refs for URLs when it lands.
+    const anyPending = deferred > 0 ||
+      S.expenses.some(e => (e.receipts||[]).some(r => typeof r==='string' && r.startsWith(PENDING_PREFIX)));
+    if (anyPending) setTimeout(()=>retryPendingUploads(), 600);
+
+    if (uncacheable > 0) {
+      toast(uncacheable+' receipt'+(uncacheable>1?'s':'')+' too large to cache — keep this device online until the upload toast appears', '#BA7517');
     }
   } catch (e) {
     console.error('Save failed', e);
@@ -880,6 +902,10 @@ async function hydratePending(attempt) {
   render();
   const stillMissing = [...need].some(id => !S._pendingBlobs[id]);
   if (stillMissing && attempt < 3) setTimeout(()=>hydratePending(attempt+1), 2000);
+  // Any device holding the blob can finish the Storage upload — if the originating
+  // phone never comes back online, this device upgrades the receipt itself. Small
+  // delay so the originator usually wins the race.
+  if ([...need].some(id => S._pendingBlobs[id])) setTimeout(()=>retryPendingUploads(), 5000);
 }
 
 // Live cross-device sync: watch the user's doc and apply remote changes as they arrive.
@@ -903,9 +929,15 @@ function stopRealtimeSync() {
 
 // Re-attempt Storage upload for any pending receipts we have a local copy of.
 // On success the expense entry is upgraded to a real URL and the fallback doc removed.
-async function retryPendingUploads() {
+// Re-entrancy-guarded; if anything is still pending afterwards it reschedules itself
+// with backoff (10s / 30s / 90s) so receipts heal without any user action.
+async function retryPendingUploads(attempt) {
   if (!CU) return;
-  let healed = 0;
+  if (S._retryBusy) return;
+  S._retryBusy = true;
+  attempt = attempt || 0;
+  let healed = 0, remaining = 0;
+  try {
   for (const e of S.expenses) {
     if (!e.receipts) continue;
     for (let i=0; i<e.receipts.length; i++) {
@@ -913,25 +945,29 @@ async function retryPendingUploads() {
       if (!r || !r.startsWith(PENDING_PREFIX)) continue;
       const rid = r.slice(PENDING_PREFIX.length);
       const b64 = S._pendingBlobs[rid];
-      if (!b64) continue;
+      if (!b64) { remaining++; continue; }
       try {
-        const url = await uploadReceiptToStorage(b64, e.id, i);
+        const url = await withTimeout(uploadReceiptToStorage(b64, e.id, i), 45000);
         e.receipts[i] = url;
         delete S._pendingBlobs[rid];
         try { await FB.db.collection('users').doc(CU.uid).collection('pendingReceipts').doc(rid).delete(); } catch(_){}
         healed++;
-      } catch(err) { /* still offline / still blocked — leave pending for next time */ }
+      } catch(err) { remaining++; /* still offline / still blocked — leave pending for next time */ }
     }
   }
   if (healed > 0) {
     try {
       await FB.db.collection('users').doc(CU.uid).set({
-        expenses: S.expenses,
+        expenses: stripUndef(cloudExpenses()),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge:true });
     } catch(_){}
     render();
     toast(healed+' pending receipt'+(healed>1?'s':'')+' uploaded ✓');
+  }
+  } finally { S._retryBusy = false; }
+  if (remaining > 0 && attempt < 3) {
+    setTimeout(()=>retryPendingUploads(attempt+1), [10000,30000,90000][attempt]);
   }
 }
 
@@ -3115,6 +3151,10 @@ window.addEventListener('load', () => {
   }
   FB.auth    = firebase.auth();
   FB.db      = firebase.firestore();
+  // Expenses legitimately carry undefined optional fields (currency/origCurrency/origAmount
+  // when no override applies). Firestore rejects undefined by default and the whole save
+  // fails ("Unsupported field value: undefined") — tell it to drop them instead.
+  try { FB.db.settings({ ignoreUndefinedProperties: true, merge: true }); } catch(_){}
   FB.storage = firebase.storage();
   // Offline cache: reads keep working and writes queue while offline.
   // Best-effort — silently skipped on unsupported browsers or multi-tab conflicts.
