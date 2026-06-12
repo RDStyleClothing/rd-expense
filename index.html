@@ -203,6 +203,17 @@ tr.trc:active td{background:var(--bg)}
 .bprog{width:100%;background:var(--s2);border-radius:20px;height:8px;overflow:hidden;margin-top:4px}
 .bprog-bar{height:100%;background:var(--g);border-radius:20px;width:0%;transition:width .4s}
 .toast{position:fixed;bottom:calc(var(--fab) + 52px);right:16px;z-index:999;background:#1a1917;color:#fff;font-size:13px;padding:10px 15px;border-radius:var(--rsm);opacity:0;transition:opacity .22s;pointer-events:none;max-width:300px;line-height:1.4}
+/* v2.2.16 — action toast (auto-filed expenses): undo / edit */
+.toastA{position:fixed;bottom:calc(var(--fab) + 52px);right:16px;left:16px;max-width:340px;margin-left:auto;z-index:999;background:var(--gxd,#04342C);color:#E1F5EE;border-radius:13px;padding:11px 13px;box-shadow:0 8px 30px rgba(0,0,0,.25);transform:translateY(24px);opacity:0;pointer-events:none;transition:transform .3s cubic-bezier(.3,1.1,.36,1),opacity .25s}
+.toastA.show{transform:translateY(0);opacity:1;pointer-events:auto}
+.toastA .taR{display:flex;align-items:center;gap:9px}
+.toastA .taCk{width:20px;height:20px;border-radius:50%;background:var(--g);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.toastA .taT{flex:1;min-width:0}
+.toastA .taT b{display:block;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toastA .taT span{font-size:11px;color:#9FE1CB;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toastA .taBts{display:flex;gap:8px;margin-top:9px}
+.toastA .taBts button{flex:1;background:none;border:1px solid var(--gdk);color:#E1F5EE;border-radius:8px;padding:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.toastA .taBts button:active{background:var(--gdk)}
 .toast.show{opacity:1}
 @media(max-width:700px){
   .sb{position:fixed;top:0;left:0;bottom:0;z-index:250;transform:translateX(-100%);width:260px;padding-top:env(safe-area-inset-top,0);box-shadow:var(--shlg)}
@@ -217,6 +228,7 @@ tr.trc:active td{background:var(--bg)}
   .vbm{display:inline-block}
   .fw{bottom:calc(var(--bn) + var(--safe) + 16px);right:16px}
   .toast{bottom:calc(var(--bn) + var(--safe) + var(--fab) + 18px)}
+  .toastA{bottom:calc(var(--bn) + var(--safe) + var(--fab) + 18px)}
   .main{padding:14px 12px;min-height:0;padding-bottom:calc(var(--fab) + var(--safe) + 40px)}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .dt{display:none!important}
@@ -419,7 +431,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v2.2.15</span>
+      <span class="vbm" id="vBdgM">v2.2.16</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -499,7 +511,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.2.15</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v2.2.16</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -512,6 +524,10 @@ tr.trc:active td{background:var(--bg)}
 
 <div id="mR"></div>
 <div class="toast" id="toast"></div>
+<div class="toastA" id="toastA" role="status">
+  <div class="taR"><span class="taCk">&#10003;</span><div class="taT"><b id="taB"></b><span id="taS"></span></div></div>
+  <div class="taBts"><button onclick="undoAutoFile()">Undo</button><button onclick="editAutoFile()">Edit</button></div>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -521,7 +537,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v2.2.15',
+  APP_VERSION:    'v2.2.16',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
 };
@@ -638,6 +654,29 @@ function toast(msg,c) {
   const t=$('toast'); t.textContent=msg; t.style.background=c||'#1a1917';
   t.classList.add('show'); clearTimeout(t._t);
   t._t=setTimeout(()=>t.classList.remove('show'),3500);
+}
+/* v2.2.16 — action toast for auto-filed expenses (Undo / Edit) */
+function toastAct(title, sub, eid) {
+  const t=$('toastA'); if(!t){ toast(title); return; }
+  window._taEid = eid;
+  $('taB').innerHTML = title;
+  $('taS').innerHTML = sub;
+  t.classList.add('show'); clearTimeout(t._t);
+  t._t=setTimeout(hideToastA, 6000);
+}
+function hideToastA(){ const t=$('toastA'); if(t){ clearTimeout(t._t); t.classList.remove('show'); } }
+function undoAutoFile(){
+  const eid=window._taEid; hideToastA(); if(!eid) return;
+  const ex=S.expenses.find(e=>e.id===eid); if(!ex) return;
+  cleanupReceiptRefs(ex.receipts);
+  S.expenses=S.expenses.filter(e=>e.id!==eid);
+  window._taEid=null;
+  save().then(()=>render());
+  toast('Undone — expense removed');
+}
+function editAutoFile(){
+  const eid=window._taEid; hideToastA(); if(!eid) return;
+  if(S.expenses.find(e=>e.id===eid)) mEditE(eid);
 }
 function badge(s) {
   const m={Open:'bop',Approved:'bap','Awaiting Payment':'baw',Paid:'bpa',Closed:'bcl'};
@@ -1453,12 +1492,12 @@ async function doSmartScan(imgData, rid) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 400,
+        max_tokens: 500,
         messages: [{
           role: 'user',
           content: [
             fileBlock,
-            { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true}' }
+            { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true,"confidence":{"merchant":"high|medium|low","date":"high|medium|low","amount":"high|medium|low","currency":"high|medium|low","category":"high|medium|low"}}\nFor each confidence field: "high" only if the value is clearly printed and unambiguous on the receipt; "medium" if inferred or partially legible; "low" if guessed or unreadable.' }
           ]
         }]
       })
@@ -1478,7 +1517,25 @@ async function doSmartScan(imgData, rid) {
     try { parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); } catch(e) { parsed = {}; }
 
     closeM();
-    mAE(rid, imgData, parsed);
+
+    /* v2.2.16 — confidence-based auto-file:
+       all of merchant/date/amount/currency read "high" + a real category + no duplicate
+       → file directly with an undo/edit toast; anything less → review modal as before. */
+    const conf = (parsed && parsed.confidence) || {};
+    const hi = k => conf[k] === 'high';
+    const amtNum = parseFloat(parsed.amount) || 0;
+    const okDate = /^\d{4}-\d{2}-\d{2}$/.test(parsed.date || '');
+    const okCat  = CATS.includes(parsed.category) && parsed.category !== 'Other';
+    const dupX = amtNum > 0 && S.expenses.find(x =>
+      (x.merchant||'').trim().toLowerCase() === (parsed.merchant||'').trim().toLowerCase() &&
+      x.date === parsed.date && Math.abs((x.amount||0) - amtNum) < 0.005);
+
+    if (hi('merchant') && hi('date') && hi('amount') && hi('currency') &&
+        amtNum > 0 && okDate && okCat && (parsed.merchant||'').trim() && !dupX) {
+      await autoFileExpense(rid, imgData, parsed);
+    } else {
+      mAE(rid, imgData, parsed);
+    }
 
   } catch(err) {
     console.error('SmartScan failed', err);
@@ -1487,6 +1544,32 @@ async function doSmartScan(imgData, rid) {
     toast('SmartScan failed: '+msg.slice(0,80)+' — opening manual form', '#A32D2D');
     mAE(rid, imgData);
   }
+}
+
+/* v2.2.16 — create the expense directly from a high-confidence scan */
+async function autoFileExpense(rid, imgData, sc) {
+  const rpt = S.reports.find(x => x.id === rid);
+  const rptCurDef = rptCurrency(rpt);
+  const scCur = validCur(sc.currency);
+  const e = {
+    id:          uid('E'),
+    reportId:    rid,
+    merchant:    String(sc.merchant).trim(),
+    date:        sc.date,
+    amount:      parseFloat(sc.amount),
+    category:    sc.category,
+    notes:       sc.notes || '',
+    taxIncluded: !!sc.taxIncluded,
+    currency:    (scCur && scCur !== rptCurDef) ? scCur : undefined,
+    receipts:    [imgData],
+    _ts:         Date.now()
+  };
+  S.expenses.push(e);
+  S._pendingRemote = null;   // local add wins over any remote snapshot queued during the scan
+  render();
+  toastAct('Filed: ' + esc(e.merchant) + ' · ' + fmt(e.amount, expCurrency(e)),
+           esc(rpt ? rpt.name : 'Report') + ' ▸ ' + esc(e.category), e.id);
+  await save();
 }
 
 function saveQuickKey() {
@@ -1672,7 +1755,7 @@ function pickRSelect(rid) {
 /* ══════════════════════════════════════════════════════ VIEWS */
 function showView(v,id){
   document.querySelectorAll('.ni,.bni').forEach(n=>n.classList.remove('active'));
-  const k=v==='report-detail'?'reports':v;
+  const k=(v==='report-detail'||v==='close-month')?'reports':v;
   $('nav-'+k)?.classList.add('active'); $('bn-'+k)?.classList.add('active');
   S.view=v; S.rid=id||null; render();
   const m=$('mainC'); m.classList.remove('vt'); void m.offsetWidth; m.classList.add('vt');
@@ -1696,6 +1779,7 @@ function render(){
   else if(S.view==='reports')  m.innerHTML=vRep();
   else if(S.view==='expenses') m.innerHTML=vExp();
   else if(S.view==='report-detail') m.innerHTML=vDet(S.rid);
+  else if(S.view==='close-month')   m.innerHTML=vClose(S.rid);
   m.scrollTop=0;
 }
 
@@ -1776,7 +1860,7 @@ function vDash(){
   if(pendCnt) inbox+='<div class="inb" onclick="retryPendingUploads();toast(\'Retrying photo uploads&hellip;\')"><div class="inbI" style="background:var(--blbg)">&#9203;</div><div class="inbT"><b>'+pendCnt+' photo'+(pendCnt>1?'s':'')+' waiting to upload</b><span>Tap to retry now</span></div><span class="inbChev">&rsaquo;</span></div>';
   stale.slice(0,3).forEach(r=>{
     const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);
-    inbox+='<div class="inb" onclick="showView(\'report-detail\',\''+r.id+'\')"><div class="inbI" style="background:var(--gbg)">&#10003;</div><div class="inbT"><b>'+esc(r.name)+' ready to close</b><span>'+ex.length+' expense'+(ex.length!==1?'s':'')+' &middot; '+fmt(tx.tot,rptCurrency(r))+'</span></div><span class="inbChev">&rsaquo;</span></div>';
+    inbox+='<div class="inb" onclick="showView(\'close-month\',\''+r.id+'\')"><div class="inbI" style="background:var(--gbg)">&#10003;</div><div class="inbT"><b>'+esc(r.name)+' ready to close</b><span>'+ex.length+' expense'+(ex.length!==1?'s':'')+' &middot; '+fmt(tx.tot,rptCurrency(r))+'</span></div><span class="inbChev">&rsaquo;</span></div>';
   });
   const inboxHtml='<div class="secH">Needs your attention</div><div class="card">'+
     (inbox||'<div class="inb" style="cursor:default"><div class="inbI" style="background:var(--gbg)">&#127881;</div><div class="inbT"><b>You&rsquo;re all caught up</b><span>Nothing needs review right now</span></div></div>')+'</div>';
@@ -1906,6 +1990,147 @@ function vExp(){
 }
 
 /* REPORT DETAIL */
+/* ══════════════════════════════════════════ v2.2.16 — CLOSE THE MONTH ══ */
+function closeChecks(rid){
+  const exps=S.expenses.filter(e=>e.reportId===rid);
+  const noR =exps.filter(e=>!(e.receipts&&e.receipts.length));
+  const pend=exps.reduce((n,e)=>n+((e.receipts||[]).filter(rc=>typeof rc==='string'&&rc.startsWith(PENDING_PREFIX)).length),0);
+  const unCat=exps.filter(e=>!e.category||e.category==='Other');
+  const seen={},dups=[];
+  exps.forEach(e=>{const k=((e.merchant||'').trim().toLowerCase())+'|'+(e.date||'')+'|'+Math.round((e.amount||0)*100);if(seen[k])dups.push(e);else seen[k]=1;});
+  return {exps,noR,pend,unCat,dups};
+}
+
+function vClose(rid){
+  const r=S.reports.find(r=>r.id===rid);
+  if(!r) return '<div class="empty">Report not found.</div>';
+  const c=closeChecks(rid);
+  const locked=r.status!=='Open';
+
+  const items=[
+    {ok:c.noR.length===0,
+     label:c.noR.length===0?'All receipts attached':c.noR.length+' expense'+(c.noR.length>1?'s':'')+' missing receipt'+(c.noR.length>1?'s':''),
+     sub:c.noR.length?esc(c.noR.slice(0,3).map(e=>e.merchant||'(no merchant)').join(' · ')):'Every line has at least one receipt',
+     ico:c.noR.length===0?'&#10003;':'&#129534;',
+     act:c.noR.length?'<button class="btn sm p" onclick="mFixQ(\''+rid+'\')">Fix</button>':''},
+    {ok:c.pend===0,
+     label:c.pend===0?'All receipt photos uploaded':c.pend+' photo'+(c.pend>1?'s':'')+' waiting to upload',
+     sub:c.pend?'Tap retry — they sync in the background':'Nothing pending in the upload queue',
+     ico:c.pend===0?'&#10003;':'&#9203;',
+     act:c.pend?'<button class="btn sm" onclick="retryPendingUploads();toast(\'Retrying photo uploads&hellip;\')">Retry</button>':''},
+    {ok:c.unCat.length===0,
+     label:c.unCat.length===0?'All expenses categorized':c.unCat.length+' expense'+(c.unCat.length>1?'s':'')+' still &ldquo;Other&rdquo;',
+     sub:c.unCat.length?'Assign a real category before export':'No lines left in &ldquo;Other&rdquo;',
+     ico:c.unCat.length===0?'&#10003;':'&#128203;',
+     act:c.unCat.length?'<button class="btn sm" onclick="showView(\'report-detail\',\''+rid+'\')">Review</button>':''},
+    {ok:c.dups.length===0,
+     label:c.dups.length===0?'No duplicate expenses detected':c.dups.length+' possible duplicate'+(c.dups.length>1?'s':''),
+     sub:c.dups.length?esc(c.dups.slice(0,3).map(e=>(e.merchant||'?')+' '+fmt(e.amount,expCurrency(e))).join(' · ')):'Same merchant + date + amount check passed',
+     ico:c.dups.length===0?'&#10003;':'&#9888;',
+     act:c.dups.length?'<button class="btn sm" onclick="showView(\'report-detail\',\''+rid+'\')">Review</button>':''}
+  ];
+  const done=items.filter(i=>i.ok).length, pct=c.exps.length?Math.round(done/items.length*100):0, left=items.length-done;
+  const dash=(201*pct/100).toFixed(1)+' 201';
+  const mealsTot=c.exps.filter(e=>e.category==='Meals & Entertainment').reduce((s,e)=>s+TAX.calc(e.amount,e.category,e.taxIncluded||false).tot,0);
+  const ready=left===0&&c.exps.length>0&&!locked;
+
+  const rows=items.map(i=>'<div class="inb" style="cursor:default"><div class="inbI" style="background:'+(i.ok?'var(--gbg)':'var(--ambg)')+'">'+i.ico+'</div><div class="inbT"><b>'+i.label+'</b><span>'+i.sub+'</span></div>'+(i.act||'')+'</div>').join('');
+
+  return '<div class="back" onclick="showView(\'report-detail\',\''+rid+'\')"><svg viewBox="0 0 14 14" fill="none"><path d="M9 11L5 7l4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>'+esc(r.name)+'</div>'+
+  '<div class="ph" style="margin-top:6px"><div style="min-width:0;flex:1"><div class="pt">Close month</div>'+
+  '<div class="ps">'+esc(r.name)+' &middot; '+esc(r.category)+' &middot; '+badge(r.status)+'</div></div></div>'+
+  '<div class="card" style="padding:14px;display:flex;align-items:center;gap:16px;margin-bottom:14px">'+
+    '<svg width="76" height="76" viewBox="0 0 78 78" style="flex-shrink:0">'+
+      '<circle cx="39" cy="39" r="32" fill="none" stroke="var(--gbg)" stroke-width="7"/>'+
+      '<circle cx="39" cy="39" r="32" fill="none" stroke="var(--g)" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+dash+'" transform="rotate(-90 39 39)"/>'+
+      '<text x="39" y="37" text-anchor="middle" font-size="16" font-weight="700" fill="var(--gdk)">'+pct+'%</text>'+
+      '<text x="39" y="51" text-anchor="middle" font-size="9" fill="var(--g)">ready</text></svg>'+
+    '<div style="min-width:0"><div style="font-size:14px;font-weight:700">'+
+      (locked?'Report already '+esc(r.status).toLowerCase():(c.exps.length===0?'No expenses on this report yet':(left===0?'Ready to export':left+' item'+(left>1?'s':'')+' left before export')))+
+    '</div><div style="font-size:12px;color:var(--tx2)">'+c.exps.length+' expense'+(c.exps.length!==1?'s':'')+' &middot; '+(c.exps.length-c.noR.length)+' with receipts</div></div>'+
+  '</div>'+
+  '<div class="secH">Readiness checklist</div><div class="card">'+rows+'</div>'+
+  taxBox(c.exps)+
+  (mealsTot>0?'<div style="font-size:11px;color:var(--tx3);margin:8px 2px 0">&#9432; Meals &amp; Entertainment '+fmt(r2(mealsTot),rptCurrency(r))+' &mdash; 50% ITC/ITR only (already reflected above)</div>':'')+
+  '<div style="margin-top:16px">'+
+    (locked
+      ?'<button class="btn" style="width:100%;justify-content:center" onclick="expR(\''+rid+'\')">&#11015; Export again</button>'
+      :'<button class="btn p" style="width:100%;justify-content:center;padding:13px;font-size:15px'+(ready?'':';opacity:.45;cursor:not-allowed')+'"'+(ready?'':' disabled')+' onclick="closeMonthExport(\''+rid+'\')">&#128230; Generate bundle &middot; Excel + receipts PDF</button>')+
+    '<div style="text-align:center;font-size:11px;color:var(--tx3);margin-top:8px">'+
+    (locked?'This report is locked &mdash; revert it from the report page to edit.':(ready?'Downloads both files, then marks the report Approved':'Resolve the items above to enable export'))+'</div>'+
+  '</div>';
+}
+
+async function closeMonthExport(rid){
+  const r=S.reports.find(x=>x.id===rid); if(!r) return;
+  const c=closeChecks(rid);
+  if(c.noR.length||c.pend||c.unCat.length||c.dups.length){ toast('Resolve the checklist first','#BA7517'); return; }
+  toast('Building Excel + receipts PDF&hellip;');
+  try{
+    await expR(rid, true);
+    if(r.status==='Open'){
+      r.status='Approved';
+      r.statusAt=r.statusAt||{};
+      r.statusAt['Approved']=new Date().toISOString().slice(0,10);
+      await save();
+    }
+    showView('report-detail', rid);
+    toast('Report exported & approved \u2713');
+  }catch(e){
+    console.error('Close month export failed',e);
+    toast('Export failed: '+(e.message||e).slice(0,80),'#A32D2D');
+  }
+}
+
+/* fix queue — attach receipts to expenses that are missing them */
+function mFixQ(rid){
+  const c=closeChecks(rid);
+  const rows=c.noR.length?c.noR.map(e=>{
+    const cur=expCurrency(e);
+    return '<div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--bd)" id="fxr_'+e.id+'">'+
+      '<div style="width:40px;height:52px;border-radius:6px;background:var(--s2);border:1px dashed var(--bd2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">&#129534;</div>'+
+      '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(e.merchant||'(no merchant)')+'</div>'+
+      '<div style="font-size:11px;color:var(--tx2)">'+fd(e.date)+' &middot; '+esc(e.category)+' &middot; '+fmt(e.amount,cur)+'</div></div>'+
+      '<div style="display:flex;gap:6px;flex-shrink:0">'+
+        '<button class="btn sm" title="Take photo" onclick="fixPick(\''+e.id+'\',true)">&#128247;</button>'+
+        '<button class="btn sm" title="From files" onclick="fixPick(\''+e.id+'\',false)">&#128193;</button>'+
+      '</div></div>';
+  }).join('')
+  :'<div style="text-align:center;color:var(--gdk);font-weight:600;padding:18px 0">&#9989; All receipts attached</div>';
+
+  mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div>'+
+  '<div class="mhd"><h2>&#129534; Missing receipts</h2><button class="ib" onclick="closeM();render()">&#10005;</button></div>'+
+  '<div class="mb"><div style="font-size:12px;color:var(--tx2)">Attach a photo or file to each expense &mdash; they upload in the background.</div>'+
+  '<div id="fxList">'+rows+'</div></div>'+
+  '<div class="mf"><button class="btn p" onclick="closeM();render()">Done</button></div>'+
+  '</div></div>';
+  window._fixRid=rid;
+}
+
+function fixPick(eid, cam){
+  const inp=document.createElement('input');
+  inp.type='file';
+  inp.accept=cam?'image/*':'image/*,.pdf';
+  if(cam) inp.capture='environment';
+  inp.style.cssText='position:fixed;top:-100px;left:-100px;opacity:0';
+  document.body.appendChild(inp);
+  inp.onchange=ev=>{
+    document.body.removeChild(inp);
+    const f=ev.target.files&&ev.target.files[0]; if(!f) return;
+    const fr=new FileReader();
+    fr.onload=e2=>{
+      const ex=S.expenses.find(x=>x.id===eid); if(!ex) return;
+      ex.receipts=[...(ex.receipts||[]),e2.target.result];
+      S._pendingRemote=null;
+      save();
+      toast('Receipt attached \u2713');
+      if(window._fixRid) mFixQ(window._fixRid);
+    };
+    fr.readAsDataURL(f);
+  };
+  inp.click();
+}
+
 function vDet(rid){
   const r=S.reports.find(r=>r.id===rid);
   if(!r) return '<div class="empty">Report not found.</div>';
@@ -1948,7 +2173,9 @@ function vDet(rid){
     '<div class="phs"></div>'+
     '<div class="pa">'+badge(r.status)+
       (prev?'<button class="btn" title="Revert to '+prev+'" onclick="revertSt(\''+r.id+'\',\''+prev+'\')" style="color:var(--tx2)">&#8617; Revert to '+prev+'</button>':'')+
-      (ns?'<button class="btn p" onclick="advSt(\''+r.id+'\',\''+ns[1]+'\')">'+ns[0]+'</button>':'')+
+      (r.status==='Open'
+        ?'<button class="btn p" onclick="showView(\'close-month\',\''+r.id+'\')">Close month&hellip;</button>'
+        :(ns?'<button class="btn p" onclick="advSt(\''+r.id+'\',\''+ns[1]+'\')">'+ns[0]+'</button>':''))+
       '<button class="btn" onclick="expR(\''+r.id+'\')">&#11015; Export</button>'+
       (!locked?'<button class="btn p" onclick="mAE(\''+r.id+'\')">+ Add</button>':'')+
     '</div>'+
@@ -2572,7 +2799,7 @@ async function buildXlsx(sheets, sst, styles){
   return await zip.generateAsync({type:'uint8array', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
 
-async function expR(rid){
+async function expR(rid, auto){
   const r=S.reports.find(r=>r.id===rid); if(!r)return;
   if(typeof JSZip==='undefined'){toast('Export library loading — try again in a moment','#BA7517');return;}
   const exps=sortExps(S.expenses.filter(e=>e.reportId===rid),'date-asc');
@@ -2834,7 +3061,7 @@ async function expR(rid){
     }
   }));
 
-  showExportModal(r, fname, blob, lines, fn, sp, rid);
+  return showExportModal(r, fname, blob, lines, fn, sp, rid, auto);
 }
 
 function doDownloadXlsx(blob, fname) {
@@ -2845,7 +3072,7 @@ function doDownloadXlsx(blob, fname) {
   setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
 }
 
-function showExportModal(r, fname, blob, lines, fn, sp, rid) {
+function showExportModal(r, fname, blob, lines, fn, sp, rid, auto) {
   window._expBlob  = blob;
   window._expFname = fname;
   window._expLines = lines;
@@ -2853,6 +3080,11 @@ function showExportModal(r, fname, blob, lines, fn, sp, rid) {
   window._expSp    = sp;
   window._expRid   = rid;
   window._expR     = r;
+
+  /* v2.2.16 — Close the Month one-shot bundle: skip the chooser */
+  if (auto) {
+    return (lines && lines.length) ? doExportBoth() : doExportExcel();
+  }
 
   const hasReceipts = lines && lines.length > 0;
 
