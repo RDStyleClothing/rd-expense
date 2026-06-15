@@ -343,6 +343,37 @@ tr.trc:active td{background:var(--bg)}
 .syc.up{background:var(--ambg);color:var(--amdk)}
 .syc.up .sycd{animation:bl 1s ease-in-out infinite}
 .syc.ok{background:var(--gbg);color:var(--gdk)}
+/* batch results review (v3.0.1) */
+.brchips{display:flex;gap:8px}
+.brchip{flex:1;border-radius:10px;padding:10px 8px;text-align:center;border:1px solid var(--bd)}
+.brchip .brn{font-size:20px;font-weight:800;line-height:1}
+.brchip .brl{font-size:10.5px;font-weight:600;margin-top:3px;letter-spacing:.02em;text-transform:uppercase}
+.brchip.ok{background:var(--gbg)}.brchip.ok .brn,.brchip.ok .brl{color:var(--gdk)}
+.brchip.dup{background:var(--ambg)}.brchip.dup .brn,.brchip.dup .brl{color:var(--amdk)}
+.brchip.err{background:var(--rdbg)}.brchip.err .brn,.brchip.err .brl{color:var(--rd)}
+.brchip.zero{background:var(--s2);opacity:.7}.brchip.zero .brn,.brchip.zero .brl{color:var(--tx3)}
+.brsectlbl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--tx3);margin:2px 0 -6px}
+.brlist{display:flex;flex-direction:column;gap:7px;max-height:46vh;overflow-y:auto;margin:0 -4px;padding:0 4px}
+.brrow{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--bd);border-radius:10px;padding:9px 11px;background:#fff}
+.brrow.dup{background:var(--ambg);border-color:rgba(186,117,23,.25)}
+.brrow.err{background:var(--rdbg);border-color:rgba(163,45,45,.22)}
+.bric{font-size:15px;line-height:1.3;flex:0 0 auto;width:18px;text-align:center}
+.bric.ok{color:var(--g)}.bric.dup{color:var(--am)}.bric.err{color:var(--rd)}
+.brmain{flex:1;min-width:0}
+.brtop{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.brmerch{font-size:13.5px;font-weight:700;color:var(--tx)}
+.bramt{font-size:13px;font-weight:600;color:var(--tx)}
+.brbadge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;letter-spacing:.03em}
+.brbadge.pdf{background:var(--blbg);color:var(--bl)}
+.brbadge.img{background:var(--s2);color:var(--tx2)}
+.brfn{font-size:10.5px;color:var(--tx3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brsub{font-size:11px;margin-top:2px;line-height:1.4}
+.brsub.dup{color:var(--amdk)}.brsub.err{color:var(--rd)}
+.bract{flex:0 0 auto;align-self:center}
+.brmini{border:1px solid var(--bd2);background:#fff;border-radius:7px;font-size:11px;font-weight:600;padding:5px 9px;cursor:pointer;color:var(--tx);white-space:nowrap}
+.brmini.amber{border-color:rgba(186,117,23,.4);color:var(--amdk)}
+.brmini.red{border-color:rgba(163,45,45,.35);color:var(--rd)}
+.brmini:active{transform:scale(.96)}
 </style>
 </head>
 <body>
@@ -537,9 +568,14 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.0.0',
+  APP_VERSION:    'v3.0.1',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
+  // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
+  // can be as low as 5/min). We pace proactively to stay under it; a 429 still
+  // triggers a retry-after wait as a safety net. Raise this when the key's API
+  // tier is raised in the Anthropic Console (console.anthropic.com → Limits).
+  BATCH_RPM:      5,
 };
 
 const firebaseConfig = {
@@ -1620,13 +1656,114 @@ function fabBatch() {
   inp.click();
 }
 
-async function startBatch(files, rid) {
-  if (!getApiKey()) { toast('SmartScan needs your Anthropic API key first \u2014 opening settings','#BA7517'); openApiKeySettings(); return; }
+/* ── BATCH SMARTSCAN (paced + retryable, with results review) — v3.0.1 ── */
+const _batchRL = { times: [] };
+function _batchSleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+/* Proactive rate gate: never start more than CFG.BATCH_RPM requests in any
+   rolling 60s window. onWait(ms) lets the caller surface a countdown. */
+async function _batchRateGate(onWait){
+  const rpm = Math.max(1, CFG.BATCH_RPM|0), win = 60000;
+  for(;;){
+    const now = Date.now();
+    _batchRL.times = _batchRL.times.filter(t => now - t < win);
+    if(_batchRL.times.length < rpm){ _batchRL.times.push(Date.now()); return; }
+    const waitMs = win - (now - _batchRL.times[0]) + 60;
+    if(onWait) onWait(waitMs, false);
+    await _batchSleep(Math.min(waitMs, 1000));
+  }
+}
+
+/* One scan. Returns {exp, dup} or throws a tagged Error (err.etype +,
+   for 'read' misses, err.parsed for prefilling the manual form). Honors 429
+   retry-after as the safety net under the proactive gate. */
+async function _scanReceipt(file, dataUrl, rid, rptCurDef, ui){
+  const apiKey = getApiKey();
+  if(!apiKey){ const e=new Error('No API key — add it via Settings → SmartScan API Key'); e.etype='nokey'; throw e; }
+  const isPdf = file.type === 'application/pdf';
+  const base64 = dataUrl.split(',')[1];
+  const mediaType = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+  const fileBlock = isPdf
+    ? { type:'document', source:{ type:'base64', media_type:'application/pdf', data:base64 } }
+    : { type:'image',    source:{ type:'base64', media_type:mediaType,          data:base64 } };
+
+  let parsed = {}, attempts = 0;
+  for(;;){
+    attempts++;
+    await _batchRateGate(ui && ui.onWait);
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json','x-api-key':apiKey,
+                'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({
+        model:'claude-haiku-4-5-20251001', max_tokens:400,
+        messages:[{ role:'user', content:[ fileBlock,
+          { type:'text', text:'Extract from this receipt or invoice. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true}' }
+        ]}]
+      })
+    });
+
+    if(resp.status === 429){
+      if(attempts > 6){ const e=new Error('Rate limited — still throttled after retries'); e.etype='rate'; throw e; }
+      const ra = parseFloat(resp.headers.get('retry-after'));
+      const waitMs = (isFinite(ra) && ra>0 ? ra*1000 : Math.min(60000, 5000*attempts)) + 250;
+      if(ui && ui.onWait) ui.onWait(waitMs, true);
+      await _batchSleep(waitMs);
+      continue;
+    }
+    if(!resp.ok){
+      const eb = await resp.json().catch(()=>({error:{message:'HTTP '+resp.status}}));
+      const e = new Error(eb?.error?.message || ('HTTP '+resp.status));
+      e.etype = resp.status>=500 ? 'server' : 'other';
+      throw e;
+    }
+    const rdata = await resp.json();
+    if(rdata.error){
+      const e = new Error(rdata.error.message || JSON.stringify(rdata.error));
+      e.etype = /rate limit|429|too many/i.test(e.message) ? 'rate' : 'other';
+      throw e;
+    }
+    try { parsed = JSON.parse((rdata.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim()); } catch(e){ parsed = {}; }
+    break;
+  }
+
+  const amt = parseFloat(parsed.amount) || 0;
+  if(amt <= 0 || !(parsed.merchant||'').trim()){
+    const e = new Error('Couldn’t read a total off this receipt'); e.etype='read'; e.parsed=parsed; throw e;
+  }
+
+  const today = new Date().toISOString().slice(0,10);
+  const exp = {
+    id: uid('E'), reportId: rid,
+    merchant: (parsed.merchant||'').trim(),
+    date: /^\d{4}-\d{2}-\d{2}$/.test(parsed.date||'') ? parsed.date : today,
+    amount: amt,
+    category: CATS.includes(parsed.category) ? parsed.category : 'Other',
+    currency: (function(){ const c=validCur(parsed.currency); return (c && c!==rptCurDef) ? c : undefined; })(),
+    notes: parsed.notes || '',
+    taxIncluded: !!parsed.taxIncluded,
+    receipts: [dataUrl],
+    _ts: Date.now()
+  };
+  const dup = S.expenses.find(x =>
+    (x.merchant||'').trim().toLowerCase() === exp.merchant.toLowerCase() &&
+    x.date === exp.date && Math.abs((x.amount||0) - exp.amount) < 0.005);
+  return { exp, dup };
+}
+
+async function startBatch(files, rid){
+  if(!getApiKey()){ toast('SmartScan needs your Anthropic API key first — opening settings','#BA7517'); openApiKeySettings(); return; }
   window._batchCancel = false;
   const rptCurDef = rptCurrency(S.reports.find(x=>x.id===rid));
   const fileArr = Array.from(files);
-  const total   = fileArr.length;
-  let done = 0, added = 0, skippedDup = 0;
+  const total = fileArr.length;
+
+  const results = fileArr.map(f => ({
+    file:f, dataUrl:null, name:f.name,
+    kind: f.type==='application/pdf' ? 'pdf' : 'img',
+    status:'pending', exp:null, dupOf:null, etype:null, emsg:null, parsed:null, _retrying:false
+  }));
+  window._batchState = { results, rid, rptCurDef, total };
 
   mR.innerHTML = '<div class="mbg">'+
   '<div class="modal"><div class="mh2"></div>'+
@@ -1639,117 +1776,159 @@ async function startBatch(files, rid) {
       '<div id="batchBar" style="height:100%;background:var(--g);border-radius:20px;width:0%;transition:width .4s"></div>'+
     '</div>'+
     '<div id="batchLog" style="font-size:11px;color:var(--tx3);max-height:160px;overflow-y:auto;width:100%;text-align:left;line-height:1.7"></div>'+
-    '<button class="btn" id="batchCancelBtn" style="width:100%;justify-content:center" onclick="window._batchCancel=true;this.disabled=true;this.textContent=\'Stopping\u2026\'">Cancel</button>'+
+    '<button class="btn" id="batchCancelBtn" style="width:100%;justify-content:center" onclick="window._batchCancel=true;this.disabled=true;this.textContent=\'Stopping…\'">Cancel</button>'+
   '</div></div></div>';
 
-  const apiKey = getApiKey();
-
-  for (const file of fileArr) {
-    if (window._batchCancel) break;
-    const logEl = $('batchLog');
-    const isPdf = file.type === 'application/pdf';
-    const fileIcon = isPdf ? '📄' : '🖼';
-
-    const titleEl = $('batchTitle');
-    if(titleEl) titleEl.textContent = (isPdf ? 'Reading PDF' : 'Scanning image') + ' ' + (done+1) + ' of ' + total + '…';
-
-    const dataUrl = await new Promise(res => {
-      const fr = new FileReader();
-      fr.onload = ev => res(ev.target.result);
-      fr.readAsDataURL(file);
-    });
-
-    try {
-      if (!apiKey) {
-        if(logEl) logEl.innerHTML += '<div style="color:var(--rd)">✗ No API key — add it via Settings → SmartScan API Key</div>';
-        done++; continue;
-      }
-
-      const base64    = dataUrl.split(',')[1];
-      const mediaType = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
-
-      const fileBlock = isPdf
-        ? { type:'document', source:{ type:'base64', media_type:'application/pdf', data:base64 } }
-        : { type:'image',    source:{ type:'base64', media_type:mediaType,          data:base64 } };
-
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 400,
-          messages: [{ role:'user', content:[
-            fileBlock,
-            { type:'text', text:'Extract from this receipt or invoice. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true}' }
-          ]}]
-        })
-      });
-
-      if(!resp.ok) {
-        const eb = await resp.json().catch(()=>({error:{message:'HTTP '+resp.status}}));
-        throw new Error(eb?.error?.message || 'HTTP '+resp.status);
-      }
-      const rdata = await resp.json();
-      if(rdata.error) throw new Error(rdata.error.message || JSON.stringify(rdata.error));
-
-      let parsed = {};
-      try { parsed = JSON.parse((rdata.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim()); } catch(e){}
-
-      const today = new Date().toISOString().slice(0,10);
-      const exp = {
-        id:          uid('E'),
-        reportId:    rid,
-        merchant:    parsed.merchant || file.name.replace(/\.[^.]+$/,''),
-        date:        parsed.date     || today,
-        amount:      parseFloat(parsed.amount) || 0,
-        category:    parsed.category || 'Other',
-        currency:    (function(){ const c=validCur(parsed.currency); return (c && c!==rptCurDef) ? c : undefined; })(),
-        notes:       parsed.notes    || '',
-        taxIncluded: !!parsed.taxIncluded,
-        receipts:    [dataUrl],
-        _ts:         Date.now()
-      };
-      const dup = exp.amount>0 && S.expenses.find(x=>(x.merchant||'').trim().toLowerCase()===(exp.merchant||'').trim().toLowerCase() && x.date===exp.date && Math.abs((x.amount||0)-exp.amount)<0.005);
-      if (dup) {
-        skippedDup++;
-        if(logEl) logEl.innerHTML += '<div style="color:var(--am)">&#9888; Skipped duplicate: '+esc(exp.merchant)+' &mdash; '+fmt(exp.amount)+'</div>';
-      } else {
-        S.expenses.push(exp);
-        added++;
-        if(logEl) logEl.innerHTML += '<div>'+fileIcon+' <strong>'+esc(exp.merchant)+'</strong> &mdash; '+fmt(exp.amount)+(isPdf?' <span style="color:var(--bl);font-size:10px">PDF</span>':'')+'</div>';
-      }
-
-    } catch(err) {
-      console.error('Batch item failed:', file.name, err);
-      if(logEl) logEl.innerHTML += '<div style="color:var(--rd)">✗ '+esc(file.name)+': '+(err.message||'scan failed')+'</div>';
+  for(let i=0;i<results.length;i++){
+    if(window._batchCancel) break;
+    const r = results[i];
+    const titleEl=$('batchTitle'), logEl=$('batchLog');
+    if(titleEl) titleEl.textContent = (r.kind==='pdf'?'Reading PDF':'Scanning image')+' '+(i+1)+' of '+total+'…';
+    if(!r.dataUrl){
+      r.dataUrl = await new Promise(res=>{ const fr=new FileReader(); fr.onload=ev=>res(ev.target.result); fr.readAsDataURL(r.file); });
     }
-
-    done++;
-    const pct = Math.round(done/total*100);
+    const ui = { onWait:(ms)=>{ const t=$('batchTitle'); if(t) t.textContent='Rate limited — waiting '+Math.ceil(ms/1000)+'s…'; } };
+    try {
+      const { exp, dup } = await _scanReceipt(r.file, r.dataUrl, rid, rptCurDef, ui);
+      if(dup){
+        r.status='dup'; r.exp=exp; r.dupOf=(dup.merchant||'')+' · '+fd(dup.date)+' · '+fmt(dup.amount, expCurrency(dup));
+        if(logEl) logEl.innerHTML += '<div style="color:var(--am)">&#9888; Duplicate: '+esc(exp.merchant)+' — '+fmt(exp.amount)+'</div>';
+      } else {
+        S.expenses.push(exp); r.status='ok'; r.exp=exp;
+        if(logEl) logEl.innerHTML += '<div>'+(r.kind==='pdf'?'📄':'🖼')+' <strong>'+esc(exp.merchant)+'</strong> — '+fmt(exp.amount)+'</div>';
+      }
+    } catch(err){
+      console.error('Batch item failed:', r.name, err);
+      r.status='err'; r.etype=err.etype||'other'; r.emsg=err.message||'scan failed'; r.parsed=err.parsed||null;
+      if(logEl) logEl.innerHTML += '<div style="color:var(--rd)">✗ '+esc(r.name)+': '+esc(r.emsg)+'</div>';
+    }
+    const doneAll = results.filter(x=>x.status!=='pending').length;
     const bar=$('batchBar'), sub=$('batchSub');
-    if(bar) bar.style.width = pct+'%';
-    if(sub) sub.textContent = done+' of '+total+' complete';
+    if(bar) bar.style.width = Math.round(doneAll/total*100)+'%';
+    if(sub) sub.textContent = doneAll+' of '+total+' complete';
   }
 
-  const titleEl2=$('batchTitle'), subEl=$('batchSub');
-  const cbtn=$('batchCancelBtn'); if(cbtn) cbtn.style.display='none';
-  if(titleEl2) titleEl2.textContent = 'Saving to Firebase…';
-  await save();
+  if(results.some(r=>r.status==='ok')) await save();
 
-  if(titleEl2) titleEl2.innerHTML = window._batchCancel ? '&#9209;&#65039; Batch stopped' : '&#10003; Batch complete';
-  if(subEl)    subEl.textContent  = added+' of '+total+' receipts added'+(skippedDup?' \u00b7 '+skippedDup+' duplicate'+(skippedDup>1?'s':'')+' skipped':'');
+  renderBatchResults();
 
-  setTimeout(()=>{
+  // Auto-rerun once — only when every error is a rate-limit one (#3).
+  const errs = results.filter(r=>r.status==='err');
+  if(!window._batchCancel && errs.length>0 && errs.every(r=>r.etype==='rate')){
+    setTimeout(()=>batchRetryFailed(true), 400);
+  }
+}
+
+/* ── Batch results review screen ── */
+function renderBatchResults(){
+  const st = window._batchState; if(!st){ closeM(); return; }
+  const { results } = st;
+  const ok  = results.filter(r=>r.status==='ok').length;
+  const dup = results.filter(r=>r.status==='dup').length;
+  const err = results.filter(r=>r.status==='err').length;
+  const pend= results.filter(r=>r.status==='pending').length;
+  const rateErr = results.filter(r=>r.status==='err' && r.etype==='rate').length;
+
+  const chip=(cls,n,l)=>'<div class="brchip '+(n?cls:'zero')+'"><div class="brn">'+n+'</div><div class="brl">'+l+'</div></div>';
+  const order={err:0,pending:1,dup:2,ok:3};
+  const sorted = results.map((r,idx)=>({r,idx})).sort((a,b)=>order[a.r.status]-order[b.r.status]);
+
+  const rowHtml = ({r,idx})=>{
+    const badge = r.kind==='pdf' ? '<span class="brbadge pdf">PDF</span>' : '<span class="brbadge img">IMG</span>';
+    if(r._retrying){
+      return '<div class="brrow"><div class="bric">&#8635;</div><div class="brmain"><div class="brtop"><span class="brmerch">'+esc(r.name)+'</span></div><div class="brsub" style="color:var(--tx2)">Retrying…</div></div></div>';
+    }
+    if(r.status==='ok'){
+      const e=r.exp;
+      return '<div class="brrow"><div class="bric ok">&#10003;</div><div class="brmain"><div class="brtop"><span class="brmerch">'+esc(e.merchant)+'</span><span class="bramt">'+fmt(e.amount, expCurrency(e))+'</span>'+badge+'</div><div class="brfn">'+esc(r.name)+'</div></div></div>';
+    }
+    if(r.status==='dup'){
+      const e=r.exp;
+      return '<div class="brrow dup"><div class="bric dup">&#9888;</div><div class="brmain"><div class="brtop"><span class="brmerch">'+esc(e.merchant)+'</span><span class="bramt">'+fmt(e.amount, expCurrency(e))+'</span>'+badge+'</div><div class="brsub dup">Already in this report — '+esc(r.dupOf||'')+'</div></div><div class="bract"><button class="brmini amber" onclick="batchAddAnyway('+idx+')">Add anyway</button></div></div>';
+    }
+    if(r.status==='pending'){
+      return '<div class="brrow"><div class="bric" style="color:var(--tx3)">&#8226;</div><div class="brmain"><div class="brtop"><span class="brmerch">'+esc(r.name)+'</span>'+badge+'</div><div class="brsub" style="color:var(--tx3)">Not scanned — batch cancelled</div></div><div class="bract"><button class="brmini" onclick="batchRetryOne('+idx+')">Scan</button></div></div>';
+    }
+    // err
+    return '<div class="brrow err"><div class="bric err">&#10005;</div><div class="brmain"><div class="brtop"><span class="brmerch">'+esc(r.name)+'</span>'+badge+'</div><div class="brsub err">'+esc(r.emsg||'scan failed')+'</div></div><div class="bract"><button class="brmini red" onclick="batchRetryOne('+idx+')">Retry</button></div></div>';
+  };
+
+  const lbl = err ? 'Needs attention' : (pend ? 'Not scanned' : (dup ? 'Duplicates skipped' : ''));
+  const foot =
+    (rateErr ? '<button class="btn" style="border-color:rgba(163,45,45,.4);color:var(--rd)" onclick="batchRetryFailed(false)">&#8635; Retry rate-limited ('+rateErr+')</button>' : '')+
+    '<button class="btn" style="background:var(--g);border-color:var(--g);color:#fff" onclick="batchDone()">Done</button>';
+
+  mR.innerHTML = '<div class="mbg">'+
+  '<div class="modal"><div class="mh2"></div>'+
+  '<div class="mhd"><h2>&#128196; Batch Results</h2><button class="ib" onclick="batchDone()">&#10005;</button></div>'+
+  '<div class="mb" style="gap:14px;padding:6px 18px 18px">'+
+    '<div class="brchips">'+chip('ok',ok,'Added')+chip('dup',dup,'Duplicate'+(dup===1?'':'s'))+chip('err',err+pend,(err+pend)===1?'Issue':'Issues')+'</div>'+
+    (lbl?'<div class="brsectlbl">'+lbl+'</div>':'')+
+    '<div class="brlist">'+sorted.map(rowHtml).join('')+'</div>'+
+    '<div style="display:flex;gap:9px;padding-top:2px">'+foot+'</div>'+
+  '</div></div></div>';
+}
+
+async function batchRetryOne(idx){
+  const st=window._batchState; if(!st) return;
+  const r=st.results[idx]; if(!r) return;
+  r._retrying=true; renderBatchResults();
+  const ui={ onWait:()=>{} };
+  try{
+    if(!r.dataUrl){ r.dataUrl = await new Promise(res=>{ const fr=new FileReader(); fr.onload=ev=>res(ev.target.result); fr.readAsDataURL(r.file); }); }
+    const { exp, dup } = await _scanReceipt(r.file, r.dataUrl, st.rid, st.rptCurDef, ui);
+    r._retrying=false;
+    if(dup){ r.status='dup'; r.exp=exp; r.dupOf=(dup.merchant||'')+' · '+fd(dup.date)+' · '+fmt(dup.amount, expCurrency(dup)); }
+    else { S.expenses.push(exp); r.status='ok'; r.exp=exp; r.etype=null; r.emsg=null; await save(); }
+    renderBatchResults();
+  } catch(err){
+    r._retrying=false;
+    if(err.etype==='rate'){ r.status='err'; r.etype='rate'; r.emsg=err.message; renderBatchResults(); toast('Still rate limited — try again shortly','#BA7517'); return; }
+    // read / other → route to the manual edit form (approval #2)
+    toast('Couldn’t scan — opening manual entry','#BA7517');
     closeM();
-    render();
-    showView('report-detail', rid);
-    toast(added+' receipt'+(added!==1?'s':'')+' scanned and added ✓');
-  }, 1800);
+    mAE(st.rid, r.dataUrl, err.parsed || r.parsed || {});
+  }
+}
+
+async function batchRetryFailed(isAuto){
+  const st=window._batchState; if(!st) return;
+  const idxs = st.results.map((r,i)=>({r,i})).filter(o=>o.r.status==='err' && o.r.etype==='rate').map(o=>o.i);
+  if(!idxs.length){ if(!isAuto) renderBatchResults(); return; }
+  for(const i of idxs){
+    const r=st.results[i];
+    r._retrying=true; renderBatchResults();
+    const ui={ onWait:()=>{} };
+    try{
+      const { exp, dup } = await _scanReceipt(r.file, r.dataUrl, st.rid, st.rptCurDef, ui);
+      r._retrying=false;
+      if(dup){ r.status='dup'; r.exp=exp; r.dupOf=(dup.merchant||'')+' · '+fd(dup.date)+' · '+fmt(dup.amount, expCurrency(dup)); }
+      else { S.expenses.push(exp); r.status='ok'; r.exp=exp; r.etype=null; r.emsg=null; }
+    } catch(err){
+      r._retrying=false; r.status='err'; r.etype=err.etype||'other'; r.emsg=err.message; r.parsed=err.parsed||r.parsed;
+    }
+    renderBatchResults();
+  }
+  if(st.results.some(r=>r.status==='ok')) await save();
+  renderBatchResults();
+}
+
+function batchAddAnyway(idx){
+  const st=window._batchState; if(!st) return;
+  const r=st.results[idx]; if(!r||r.status!=='dup'||!r.exp) return;
+  S.expenses.push(r.exp); r.status='ok'; r.dupOf=null;
+  save();
+  toast('Added to report ✓');
+  renderBatchResults();
+}
+
+function batchDone(){
+  const st=window._batchState; const rid = st?.rid;
+  const added = st ? st.results.filter(r=>r.status==='ok').length : 0;
+  window._batchState=null;
+  closeM(); render();
+  if(rid) showView('report-detail', rid);
+  toast(added+' receipt'+(added!==1?'s':'')+' added ✓');
 }
 
 function pickR(){
