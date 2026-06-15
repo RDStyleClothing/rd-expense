@@ -431,7 +431,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v2.2.18</span>
+      <span class="vbm" id="vBdgM">v3.0.0</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -511,7 +511,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v2.2.18</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.0.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -537,7 +537,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v2.2.18',
+  APP_VERSION:    'v3.0.0',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
 };
@@ -3366,10 +3366,27 @@ async function buildReceiptsPDF(r, lines) {
         doc.addImage(im.data, im.fmt, dx, dy, dw, dh, undefined, 'MEDIUM');
       }
     } catch(imgErr) {
-      doc.setFontSize(10); doc.setTextColor(180,50,50);
-      doc.text('Could not embed receipt: '+line.name, M, 40);
-      doc.setFontSize(8); doc.setTextColor(120,120,120);
-      doc.text(imgErr.message||'Unknown error', M, 48);
+      // Graceful fallback (v3.0.0) — the image couldn't be decoded (cross-origin
+      // CORS lag right after the bucket config, a future cross-origin edge case,
+      // or a genuinely corrupt blob). Embed a calm placeholder card mirroring the
+      // PDF-receipt branch instead of bare red error text, so the receipt package
+      // still reads as a finished document. The diagnostic line is kept, muted,
+      // below the card so genuine failures remain traceable.
+      const imgY = expLine ? 30 : 24;
+      doc.setFillColor(252,247,235);
+      doc.rect(M, imgY, IW, 48, 'F');
+      doc.setDrawColor(232,206,150);
+      doc.rect(M, imgY, IW, 48, 'S');
+      doc.setFontSize(22); doc.setTextColor(30,30,30);
+      doc.text('🧾', PW/2 - 5, imgY+18);
+      doc.setFontSize(11); doc.setFont('helvetica','bold');
+      doc.text('Receipt image unavailable', PW/2, imgY+28, {align:'center'});
+      doc.setFontSize(9); doc.setFont('helvetica','normal');
+      doc.setTextColor(80,80,80);
+      doc.text(line.name, PW/2, imgY+36, {align:'center'});
+      doc.text('Stored in the cloud — open the app to view the original.', PW/2, imgY+43, {align:'center'});
+      doc.setFontSize(8); doc.setTextColor(150,150,150);
+      doc.text(imgErr.message||'Unknown error', M, imgY+56);
     }
 
     doc.setFontSize(8); doc.setTextColor(160,160,160);
