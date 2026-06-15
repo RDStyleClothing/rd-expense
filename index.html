@@ -156,6 +156,8 @@ tr.trc:active td{background:var(--bg)}
 .eic{font-size:30px;margin-bottom:10px}
 .back{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--tx2);cursor:pointer;padding:4px 0;margin-bottom:2px}
 .back svg{width:14px;height:14px}
+.delLine{display:inline-flex;align-items:center;gap:5px;background:none;border:1px solid var(--bd2);color:var(--rd);font-family:var(--font);font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;cursor:pointer;margin-top:8px}
+.delLine:active{background:var(--rdbg);border-color:var(--rd)}
 .ib{background:none;border:none;cursor:pointer;padding:6px;border-radius:5px;color:var(--tx2);font-size:15px;line-height:1}
 .ib:active{background:var(--bg)}
 .txb{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
@@ -578,7 +580,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.0.3',
+  APP_VERSION:    'v3.0.4',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -2192,9 +2194,9 @@ function vExp(){
           '<div class="xcic">'+catIco(e.category)+'</div>'+
           '<div class="xcb"><div class="xcn">'+esc(e.merchant)+origNote(e)+'</div>'+
             '<div class="xcm">'+fd(e.date)+' &middot; '+esc(e.category||'Other')+'</div>'+
-            '<div class="reassign"><span class="rlbl">Move to report:</span>'+sel+'</div></div>'+
-          '<div style="text-align:right"><div class="xca">'+fmt(tx.tot,cur)+'</div>'+
-            '<button class="ib" title="Delete line" onclick="delE(\''+e.id+'\')">&#128465;</button></div>'+
+            '<div class="reassign"><span class="rlbl">Move to report:</span>'+sel+'</div>'+
+            '<button class="delLine" title="Delete this expense" onclick="delE(\''+e.id+'\')">&#128465; Delete expense</button></div>'+
+          '<div style="text-align:right"><div class="xca">'+fmt(tx.tot,cur)+'</div></div>'+
         '</div>';
       }).join('')+
     '</div>'
@@ -2221,7 +2223,7 @@ function vExp(){
         '<td style="font-weight:600">'+fmt(tx.tot,cur)+'</td>'+
         '<td><span style="cursor:pointer;color:var(--bl)" onclick="showView(\'report-detail\',\''+e.reportId+'\')">'+( r?esc(r.name):'&mdash;')+'</span></td>'+
         '<td>'+rcptThumb(e.receipts?.[0],32,e.receipts?.[0])+'</td>'+
-        '<td style="white-space:nowrap">'+(locked?'':'<button class="ib" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><button class="ib" onclick="delE(\''+e.id+'\')">&#128465;</button>')+'</td>'+
+        '<td style="white-space:nowrap">'+(locked?'':'<button class="ib" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><button class="ib" title="Move to Not in Report" onclick="unfileE(\''+e.id+'\')">&#128229;</button><button class="ib" title="Delete" onclick="delE(\''+e.id+'\')">&#128465;</button>')+'</td>'+
       '</tr>';}).join('')+
   '</tbody></table>'+
   '<div class="xc">'+filed.map(e=>{
@@ -2240,7 +2242,7 @@ function vExp(){
     return'<div class="xcd">'+(imgHtml)+
     '<div class="xcb"><div class="xcn">'+esc(e.merchant)+'</div><div class="xcm">'+fd(e.date)+' &middot; '+esc(e.category)+(r?' &middot; <span style="color:var(--bl)">'+esc(r.name)+'</span>':'')+'</div>'+
     '<div style="font-size:11px;color:var(--tx2);margin-top:2px">GST '+(tx.xmt?'exempt':fmt(tx.gst,cur))+' &middot; QST '+(tx.xmt?'exempt':fmt(tx.qst,cur))+'</div></div>'+
-    '<div style="text-align:right"><div class="xca">'+fmt(tx.tot,cur)+'</div><div style="font-size:10px;color:var(--tx3)">'+origNote(e)+'</div>'+((!r||r.status==='Open')?'<div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px"><button class="ib" style="font-size:12px" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><button class="ib" style="font-size:12px" onclick="delE(\''+e.id+'\')">&#128465;</button></div>':'')+'</div></div>';}).join('')+'</div>')+
+    '<div style="text-align:right"><div class="xca">'+fmt(tx.tot,cur)+'</div><div style="font-size:10px;color:var(--tx3)">'+origNote(e)+'</div>'+((!r||r.status==='Open')?'<div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px"><button class="ib" style="font-size:12px" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><button class="ib" style="font-size:12px" title="Move to Not in Report" onclick="unfileE(\''+e.id+'\')">&#128229;</button><button class="ib" style="font-size:12px" title="Delete" onclick="delE(\''+e.id+'\')">&#128465;</button></div>':'')+'</div></div>';}).join('')+'</div>')+
   '</div>';
 }
 
@@ -2780,7 +2782,7 @@ function mEditE(eid) {
   const cats=['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Other'];
   const catOpts=cats.map(c=>'<option'+(e.category===c?' selected':'')+'>'+c+'</option>').join('');
   const openReports=S.reports.filter(r=>r.status==='Open');
-  const reportOpts=openReports.map(r=>'<option value="'+r.id+'"'+(r.id===e.reportId?' selected':'')+'>'+esc(r.name)+'</option>').join('');
+  const reportOpts='<option value=""'+(isOrphan(e)?' selected':'')+'>&mdash; Not in Report (unfiled) &mdash;</option>'+openReports.map(r=>'<option value="'+r.id+'"'+(r.id===e.reportId?' selected':'')+'>'+esc(r.name)+'</option>').join('');
   const currentReport=S.reports.find(r=>r.id===e.reportId);
   mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal wide"><div class="mh2"></div>'+
   '<div class="mhd"><h2>&#9998; Edit Expense</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
@@ -2803,10 +2805,10 @@ function mEditE(eid) {
       '<div class="tpr rec"><span>QST recoverable (ITR)</span><span id="tp6">&mdash;</span></div>'+
     '</div>'+
     fxBlock(e.cadCharged, e.fxRate)+
-    (openReports.length>1
-      ? '<div class="fld"><label>Move to Report</label>'+
+    (true
+      ? '<div class="fld"><label>Report</label>'+
           '<select class="fse" id="eRep">'+reportOpts+'</select>'+
-          '<div style="font-size:11px;color:var(--tx2);margin-top:4px">Only open reports are shown. Current: <strong>'+esc(currentReport?.name||'—')+'</strong></div>'+
+          '<div style="font-size:11px;color:var(--tx2);margin-top:4px">Pick <strong>Not in Report</strong> to detach (receipt kept). Only open reports are listed. Current: <strong>'+esc(currentReport?.name||'Not in Report')+'</strong></div>'+
         '</div>'
       : '<input type="hidden" id="eRep" value="'+esc(e.reportId)+'"/>')+
     '<div class="fld"><label>Receipts</label>'+
@@ -2830,8 +2832,9 @@ async function saveEditE(eid) {
   const m=($('eM')?.value||'').trim(), a=$('eA')?.value, d=$('eD')?.value;
   if(!m||!a||!d){alert('Merchant, date and amount are required.');return;}
   const oldReportId=e.reportId;
-  const newReportId=$('eRep')?.value||e.reportId;
-  const moved=newReportId&&newReportId!==oldReportId;
+  const eRepEl=$('eRep');
+  const newReportId=eRepEl?eRepEl.value:e.reportId;   // '' = Not in Report (deliberate detach)
+  const moved=newReportId!==oldReportId;
   const eCurVal2 = $('eCur')?.value || '';
   const effCur2  = eCurVal2 || (S.reports.find(r=>r.id===(newReportId||e.reportId))?.currency) || 'CAD';
   const isForeign2 = effCur2!=='CAD';
@@ -2849,15 +2852,15 @@ async function saveEditE(eid) {
   e.origCurrency= undefined;
   e.origAmount  = undefined;
   e.receipts    = [...window._rec];
-  e.reportId    = newReportId||e.reportId;
+  e.reportId    = newReportId;
   e._ts         = Date.now();
   S._pendingRemote=null;   // local edit wins over any remote snapshot queued while the modal was open
   closeM();
   toast('Saving…');
   await save();
   if(moved){
-    const destReport=S.reports.find(r=>r.id===newReportId);
-    toast('Moved to "'+(destReport?.name||'report')+'" ✓');
+    if(!newReportId){ toast('Moved to Not in Report ✓'); }
+    else { const destReport=S.reports.find(r=>r.id===newReportId); toast('Moved to "'+(destReport?.name||'report')+'" ✓'); }
   } else {
     toast('Expense updated ✓');
   }
@@ -2866,7 +2869,9 @@ async function saveEditE(eid) {
 /* v3.0.3 — an expense whose reportId matches no existing report is "Not in Report" (unfiled) */
 function isOrphan(e){ return !S.reports.some(r=>r.id===e.reportId); }
 /* Inline re-assign of an unfiled expense to an open report (keeps the expense's own currency) */
-function assignOrphan(id,rid){ if(!rid)return; const e=S.expenses.find(x=>x.id===id); if(!e)return; e.reportId=rid; const rep=S.reports.find(r=>r.id===rid); save().then(()=>render()); toast('Moved to '+(rep?rep.name:'report')); }
+function assignOrphan(id,rid){ if(!rid)return; const e=S.expenses.find(x=>x.id===id); if(!e)return; e.reportId=rid; e._ts=Date.now(); const rep=S.reports.find(r=>r.id===rid); save().then(()=>render()); toast('Moved to '+(rep?rep.name:'report')); }
+/* v3.0.4 — detach a filed expense back to "Not in Report" (reportId cleared; receipt preserved) */
+function unfileE(id){ const e=S.expenses.find(x=>x.id===id); if(!e)return; if(isOrphan(e))return; e.reportId=''; e._ts=Date.now(); save().then(()=>render()); toast('Moved to Not in Report'); }
 /* v3.0.3 — deleting a report no longer deletes its expenses; they detach to "Not in Report" (receipts preserved) */
 function delR(id){
   const n=S.expenses.filter(e=>e.reportId===id).length;
