@@ -474,7 +474,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.0.3</span>
+      <span class="vbm" id="vBdgM">v3.0.5</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -554,7 +554,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.0.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.0.5</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -580,7 +580,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.0.4',
+  APP_VERSION:    'v3.0.5',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -3616,14 +3616,20 @@ async function buildReceiptsPDF(r, lines) {
         doc.rect(M, imgY, IW, 48, 'F');
         doc.setDrawColor(180,210,240);
         doc.rect(M, imgY, IW, 48, 'S');
-        doc.setFontSize(22); doc.setTextColor(30,30,30);
-        doc.text('📄', PW/2 - 5, imgY+18);
+        // Vector "PDF" badge — NEVER pass an emoji to doc.text(): jsPDF's standard
+        // helvetica font can't encode it and the call throws, aborting the export.
+        doc.setFillColor(24,95,165);
+        doc.roundedRect(PW/2-11, imgY+8, 22, 9, 1.5, 1.5, 'F');
+        doc.setTextColor(255,255,255);
+        doc.setFontSize(10); doc.setFont('helvetica','bold');
+        doc.text('PDF', PW/2, imgY+14.3, {align:'center'});
+        doc.setTextColor(30,30,30);
         doc.setFontSize(11); doc.setFont('helvetica','bold');
-        doc.text('PDF Receipt', PW/2, imgY+28, {align:'center'});
+        doc.text('PDF Receipt', PW/2, imgY+26, {align:'center'});
         doc.setFontSize(9); doc.setFont('helvetica','normal');
         doc.setTextColor(80,80,80);
-        doc.text(line.name, PW/2, imgY+36, {align:'center'});
-        doc.text('Open the original PDF file to view this receipt.', PW/2, imgY+43, {align:'center'});
+        doc.text(line.name, PW/2, imgY+34, {align:'center'});
+        doc.text('Open the original PDF file to view this receipt.', PW/2, imgY+41, {align:'center'});
       } else {
         // Pre-fetch + decode the image ourselves; never hand jsPDF a raw URL.
         const im = await rcptImgForPdf(src);
@@ -3644,16 +3650,16 @@ async function buildReceiptsPDF(r, lines) {
       doc.rect(M, imgY, IW, 48, 'F');
       doc.setDrawColor(232,206,150);
       doc.rect(M, imgY, IW, 48, 'S');
-      doc.setFontSize(22); doc.setTextColor(30,30,30);
-      doc.text('🧾', PW/2 - 5, imgY+18);
+      // No emoji here either — see PDF branch above.
+      doc.setTextColor(133,79,11);
       doc.setFontSize(11); doc.setFont('helvetica','bold');
-      doc.text('Receipt image unavailable', PW/2, imgY+28, {align:'center'});
+      doc.text('Receipt image unavailable', PW/2, imgY+20, {align:'center'});
       doc.setFontSize(9); doc.setFont('helvetica','normal');
       doc.setTextColor(80,80,80);
-      doc.text(line.name, PW/2, imgY+36, {align:'center'});
-      doc.text('Stored in the cloud — open the app to view the original.', PW/2, imgY+43, {align:'center'});
+      doc.text(line.name, PW/2, imgY+30, {align:'center'});
+      doc.text('Stored in the cloud — open the app to view the original.', PW/2, imgY+37, {align:'center'});
       doc.setFontSize(8); doc.setTextColor(150,150,150);
-      doc.text(imgErr.message||'Unknown error', M, imgY+56);
+      doc.text(imgErr.message||'Unknown error', M, imgY+45);
     }
 
     doc.setFontSize(8); doc.setTextColor(160,160,160);
