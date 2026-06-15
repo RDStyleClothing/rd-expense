@@ -69,8 +69,8 @@ When you make changes, update the `CFG` block at the top of `index.html`:
 
 ```js
 const CFG = {
-  APP_VERSION:  'v1.1.0',       // bump this on every release
-  APP_RELEASED: 'May 2026',     // update the month
+  APP_VERSION:  'v3.0.0',      // bump this on every release
+  APP_RELEASED: 'June 2026',    // update the month
   ...
 };
 ```
@@ -78,7 +78,7 @@ const CFG = {
 The version number appears in:
 - The bottom version bar of the app
 - Every exported Excel file (Expenses sheet header + Summary sheet)
-- The export filename: `ReportName_v1.1.0_Report.xlsx`
+- The export filename: `ReportName_v3.0.0_Report.xlsx`
 
 Commit and push — GitHub Actions redeploys in ~30 seconds.
 
@@ -118,3 +118,4 @@ rd-expense/
 | Version | Date | Notes |
 |---------|------|-------|
 | v1.0.0 | April 2026 | Initial release — reports, expenses, receipts, Excel export, OneDrive/Google Drive/Local storage, login |
+| v3.0.0 | June 2026 | Receipt PDF export: graceful placeholder card when a receipt image can't be decoded (CORS lag / corrupt blob), replacing bare red error text. Firebase Storage bucket CORS configured for the GitHub Pages origin. |
