@@ -462,7 +462,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.0.0</span>
+      <span class="vbm" id="vBdgM">v3.0.2</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -568,7 +568,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.0.1',
+  APP_VERSION:    'v3.0.2',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -1958,7 +1958,7 @@ function showView(v,id){
   document.querySelectorAll('.ni,.bni').forEach(n=>n.classList.remove('active'));
   const k=(v==='report-detail'||v==='close-month')?'reports':v;
   $('nav-'+k)?.classList.add('active'); $('bn-'+k)?.classList.add('active');
-  S.view=v; S.rid=id||null; render();
+  S.view=v; S.rid=id||null; window._editNotes=null; render();
   const m=$('mainC'); m.classList.remove('vt'); void m.offsetWidth; m.classList.add('vt');
   clearTimeout(S._vtT); S._vtT=setTimeout(()=>m.classList.remove('vt'),320);
   placeBnPill();
@@ -2379,7 +2379,7 @@ function vDet(rid){
           '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M8 4l2 2" stroke="currentColor" stroke-width="1.2"/></svg>'+
         '</button>'+
       '</div>'+
-      '<div class="ps">'+esc(r.category)+' &middot; '+fd(r.startDate)+' &ndash; '+fd(r.endDate)+' &middot; <strong>'+esc(r.currency||'CAD')+'</strong>'+(detCurs.length>1?' &middot; <span style="color:var(--am)">mixed currencies</span>':'')+(r.statusAt&&r.statusAt[r.status]?' &middot; '+esc(r.status)+' '+fd(r.statusAt[r.status]):'')+'</div>'+
+      '<div class="ps">'+((r.category&&r.category!=='Other')?esc(r.category)+' &middot; ':'')+fd(r.startDate)+' &ndash; '+fd(r.endDate)+' &middot; <strong>'+esc(r.currency||'CAD')+'</strong>'+(detCurs.length>1?' &middot; <span style="color:var(--am)">mixed currencies</span>':'')+(r.statusAt&&r.statusAt[r.status]?' &middot; '+esc(r.status)+' '+fd(r.statusAt[r.status]):'')+'</div>'+
     '</div>'+
     '<div class="phs"></div>'+
     '<div class="pa">'+badge(r.status)+
@@ -2423,7 +2423,23 @@ function vDet(rid){
       '<div style="font-size:11px;color:var(--tx2);margin-top:2px">Sub: '+fmt(et.sub,cur)+' &middot; GST: '+(et.foreign?'n/a':et.xmt?'exempt':fmt(et.gst,cur))+' &middot; QST: '+(et.foreign?'n/a':et.xmt?'exempt':fmt(et.qst,cur))+(et.meal?' &middot; 50% rule':'')+'</div>'+(origNote(e)?'<div style="font-size:11px;color:var(--tx3);margin-top:1px">'+origNote(e)+'</div>':'')+'</div>'+
       '<div style="text-align:right"><div class="xca">'+fmt(et.tot,cur)+'</div>'+(locked?'':'<div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px"><button class="ib" style="font-size:12px" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><button class="ib" style="font-size:12px" onclick="delE(\''+e.id+'\')">&#128465;</button></div>')+'</div></div>';}).join('')+'</div>'+
   '</div>'+
-  (r.notes?'<div class="card" style="padding:14px 16px"><div style="font-size:11px;color:var(--tx2);font-weight:700;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">Notes</div><div style="font-size:13px">'+esc(r.notes)+'</div></div>':'');
+  '<div class="card" style="padding:14px 16px">'+
+    '<div style="display:flex;align-items:center;gap:8px">'+
+      '<div style="font-size:11px;color:var(--tx2);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Notes</div>'+
+      (locked?'':'<button class="ib" title="Edit notes" onclick="editRptNotes(\''+r.id+'\')" style="margin-left:auto;padding:3px;color:var(--tx3);background:none;border:none;cursor:pointer;display:inline-flex;align-items:center"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M8 4l2 2" stroke="currentColor" stroke-width="1.2"/></svg></button>')+
+    '</div>'+
+    ((window._editNotes===r.id && !locked)
+      ?'<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">'+
+         '<textarea class="fta" id="rptNt" placeholder="Add a note&hellip;">'+esc(r.notes||'')+'</textarea>'+
+         '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+           '<button class="btn sm" onclick="cancelRptNotes()">Cancel</button>'+
+           '<button class="btn p sm" onclick="saveRptNotes(\''+r.id+'\')">Save</button>'+
+         '</div>'+
+       '</div>'
+      :(r.notes
+         ?'<div style="font-size:13px;margin-top:6px;white-space:pre-wrap">'+esc(r.notes)+'</div>'
+         :'<div style="font-size:13px;color:var(--tx3);font-style:italic;margin-top:4px">'+(locked?'No notes.':'No notes yet &mdash; tap the pencil to add some.')+'</div>'))+
+  '</div>';
 }
 
 /* ══════════════════════════════════════════════════════ MODALS */
@@ -2467,13 +2483,10 @@ function mNR(){
   mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div>'+
   '<div class="mhd"><h2>New Report</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
   '<div class="mb">'+
-    '<div class="fld"><label>Report Name *</label><input class="fi2" id="rN" placeholder="e.g. Q2 Travel &mdash; Paris Showroom"/></div>'+
-    '<div class="r2">'+
-      '<div class="fld"><label>Category</label><select class="fse" id="rC"><option>Auto Expense</option><option>Travel &amp; Buying</option><option>Travel &amp; Selling</option><option>Samples</option><option>Mobile</option><option>Meals &amp; Entertainment</option><option>Office</option><option>Computer</option><option>Other</option></select></div>'+
-      '<div class="fld"><label>Currency</label><select class="fse" id="rCur">'+currencyOpts('CAD')+'</select></div>'+
-    '</div>'+
+    '<div class="fld"><label>Report Name *</label><input class="fi2" id="rN" placeholder="e.g. RD MENS | June 2026"/></div>'+
     '<div class="r2"><div class="fld"><label>Start Date</label><input class="fi2" type="date" id="rS"/></div><div class="fld"><label>End Date</label><input class="fi2" type="date" id="rE"/></div></div>'+
     '<div class="fld"><label>Notes</label><textarea class="fta" id="rNt" placeholder="Optional&hellip;"></textarea></div>'+
+    '<div style="font-size:11px;color:var(--tx3)">Currency defaults to CAD &middot; set per expense line if foreign.</div>'+
   '</div>'+
   '<div class="mf"><button class="btn" onclick="closeM()">Cancel</button><button class="btn p" onclick="saveR()">Create</button></div>'+
   '</div></div>';
@@ -2521,9 +2534,22 @@ function saveRename(rid) {
   render();
 }
 
+/* In-report notes: add / edit without leaving the report */
+function editRptNotes(rid){
+  window._editNotes=rid; render();
+  setTimeout(()=>{ const t=$('rptNt'); if(t){ t.focus(); t.setSelectionRange(t.value.length,t.value.length); } },50);
+}
+function cancelRptNotes(){ window._editNotes=null; render(); }
+function saveRptNotes(rid){
+  const r=S.reports.find(r=>r.id===rid); if(!r) return;
+  r.notes=($('rptNt')?.value||'').trim();
+  window._editNotes=null; S._pendingRemote=null;
+  save(); render(); toast('Notes saved');
+}
+
 function saveR(){
   const name=$('rN').value.trim(); if(!name){alert('Report name required.');return;}
-  const r={id:uid('R'),name,category:$('rC').value,currency:$('rCur')?.value||'CAD',startDate:$('rS').value,endDate:$('rE').value,notes:$('rNt').value.trim(),status:'Open',_ts:Date.now()};
+  const r={id:uid('R'),name,category:'Other',currency:'CAD',startDate:$('rS').value,endDate:$('rE').value,notes:$('rNt').value.trim(),status:'Open',_ts:Date.now()};
   S.reports.push(r); S._pendingRemote=null; save(); closeM(); toast('Report created');
   showView('report-detail',r.id);
 }
@@ -3842,4 +3868,4 @@ window.addEventListener('load', ()=>setTimeout(hideSplash, 700));
 setTimeout(hideSplash, 3000);   // safety: never trap the user behind the splash
 </script>
 </body>
-</html>
+</html>>
