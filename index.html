@@ -142,6 +142,16 @@ tr.trc:active td{background:var(--bg)}
 .baw{background:var(--ambg);color:var(--amdk)}
 .bpa{background:#EAF3DE;color:#3B6D11}
 .bcl{background:var(--s2);color:var(--tx2)}
+/* v3.0.3 — "Not in Report" holding section */
+.nir{border:1px solid var(--bd);border-left:3px solid var(--am);border-radius:var(--r);background:var(--sf);overflow:hidden;margin-bottom:14px}
+.nirH{display:flex;align-items:center;gap:10px;padding:13px 16px;background:var(--ambg);border-bottom:1px solid var(--bd)}
+.nirH .nirT{font-weight:700;font-size:14px;color:var(--amdk)}
+.nirH .nirS{font-size:11px;color:var(--am);margin-top:1px}
+.nirH .nirC{margin-left:auto;background:var(--sf);border:1px solid var(--bd);border-radius:20px;font-size:11px;font-weight:700;color:var(--amdk);padding:3px 9px}
+.nirRow{padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;background:var(--ambg);border:1px solid var(--bd);border-left:3px solid var(--am);border-radius:var(--r);margin-top:12px}
+.reassign{display:flex;gap:6px;margin-top:7px;align-items:center;flex-wrap:wrap}
+.reassign .rlbl{font-size:11px;color:var(--tx3)}
+.reassign select{font-family:var(--font);font-size:12px;padding:5px 7px;border:1px solid var(--bd2);border-radius:5px;background:var(--sf);color:var(--tx);max-width:170px}
 .empty{text-align:center;padding:44px 20px;color:var(--tx3);font-size:13px}
 .eic{font-size:30px;margin-bottom:10px}
 .back{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--tx2);cursor:pointer;padding:4px 0;margin-bottom:2px}
@@ -462,7 +472,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.0.2</span>
+      <span class="vbm" id="vBdgM">v3.0.3</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -568,7 +578,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.0.2',
+  APP_VERSION:    'v3.0.3',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -2107,6 +2117,13 @@ function vDash(){
 
 /* REPORTS */
 function vRep(){
+  const orphans=S.expenses.filter(isOrphan);
+  const nirRow=orphans.length?('<div class="nirRow" onclick="showView(\'expenses\')">'+
+    '<div class="xcic" style="background:var(--sf)">&#128229;</div>'+
+    '<div class="xcb"><div class="xcn" style="color:var(--amdk)">Not in Report</div>'+
+    '<div class="xcm" style="color:var(--am)">Waiting to be associated to a report</div></div>'+
+    '<div style="text-align:right"><div class="xca" style="color:var(--amdk)">'+statTotalHtml(orphans)+'</div>'+
+    '<div style="font-size:11px;color:var(--am);margin-top:2px">'+orphans.length+' line'+(orphans.length>1?'s':'')+'</div></div></div>'):'';
   return '<div class="ph"><div class="pt">Reports</div><div class="phs"></div><div class="pa"><button class="btn" onclick="importExcel()">&#128196; Import</button><button class="btn p" onclick="mNR()">+ New Report</button></div></div>'+
   '<div class="card">'+
   (S.reports.length===0?'<div class="empty"><div class="eic">&#128193;</div>No reports yet.</div>'
@@ -2124,7 +2141,7 @@ function vRep(){
       '</div></td></tr>';}).join('')+
   '</tbody></table>'+
   '<div class="xc">'+S.reports.map(r=>{const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);return'<div class="xcd" onclick="showView(\'report-detail\',\''+r.id+'\')"><div class="xcic">&#128203;</div><div class="xcb"><div class="xcn">'+esc(r.name)+'</div><div class="xcm">'+esc(r.category)+' &middot; '+badge(r.status)+'</div></div><div style="text-align:right"><div class="xca">'+fmt(tx.tot,rptCurrency(r))+'</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">'+ex.length+' lines</div></div></div>';}).join('')+'</div>')+
-  '</div>';
+  '</div>'+nirRow;
 }
 
 /* ALL EXPENSES */
@@ -2147,6 +2164,9 @@ function vExp(){
   if(q.text){ const t=q.text.toLowerCase(); list=list.filter(e=>((e.merchant||'')+' '+(e.notes||'')).toLowerCase().includes(t)); }
   if(q.cat) list=list.filter(e=>(e.category||'Other')===q.cat);
   list=sortExps(list,q.sort);
+  const orphans=list.filter(isOrphan);
+  const filed=list.filter(e=>!isOrphan(e));
+  const openReports=S.reports.filter(r=>r.status==='Open');
   const isFiltered=!!(q.text||q.cat);
   const ctrls='<div class="card" style="padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
     '<input class="fi2" id="qTx" style="flex:2 1 160px;font-size:13px;padding:8px 10px" placeholder="Search merchant or notes&hellip;" value="'+esc(q.text)+'" oninput="qText(this.value)"/>'+
@@ -2158,12 +2178,36 @@ function vExp(){
     '</select>'+
     '<span style="font-size:11px;color:var(--tx3);white-space:nowrap">'+list.length+(isFiltered?' of '+S.expenses.length:'')+'</span>'+
   '</div>';
+  const nirSection=orphans.length?(
+    '<div class="nir">'+
+      '<div class="nirH"><span style="font-size:18px">&#128229;</span>'+
+        '<div><div class="nirT">Not in Report</div><div class="nirS">Waiting to be associated to a report</div></div>'+
+        '<span class="nirC">'+orphans.length+'</span></div>'+
+      orphans.map(e=>{
+        const cur=expEffCur(e); const tx=expTax(e);
+        const sel=openReports.length
+          ? '<select onchange="assignOrphan(\''+e.id+'\',this.value)"><option value="">&mdash; choose &mdash;</option>'+openReports.map(r=>'<option value="'+r.id+'">'+esc(r.name)+'</option>').join('')+'</select>'
+          : '<span class="rlbl">No open report &mdash; create one to file this.</span>';
+        return '<div class="xcd">'+
+          '<div class="xcic">'+catIco(e.category)+'</div>'+
+          '<div class="xcb"><div class="xcn">'+esc(e.merchant)+origNote(e)+'</div>'+
+            '<div class="xcm">'+fd(e.date)+' &middot; '+esc(e.category||'Other')+'</div>'+
+            '<div class="reassign"><span class="rlbl">Move to report:</span>'+sel+'</div></div>'+
+          '<div style="text-align:right"><div class="xca">'+fmt(tx.tot,cur)+'</div>'+
+            '<button class="ib" title="Delete line" onclick="delE(\''+e.id+'\')">&#128465;</button></div>'+
+        '</div>';
+      }).join('')+
+    '</div>'
+  ):'';
+  const filedLabel=(orphans.length&&filed.length)?'<div style="font-size:12px;font-weight:600;color:var(--tx2);margin:2px 4px 8px">In a report</div>':'';
   return '<div class="ph"><div class="pt">All Expenses</div></div>'+ctrls+
+  nirSection+filedLabel+
   '<div class="card">'+
   (S.expenses.length===0?'<div class="empty"><div class="eic">&#128179;</div>No expenses yet.</div>'
   :list.length===0?'<div class="empty"><div class="eic">&#128269;</div>No expenses match your search.</div>'
+  :filed.length===0?'<div class="empty"><div class="eic">&#128229;</div>All matching expenses are waiting to be filed.</div>'
   :'<table class="dt"><thead><tr><th>Date</th><th>Merchant</th><th>Category</th><th>Subtotal</th><th>GST</th><th>QST</th><th>Total</th><th>Report</th><th>Rcpt</th><th></th></tr></thead><tbody>'+
-    list.map(e=>{
+    filed.map(e=>{
       const r=S.reports.find(r=>r.id===e.reportId);
       const locked=r&&r.status!=='Open';
       const cur=expEffCur(e);
@@ -2180,7 +2224,7 @@ function vExp(){
         '<td style="white-space:nowrap">'+(locked?'':'<button class="ib" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><button class="ib" onclick="delE(\''+e.id+'\')">&#128465;</button>')+'</td>'+
       '</tr>';}).join('')+
   '</tbody></table>'+
-  '<div class="xc">'+list.map(e=>{
+  '<div class="xc">'+filed.map(e=>{
     const r=S.reports.find(r=>r.id===e.reportId);
     const cur=expEffCur(e);
     const tx=expTax(e);
@@ -2819,7 +2863,20 @@ async function saveEditE(eid) {
   }
   render();
 }
-function delR(id){if(!confirm('Delete report and all its expenses?'))return;S.expenses.filter(e=>e.reportId===id).forEach(e=>cleanupReceiptRefs(e.receipts));S.reports=S.reports.filter(r=>r.id!==id);S.expenses=S.expenses.filter(e=>e.reportId!==id);save().then(()=>render());toast('Deleted');}
+/* v3.0.3 — an expense whose reportId matches no existing report is "Not in Report" (unfiled) */
+function isOrphan(e){ return !S.reports.some(r=>r.id===e.reportId); }
+/* Inline re-assign of an unfiled expense to an open report (keeps the expense's own currency) */
+function assignOrphan(id,rid){ if(!rid)return; const e=S.expenses.find(x=>x.id===id); if(!e)return; e.reportId=rid; const rep=S.reports.find(r=>r.id===rid); save().then(()=>render()); toast('Moved to '+(rep?rep.name:'report')); }
+/* v3.0.3 — deleting a report no longer deletes its expenses; they detach to "Not in Report" (receipts preserved) */
+function delR(id){
+  const n=S.expenses.filter(e=>e.reportId===id).length;
+  const msg=n?('Delete this report? Its '+n+' expense'+(n>1?'s':'')+' will move to "Not in Report".'):'Delete this report?';
+  if(!confirm(msg))return;
+  S.expenses.forEach(e=>{ if(e.reportId===id) e.reportId=''; });
+  S.reports=S.reports.filter(r=>r.id!==id);
+  save().then(()=>render());
+  toast('Report deleted');
+}
 async function advSt(rid, ns) {
   const r = S.reports.find(r=>r.id===rid);
   if (!r) return;
@@ -3868,4 +3925,4 @@ window.addEventListener('load', ()=>setTimeout(hideSplash, 700));
 setTimeout(hideSplash, 3000);   // safety: never trap the user behind the splash
 </script>
 </body>
-</html>>
+</html>
