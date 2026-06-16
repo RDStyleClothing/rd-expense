@@ -14,6 +14,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -474,7 +475,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.0.5</span>
+      <span class="vbm" id="vBdgM">v3.1.0</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -554,7 +555,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.0.5</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.1.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -580,7 +581,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.0.5',
+  APP_VERSION:    'v3.1.0',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -3582,6 +3583,22 @@ function loadImg(src, cors){
   });
 }
 
+// Resolve a PDF receipt reference to raw bytes for pdf-lib. data: URLs (pending /
+// chunked receipts) decode directly; https Storage URLs are fetched (bucket CORS GET
+// is configured). Throws on any failure so the caller falls back to a placeholder.
+async function pdfBytesFromSrc(src){
+  if(/^data:/i.test(src)){
+    const b64 = src.split(',')[1] || '';
+    const bin = atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+    return arr;
+  }
+  const resp = await fetch(src);
+  if(!resp.ok) throw new Error('HTTP '+resp.status);
+  return new Uint8Array(await resp.arrayBuffer());
+}
+
 async function buildReceiptsPDF(r, lines) {
   if (typeof window.jspdf === 'undefined' && typeof jsPDF === 'undefined') {
     throw new Error('jsPDF library not loaded');
@@ -3622,6 +3639,12 @@ async function buildReceiptsPDF(r, lines) {
   doc.setDrawColor(200,200,200);
   doc.line(M, y+2, PW-M, y+2);
 
+  // pdf-lib handle (may be undefined if the CDN didn't load — we degrade gracefully).
+  // pdfInserts records, per loadable PDF receipt, the 0-based scaffold page index of its
+  // divider page and the loaded source doc; mergePdfReceipts splices the real pages in after.
+  const PDFLib = window.PDFLib || null;
+  const pdfInserts = [];
+
   for (let i=0; i<lines.length; i++) {
     const line = lines[i];
     doc.addPage();
@@ -3654,24 +3677,54 @@ async function buildReceiptsPDF(r, lines) {
       const imgH   = PH - imgY - M;
 
       if (isPdfR) {
-        doc.setFillColor(230,241,251);
-        doc.rect(M, imgY, IW, 48, 'F');
-        doc.setDrawColor(180,210,240);
-        doc.rect(M, imgY, IW, 48, 'S');
-        // Vector "PDF" badge — NEVER pass an emoji to doc.text(): jsPDF's standard
-        // helvetica font can't encode it and the call throws, aborting the export.
-        doc.setFillColor(24,95,165);
-        doc.roundedRect(PW/2-11, imgY+8, 22, 9, 1.5, 1.5, 'F');
-        doc.setTextColor(255,255,255);
-        doc.setFontSize(10); doc.setFont('helvetica','bold');
-        doc.text('PDF', PW/2, imgY+14.3, {align:'center'});
-        doc.setTextColor(30,30,30);
-        doc.setFontSize(11); doc.setFont('helvetica','bold');
-        doc.text('PDF Receipt', PW/2, imgY+26, {align:'center'});
-        doc.setFontSize(9); doc.setFont('helvetica','normal');
-        doc.setTextColor(80,80,80);
-        doc.text(line.name, PW/2, imgY+34, {align:'center'});
-        doc.text('Open the original PDF file to view this receipt.', PW/2, imgY+41, {align:'center'});
+        // Try to load the source PDF for true page embedding (spliced in after this
+        // divider page by the merge step). If pdf-lib is absent or the file is
+        // unfetchable / encrypted / corrupt, fall back to the self-contained card.
+        let srcDoc = null, pageCount = 0;
+        if (PDFLib) {
+          try {
+            const bytes = await pdfBytesFromSrc(src);
+            srcDoc = await PDFLib.PDFDocument.load(bytes, { ignoreEncryption:true });
+            pageCount = srcDoc.getPageCount();
+          } catch(_) { srcDoc = null; pageCount = 0; }
+        }
+        if (srcDoc && pageCount > 0) {
+          doc.setFillColor(230,241,251);
+          doc.rect(M, imgY, IW, 42, 'F');
+          doc.setDrawColor(180,210,240);
+          doc.rect(M, imgY, IW, 42, 'S');
+          doc.setFillColor(24,95,165);
+          doc.roundedRect(PW/2-11, imgY+8, 22, 9, 1.5, 1.5, 'F');
+          doc.setTextColor(255,255,255);
+          doc.setFontSize(10); doc.setFont('helvetica','bold');
+          doc.text('PDF', PW/2, imgY+14.3, {align:'center'});
+          doc.setTextColor(30,30,30);
+          doc.setFontSize(11); doc.setFont('helvetica','bold');
+          doc.text('PDF Receipt', PW/2, imgY+25, {align:'center'});
+          doc.setFontSize(9); doc.setFont('helvetica','normal');
+          doc.setTextColor(80,80,80);
+          doc.text('Original — '+pageCount+' page'+(pageCount>1?'s':'')+' follow'+(pageCount>1?'':'s')+'.', PW/2, imgY+33, {align:'center'});
+          pdfInserts.push({ afterPage: doc.getNumberOfPages()-1, srcDoc });
+        } else {
+          doc.setFillColor(230,241,251);
+          doc.rect(M, imgY, IW, 48, 'F');
+          doc.setDrawColor(180,210,240);
+          doc.rect(M, imgY, IW, 48, 'S');
+          // Vector "PDF" badge — NEVER pass an emoji to doc.text(): jsPDF's standard
+          // helvetica font can't encode it and the call throws, aborting the export.
+          doc.setFillColor(24,95,165);
+          doc.roundedRect(PW/2-11, imgY+8, 22, 9, 1.5, 1.5, 'F');
+          doc.setTextColor(255,255,255);
+          doc.setFontSize(10); doc.setFont('helvetica','bold');
+          doc.text('PDF', PW/2, imgY+14.3, {align:'center'});
+          doc.setTextColor(30,30,30);
+          doc.setFontSize(11); doc.setFont('helvetica','bold');
+          doc.text('PDF Receipt', PW/2, imgY+26, {align:'center'});
+          doc.setFontSize(9); doc.setFont('helvetica','normal');
+          doc.setTextColor(80,80,80);
+          doc.text(line.name, PW/2, imgY+34, {align:'center'});
+          doc.text('Open the original PDF file to view this receipt.', PW/2, imgY+41, {align:'center'});
+        }
       } else {
         // Pre-fetch + decode the image ourselves; never hand jsPDF a raw URL.
         const im = await rcptImgForPdf(src);
@@ -3705,10 +3758,35 @@ async function buildReceiptsPDF(r, lines) {
     }
 
     doc.setFontSize(8); doc.setTextColor(160,160,160);
-    doc.text('Page '+(i+2)+' — RD Expense '+CFG.APP_VERSION, M, PH-5);
+    doc.text('RD Expense '+CFG.APP_VERSION+' — '+r.name, M, PH-5);
   }
 
-  return doc.output('blob');
+  // Splice the real PDF pages into the scaffold (v3.1). Every failure path falls back to
+  // the jsPDF-only scaffold (placeholder cards), so the export can never crash.
+  if (!PDFLib || pdfInserts.length === 0) return doc.output('blob');
+  try {
+    const scaffold = doc.output('arraybuffer');
+    const base = await PDFLib.PDFDocument.load(scaffold);
+    const out  = await PDFLib.PDFDocument.create();
+    const insByPage = {};
+    pdfInserts.forEach(ins => { insByPage[ins.afterPage] = ins; });
+    const n = base.getPageCount();
+    for (let p = 0; p < n; p++) {
+      const [cp] = await out.copyPages(base, [p]);
+      out.addPage(cp);
+      const ins = insByPage[p];
+      if (ins) {
+        try {
+          const pages = await out.copyPages(ins.srcDoc, ins.srcDoc.getPageIndices());
+          pages.forEach(pg => out.addPage(pg));
+        } catch(_) { /* unembeddable after all — divider page stands on its own */ }
+      }
+    }
+    const merged = await out.save();
+    return new Blob([merged], { type:'application/pdf' });
+  } catch(_) {
+    return doc.output('blob');   // merge failed entirely — return the scaffold unchanged
+  }
 }
 
 function doDownloadBlob(blob, fname) {
