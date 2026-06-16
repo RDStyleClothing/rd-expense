@@ -69,7 +69,7 @@ When you make changes, update the `CFG` block at the top of `index.html`:
 
 ```js
 const CFG = {
-  APP_VERSION:  'v3.0.0',      // bump this on every release
+  APP_VERSION:  'v3.1.2',      // bump this on every release
   APP_RELEASED: 'June 2026',    // update the month
   ...
 };
@@ -119,3 +119,6 @@ rd-expense/
 |---------|------|-------|
 | v1.0.0 | April 2026 | Initial release — reports, expenses, receipts, Excel export, OneDrive/Google Drive/Local storage, login |
 | v3.0.0 | June 2026 | Receipt PDF export: graceful placeholder card when a receipt image can't be decoded (CORS lag / corrupt blob), replacing bare red error text. Firebase Storage bucket CORS configured for the GitHub Pages origin. |
+| v3.0.3 | June 2026 | Deleting a report no longer deletes its expenses — they detach to a new "Not in Report" holding area (receipts preserved). Surfaced as its own section in both the Reports list (pseudo-row) and All Expenses (pinned section), with inline "Move to report" reassignment and per-line delete. |
+| v3.0.4 | June 2026 | "Not in Report" lines now show a clear labeled **Delete expense** button (replacing the faint trash glyph). Filed expenses can be detached back to "Not in Report" via a new "Move to Unreported" action (row icon on desktop/mobile) and a "— Not in Report (unfiled) —" option in the expense editor's report dropdown (which now always renders). Receipts are preserved on detach. |
+| v3.1.2 | June 2026 | Desktop dashboard redesign (Concept A — "Quiet intake"): the green Snap hero is hidden on desktop (>=701px) where a camera isn't useful; the four overview totals lead the page, an "Add expense" split button (Upload a file / Paste an image / Enter manually) is the primary action, and receipts can be dropped anywhere on the dashboard or pasted with Ctrl+V. The redundant FAB is hidden on the desktop dashboard only. Mobile is unchanged — it keeps the full-width Snap receipt hero. |
