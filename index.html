@@ -14,7 +14,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -475,7 +474,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.0.6</span>
+      <span class="vbm" id="vBdgM">v3.0.5</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -555,7 +554,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.0.6</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.0.5</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -581,7 +580,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.0.6',
+  APP_VERSION:    'v3.0.5',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -750,108 +749,6 @@ function validCur(c){ if(typeof c!=='string') return null; const u=c.trim().toUp
 ══════════════════════════════════════════════════════ */
 const PENDING_PREFIX = 'pending:';
 
-/* ══════════════════════════════════════════════════════ v3.0.6 — PDF → page images
-   A PDF receipt is rasterized to one JPEG per page on ingest so it rides the normal
-   cacheable-image path (durable in pendingReceipts, cross-device, export-embeddable).
-   The original PDF is kept as a best-effort attachment behind the pages — nothing
-   (display, sync, export) ever depends on the original's upload landing.
-   Grouping is recorded on the expense as optional `rcptGroups`:
-     { kind:'pdf', label, from, count, orig }   // indices into receipts[]
-   Layout convention: pages occupy [from .. from+count-1], original PDF at `orig`
-   (= from+count). Groups are passive metadata; renderers validate against the live
-   array length and silently fall back to flat thumbnails if anything drifted.
-══════════════════════════════════════════════════════ */
-const PDF_MAX_PAGES       = 15;    // hard cap; pages beyond this are dropped with a warning
-const PDF_RENDER_LONGEDGE = 1800;  // raster resolution before compressImage downscales
-
-function isPdfDataUrl(s){ return typeof s==='string' && s.startsWith('data:application/pdf'); }
-
-// Render every page of a PDF data URL to JPEG data URLs.
-// → { pages:[dataUrl,...], truncated:Bool, total:Int }  or  null on any failure.
-async function pdfToPageImages(dataUrl){
-  if (typeof pdfjsLib === 'undefined') return null;     // lib not loaded — caller keeps the PDF
-  try {
-    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
-    const b64   = dataUrl.split(',')[1] || '';
-    const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
-    const pdf   = await pdfjsLib.getDocument({ data: bytes }).promise;
-    const total = pdf.numPages;
-    const n     = Math.min(total, PDF_MAX_PAGES);
-    const pages = [];
-    for (let p=1; p<=n; p++){
-      const page  = await pdf.getPage(p);
-      const vp1   = page.getViewport({ scale: 1 });
-      const scale = Math.max(PDF_RENDER_LONGEDGE / Math.max(vp1.width, vp1.height), 1);
-      const vp    = page.getViewport({ scale });
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-      await page.render({ canvasContext: ctx, viewport: vp }).promise;
-      pages.push(canvas.toDataURL('image/jpeg', 0.8));
-    }
-    try { await pdf.cleanup(); } catch(_){}
-    if (!pages.length) return null;
-    return { pages, truncated: total > n, total };
-  } catch(_) { return null; }
-}
-
-// Expand one freshly-ingested receipt into the entries + group metadata to append to
-// a receipts[] array. PDF → N page images + original PDF; anything else → itself.
-// `baseIdx` = index the first new entry will occupy. On render failure / no lib, the
-// PDF is kept as-is (graceful, never drops the receipt).
-//   → { entries:[...], group:{...}|null, truncated:Bool, failed:Bool }
-async function expandReceiptInput(dataUrl, baseIdx, label){
-  if (!isPdfDataUrl(dataUrl)) return { entries:[dataUrl], group:null };
-  const res = await pdfToPageImages(dataUrl);
-  if (!res || !res.pages.length) return { entries:[dataUrl], group:null, failed:true };
-  return {
-    entries: res.pages.concat([dataUrl]),               // pages first, original PDF last
-    group: { kind:'pdf', label: label || 'PDF receipt',
-             from: baseIdx, count: res.pages.length, orig: baseIdx + res.pages.length,
-             truncated: !!res.truncated },
-    truncated: !!res.truncated, total: res.total
-  };
-}
-
-// A group is honoured only if its indices still fit the live array.
-function groupValid(g, arrLen){
-  return g && g.kind==='pdf'
-      && Number.isInteger(g.from) && Number.isInteger(g.count)
-      && g.from>=0 && g.count>0 && (g.from+g.count)<=arrLen
-      && (typeof g.orig!=='number' || g.orig<0 || g.orig<arrLen);
-}
-// index → { role:'page-first'|'page'|'orig', group }   (only for valid groups)
-function groupIndexMap(groups, arrLen){
-  const m = new Map();
-  (groups||[]).forEach(g=>{
-    if(!groupValid(g, arrLen)) return;
-    for(let i=g.from; i<g.from+g.count; i++) m.set(i, { role: i===g.from?'page-first':'page', group:g });
-    if(typeof g.orig==='number' && g.orig>=0) m.set(g.orig, { role:'orig', group:g });
-  });
-  return m;
-}
-// Remove `len` entries starting at `start` from a receipts array, keeping its groups
-// consistent: dissolve any group overlapping the removed span, shift later groups.
-function spliceReceipts(arr, groups, start, len){
-  arr.splice(start, len);
-  const out = [];
-  (groups||[]).forEach(g=>{
-    const gEnd = (typeof g.orig==='number'&&g.orig>=0?g.orig:g.from+g.count-1);
-    const overlaps = !(gEnd < start || g.from >= start+len);
-    if(overlaps) return;                       // dissolved — its entries become flat
-    if(g.from >= start+len){
-      const d = { ...g, from:g.from-len };
-      if(typeof g.orig==='number'&&g.orig>=0) d.orig = g.orig-len;
-      out.push(d);
-    } else out.push(g);                        // entirely before the removed span
-  });
-  return out;
-}
-
 function dataUrlToBlob(dataUrl) {
   const [header, b64] = dataUrl.split(',');
   const mime  = header.match(/:(.*?);/)[1];
@@ -940,7 +837,10 @@ function stripUndef(v){ return JSON.parse(JSON.stringify(v)); }
 function withTimeout(p, ms){
   return Promise.race([ p, new Promise((_,rej)=>setTimeout(()=>rej(Object.assign(new Error('upload timed out'),{code:'app/upload-timeout'})), ms)) ]);
 }
-const UPLOAD_BUDGET_MS = 6000;
+// Max base64 chars per pendingReceipts doc. Firestore caps a document at 1 MiB;
+// 900K leaves comfortable headroom for field names/overhead. Receipts larger than
+// this are split across rid::0…N-1 chunk docs and reassembled on hydrate.
+const PR_CHUNK = 900000;
 
 // All saves run strictly one-after-another. Adding expenses back-to-back while a
 // prior save is still compressing photos queues the new save instead of letting two
@@ -964,7 +864,7 @@ async function _doSave() {
   updSyncChip('syncing');
   S._pendingBlobs = S._pendingBlobs || {};
   const blobWrites = [];      // in-flight pendingReceipts doc writes
-  let deferred = 0, uncacheable = 0;
+  let deferred = 0;
   try {
     // Step 1: make every receipt cloud-representable WITHOUT touching Storage.
     // Fresh photos become pending refs backed by a small Firestore blob doc; the
@@ -987,36 +887,40 @@ async function _doSave() {
         // An existing pending ref — leave it; the background retry will heal it.
         if (r.startsWith(PENDING_PREFIX)) return;
 
-        // Fresh base64 captured this session — compress and cache to Firestore.
-        // Firestore caps documents at 1 MiB, so keep the cached copy safely under
-        // ~900K chars, recompressing harder if needed.
+        // Fresh base64 captured this session — compress (images only) and cache to
+        // Firestore. A document caps at 1 MiB, so anything over PR_CHUNK chars is split
+        // across chunk docs (rid::0…N-1) + a small manifest, then reassembled on hydrate.
+        // This gives every receipt — image or PDF, any size — a durable Firestore copy,
+        // so a reload can never strand it on a memory-only blob. The full original is
+        // preserved byte-for-byte (PDFs pass through compressImage untouched).
         if (r.startsWith('data:')) {
-          let cacheable = await compressImage(r);
-          if (cacheable.length > 900000) cacheable = await compressImage(r, 1200, 0.6);
-          if (cacheable.length > 900000) cacheable = await compressImage(r, 900, 0.5);
-          if (cacheable.length > 900000) {
-            // Can't cache (doc cap) — one bounded direct Storage attempt; if that
-            // fails, keep a pending ref backed only by this device's memory.
-            uncacheable++;
-            const ridB = uid('RC');
-            S._pendingBlobs[ridB] = cacheable;
-            try {
-              const url = await withTimeout(uploadReceiptToStorage(cacheable, e.id, i, 1), UPLOAD_BUDGET_MS);
-              delete S._pendingBlobs[ridB];
-              recs[i] = url;
-            } catch(_) { recs[i] = PENDING_PREFIX + ridB; }
-            return;
-          }
+          const cacheable = await compressImage(r);
           const rid = uid('RC');
           S._pendingBlobs[rid] = cacheable;
           deferred++;
-          // Issue the blob write BEFORE the user-doc write below — Firestore sends
-          // queued mutations in order, so the blob doc lands first and other
-          // devices can hydrate the pending ref the instant the doc arrives.
-          blobWrites.push(
-            ucol.doc(rid).set({ data: cacheable, expenseUid: CU.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
-              .catch(e2 => console.error('Pending-receipt write failed', e2 && (e2.code||e2.message)))
-          );
+          // Issue blob/manifest writes BEFORE the user-doc write below — Firestore sends
+          // queued mutations in order, so the cache lands first and other devices can
+          // hydrate the pending ref the instant the docs arrive.
+          if (cacheable.length <= PR_CHUNK) {
+            blobWrites.push(
+              ucol.doc(rid).set({ data: cacheable, expenseUid: CU.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
+                .catch(e2 => console.error('Pending-receipt write failed', e2 && (e2.code||e2.message)))
+            );
+          } else {
+            const nChunks = Math.ceil(cacheable.length / PR_CHUNK);
+            for (let c = 0; c < nChunks; c++) {
+              const part = cacheable.slice(c*PR_CHUNK, (c+1)*PR_CHUNK);
+              blobWrites.push(
+                ucol.doc(rid+'::'+c).set({ data: part, parent: rid, part: c })
+                  .catch(e2 => console.error('Pending-receipt chunk write failed', e2 && (e2.code||e2.message)))
+              );
+            }
+            // Manifest carries no base64 — small, safe under the cap.
+            blobWrites.push(
+              ucol.doc(rid).set({ chunked: true, chunks: nChunks, expenseUid: CU.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
+                .catch(e2 => console.error('Pending-receipt manifest write failed', e2 && (e2.code||e2.message)))
+            );
+          }
           recs[i] = PENDING_PREFIX + rid;
         }
       }));
@@ -1038,10 +942,6 @@ async function _doSave() {
     const anyPending = deferred > 0 ||
       S.expenses.some(e => (e.receipts||[]).some(r => typeof r==='string' && r.startsWith(PENDING_PREFIX)));
     if (anyPending) setTimeout(()=>retryPendingUploads(), 600);
-
-    if (uncacheable > 0) {
-      toast(uncacheable+' receipt'+(uncacheable>1?'s':'')+' too large to cache — keep this device online until the upload toast appears', '#BA7517');
-    }
   } catch (e) {
     console.error('Save failed', e);
     updSyncChip('err');
@@ -1123,7 +1023,25 @@ async function hydratePending(attempt) {
   if (!need.size) return;
   try {
     const snap = await FB.db.collection('users').doc(CU.uid).collection('pendingReceipts').get();
-    snap.forEach(d2 => { if (need.has(d2.id)) S._pendingBlobs[d2.id] = (d2.data()||{}).data; });
+    // Index the whole collection by id so we can resolve manifests + their chunk docs
+    // (rid::0…N-1) in one pass without extra reads.
+    const byId = {};
+    snap.forEach(d2 => { byId[d2.id] = d2.data() || {}; });
+    need.forEach(id => {
+      const m = byId[id];
+      if (!m) return;
+      if (m.chunked) {
+        let full = '', ok = true;
+        for (let c = 0; c < m.chunks; c++) {
+          const ch = byId[id+'::'+c];
+          if (!ch || ch.data == null) { ok = false; break; }   // a chunk hasn't landed yet
+          full += ch.data;
+        }
+        if (ok) S._pendingBlobs[id] = full;                    // leave unset → retried next pass
+      } else if (m.data != null) {
+        S._pendingBlobs[id] = m.data;                          // legacy single-doc blob
+      }
+    });
   } catch(_) {}
   render();
   const stillMissing = [...need].some(id => !S._pendingBlobs[id]);
@@ -1154,6 +1072,27 @@ function stopRealtimeSync() {
 }
 
 // Re-attempt Storage upload for any pending receipts we have a local copy of.
+// Delete a pending-receipt cache entry from Firestore — a chunked manifest plus its
+// rid::0…N-1 chunk docs, or a legacy single doc. Reads the manifest to learn the chunk
+// count so it works from any entry path (post-reload, cross-device) without in-memory
+// state. Best-effort; never throws.
+async function deletePendingDocs(rid){
+  if(!CU) return;
+  const col = FB.db.collection('users').doc(CU.uid).collection('pendingReceipts');
+  try {
+    const m = await col.doc(rid).get();
+    const d = m.exists ? (m.data()||{}) : null;
+    if (d && d.chunked) {
+      const dels = [];
+      for (let c=0; c<d.chunks; c++) dels.push(col.doc(rid+'::'+c).delete().catch(()=>{}));
+      dels.push(col.doc(rid).delete().catch(()=>{}));
+      await Promise.all(dels);
+    } else {
+      await col.doc(rid).delete().catch(()=>{});
+    }
+  } catch(_){}
+}
+
 // On success the expense entry is upgraded to a real URL and the fallback doc removed.
 // Re-entrancy-guarded; if anything is still pending afterwards it reschedules itself
 // with backoff (10s / 30s / 90s) so receipts heal without any user action.
@@ -1176,7 +1115,7 @@ async function retryPendingUploads(attempt) {
         const url = await withTimeout(uploadReceiptToStorage(b64, e.id, i), 45000);
         e.receipts[i] = url;
         delete S._pendingBlobs[rid];
-        try { await FB.db.collection('users').doc(CU.uid).collection('pendingReceipts').doc(rid).delete(); } catch(_){}
+        await deletePendingDocs(rid);
         healed++;
       } catch(err) { remaining++; /* still offline / still blocked — leave pending for next time */ }
     }
@@ -1207,7 +1146,7 @@ function cleanupReceiptRefs(receipts){
     } else if(rc.startsWith(PENDING_PREFIX)){
       const id = rc.slice(PENDING_PREFIX.length);
       delete (S._pendingBlobs||{})[id];
-      try { FB.db.collection('users').doc(CU.uid).collection('pendingReceipts').doc(id).delete().catch(()=>{}); } catch(_){}
+      deletePendingDocs(id);   // manifest + chunk docs (or legacy single doc); fire-and-forget
     }
   });
 }
@@ -1724,7 +1663,6 @@ async function autoFileExpense(rid, imgData, sc) {
   const rpt = S.reports.find(x => x.id === rid);
   const rptCurDef = rptCurrency(rpt);
   const scCur = validCur(sc.currency);
-  const _ex = await expandReceiptInput(imgData, 0, (String(sc.merchant||'').trim()||'PDF receipt'));
   const e = {
     id:          uid('E'),
     reportId:    rid,
@@ -1735,8 +1673,7 @@ async function autoFileExpense(rid, imgData, sc) {
     notes:       sc.notes || '',
     taxIncluded: !!sc.taxIncluded,
     currency:    (scCur && scCur !== rptCurDef) ? scCur : undefined,
-    receipts:    _ex.entries,
-    rcptGroups:  _ex.group ? [_ex.group] : undefined,
+    receipts:    [imgData],
     _ts:         Date.now()
   };
   S.expenses.push(e);
@@ -1850,8 +1787,6 @@ async function _scanReceipt(file, dataUrl, rid, rptCurDef, ui){
   }
 
   const today = new Date().toISOString().slice(0,10);
-  const _label = ((parsed.merchant||'').trim() || (file && file.name) || 'PDF receipt').replace(/\.pdf$/i,'');
-  const _ex = await expandReceiptInput(dataUrl, 0, _label);
   const exp = {
     id: uid('E'), reportId: rid,
     merchant: (parsed.merchant||'').trim(),
@@ -1861,8 +1796,7 @@ async function _scanReceipt(file, dataUrl, rid, rptCurDef, ui){
     currency: (function(){ const c=validCur(parsed.currency); return (c && c!==rptCurDef) ? c : undefined; })(),
     notes: parsed.notes || '',
     taxIncluded: !!parsed.taxIncluded,
-    receipts: _ex.entries,
-    rcptGroups: _ex.group ? [_ex.group] : undefined,
+    receipts: [dataUrl],
     _ts: Date.now()
   };
   const dup = S.expenses.find(x =>
@@ -2483,16 +2417,12 @@ function fixPick(eid, cam){
     document.body.removeChild(inp);
     const f=ev.target.files&&ev.target.files[0]; if(!f) return;
     const fr=new FileReader();
-    fr.onload=async e2=>{
+    fr.onload=e2=>{
       const ex=S.expenses.find(x=>x.id===eid); if(!ex) return;
-      const base=(ex.receipts||[]).length;
-      if(isPdfDataUrl(e2.target.result)) toast('Converting PDF…');
-      const exp=await expandReceiptInput(e2.target.result, base, 'PDF receipt');
-      ex.receipts=[...(ex.receipts||[]), ...exp.entries];
-      if(exp.group) ex.rcptGroups=[...(ex.rcptGroups||[]), exp.group];
+      ex.receipts=[...(ex.receipts||[]),e2.target.result];
       S._pendingRemote=null;
       save();
-      toast(exp.failed?'Could not convert PDF — kept original file':'Receipt attached \u2713', exp.failed?'#BA7517':undefined);
+      toast('Receipt attached \u2713');
       if(window._fixRid) mFixQ(window._fixRid);
     };
     fr.readAsDataURL(f);
@@ -2565,7 +2495,7 @@ function vDet(rid){
         '<td style="color:var(--tx2)">'+(e.taxIncluded?'Y':'N')+'</td>'+
         '<td>'+fmt(et.sub,cur)+'</td><td>'+(et.xmt?'&mdash;':fmt(et.gst,cur))+'</td><td>'+(et.xmt?'&mdash;':fmt(et.qst,cur))+'</td>'+
         '<td style="font-weight:600">'+fmt(et.tot,cur)+'</td>'+
-        '<td><div style="display:flex;gap:4px">'+(e.receipts?.length?(function(){const gm=groupIndexMap(e.rcptGroups,e.receipts.length);return e.receipts.map((rc,ri)=>{const inf=gm.get(ri);if(inf&&inf.role==='orig')return '';return rcptThumb(rc,34,rc);}).join('')||'&mdash;';})():'&mdash;')+'</div></td>'+
+        '<td><div style="display:flex;gap:4px">'+(e.receipts?.length?e.receipts.map(rc=>rcptThumb(rc,34,rc)).join(''):'&mdash;')+'</div></td>'+
         (locked?'':'<td style="white-space:nowrap"><button class="ib" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><button class="ib" onclick="delE(\''+e.id+'\')">&#128465;</button></td>')+
       '</tr>';}).join('')+
     '</tbody></table>')+
@@ -2713,18 +2643,7 @@ function saveR(){
 }
 
 function mAE(rid, preImg, scanned) {
-  closeFab(); window._modalRid=rid; window._rec=[]; window._recGroups=[];
-  if(preImg){
-    if(isPdfDataUrl(preImg)) toast('Converting PDF…');
-    setTimeout(async()=>{
-      const ex=await expandReceiptInput(preImg,0,'Scanned receipt');
-      window._rec.push(...ex.entries);
-      if(ex.group) (window._recGroups=window._recGroups||[]).push(ex.group);
-      renderT();
-      if(ex.truncated) toast('PDF has many pages — kept the first '+PDF_MAX_PAGES,'#BA7517');
-      else if(ex.failed) toast('Could not convert that PDF — kept the original file','#BA7517');
-    },0);
-  }
+  closeFab(); window._modalRid=rid; window._rec=preImg?[preImg]:[];
   const today=new Date().toISOString().slice(0,10);
   const sc=scanned||{};
   // Pre-select SmartScan's detected currency only when it differs from the report default
@@ -2830,89 +2749,36 @@ function updCount(cur){
 }
 
 window._rec=[];
-window._recGroups=[];
-async function onFi(files){
-  for (const f of Array.from(files)){
-    const dataUrl = await new Promise(res=>{ const fr=new FileReader(); fr.onload=ev=>res(ev.target.result); fr.readAsDataURL(f); });
-    const base  = window._rec.length;
-    const label = (f.name||'PDF receipt').replace(/\.pdf$/i,'');
-    if (isPdfDataUrl(dataUrl)) toast('Converting PDF…');
-    const ex = await expandReceiptInput(dataUrl, base, label);
-    window._rec.push(...ex.entries);
-    window._recGroups = window._recGroups || [];
-    if (ex.group) window._recGroups.push(ex.group);
-    renderT();
-    if (ex.truncated) toast('PDF has many pages — kept the first '+PDF_MAX_PAGES,'#BA7517');
-    else if (ex.failed) toast('Could not convert that PDF — kept the original file','#BA7517');
-  }
+function onFi(files){
+  Array.from(files).forEach(f=>{
+    const fr=new FileReader();
+    fr.onload=ev=>{ window._rec.push(ev.target.result); renderT(); };
+    fr.readAsDataURL(f);
+  });
 }
 function onDp(ev){ev.preventDefault();$('dz').classList.remove('ov');onFi(ev.dataTransfer.files);}
 function renderT(){
   const g=$('tg'); if(!g)return;
   window._recPrev = window._rec.slice();
-  const gmap = groupIndexMap(window._recGroups, window._rec.length);
-  let html='';
-  for(let i=0;i<window._rec.length;i++){
-    const info = gmap.get(i);
-    if(info && info.role!=='page-first') continue;        // consumed by a group rendered at its start
-    if(info && info.role==='page-first'){
-      const grp = info.group;
-      const pageThumbs = [];
-      for(let p=grp.from;p<grp.from+grp.count;p++){
-        const praw = window._rec[p], psrc = rcptSrc(praw)||praw;
-        const pend = praw.startsWith(PENDING_PREFIX) && !rcptSrc(praw);
-        pageThumbs.push('<div style="width:54px"><div style="width:54px;height:70px;border-radius:5px;border:1px solid var(--bd);overflow:hidden;background:var(--ambg);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="pRec(window._recPrev['+p+'])">'+
-          (pend?'<span style="font-size:15px">\u{23F3}</span>':'<img src="'+psrc+'" style="width:100%;height:100%;object-fit:cover"/>')+
-          '</div><div style="font-size:9px;color:var(--tx2);text-align:center;margin-top:3px;font-weight:600">p.'+(p-grp.from+1)+'</div></div>');
-      }
-      const origIdx = (typeof grp.orig==='number'&&grp.orig>=0)?grp.orig:-1;
-      const origFoot = origIdx>=0
-        ? '<div style="border-top:1px dashed var(--bd);padding:7px 11px;font-size:11px;color:var(--tx2);display:flex;align-items:center;gap:7px;background:#fbfaf8">'+
-            '<span style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-weight:600;color:var(--tx)" onclick="pRec(window._recPrev['+origIdx+'])"><span style="width:18px;height:18px;border-radius:4px;background:var(--s2);border:1px solid var(--bd);display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:var(--tx2)">PDF</span> Original kept</span>'+
-          '</div>'
-        : '';
-      html += '<div style="border:1px solid var(--bd);border-radius:9px;overflow:hidden;background:var(--sf);width:100%;max-width:380px">'+
-        '<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--blbg);border-bottom:1px solid var(--bd)">'+
-          '<span style="font-size:16px">\u{1F4C4}</span>'+
-          '<div style="min-width:0"><div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(grp.label||'PDF receipt')+'</div>'+
-          '<div style="font-size:10px;color:var(--tx2)">'+grp.count+' page'+(grp.count>1?'s':'')+' \u00b7 from PDF'+(grp.truncated?' \u00b7 first '+PDF_MAX_PAGES:'')+'</div></div>'+
-          '<button class="tx" style="margin-left:auto" title="Remove this document" onclick="rmGroup('+window._recGroups.indexOf(grp)+')">&#10005;</button>'+
-        '</div>'+
-        '<div style="display:flex;gap:8px;padding:11px;flex-wrap:wrap">'+pageThumbs.join('')+'</div>'+
-        origFoot+
-      '</div>';
-      continue;
-    }
-    // ungrouped (flat) entry — original behaviour
-    const raw = window._rec[i];
+  g.innerHTML=window._rec.map((raw,i)=>{
     const rm = '<button class="tx" onclick="rmT('+i+')">&#10005;</button>';
-    if(raw.startsWith(PENDING_PREFIX) && !rcptSrc(raw)){ html+='<div class="tw">'+
+    // Pending upload with no local copy on this device yet — placeholder, not a broken image.
+    if(raw.startsWith(PENDING_PREFIX) && !rcptSrc(raw)) return '<div class="tw">'+
       '<div style="width:100%;aspect-ratio:1;background:var(--ambg);border-radius:6px;border:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px" title="Receipt upload pending — syncs once online">'+
         '<span style="font-size:20px">\u{23F3}</span>'+
         '<span style="font-size:9px;font-weight:700;color:var(--bl)">PENDING</span>'+
-      '</div>'+rm+'</div>'; continue; }
+      '</div>'+rm+'</div>';
     const src = rcptSrc(raw) || raw;
     const isPdf = isPdfRef(src) || isPdfRef(raw);
-    if(isPdf){ html+='<div class="tw">'+
+    if(isPdf) return '<div class="tw">'+
       '<div style="width:100%;aspect-ratio:1;background:var(--blbg);border-radius:6px;border:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer" onclick="pRec(window._recPrev['+i+'])">'+
         '<span style="font-size:20px">\u{1F4C4}</span>'+
         '<span style="font-size:9px;font-weight:700;color:var(--bl)">PDF</span>'+
-      '</div>'+rm+'</div>'; continue; }
-    html+='<div class="tw"><img src="'+src+'" onclick="pRec(window._recPrev['+i+'])" style="cursor:pointer"/>'+rm+'</div>';
-  }
-  g.innerHTML=html;
+      '</div>'+rm+'</div>';
+    return '<div class="tw"><img src="'+src+'" onclick="pRec(window._recPrev['+i+'])" style="cursor:pointer"/>'+rm+'</div>';
+  }).join('');
 }
-function rmT(i){
-  window._recGroups = spliceReceipts(window._rec, window._recGroups, i, 1);
-  renderT();
-}
-function rmGroup(gi){
-  const grp = (window._recGroups||[])[gi];
-  if(!grp){ return; }
-  const end = (typeof grp.orig==='number'&&grp.orig>=0)?grp.orig:(grp.from+grp.count-1);
-  window._recGroups = spliceReceipts(window._rec, window._recGroups, grp.from, end-grp.from+1);
-  renderT();
-}
+function rmT(i){window._rec.splice(i,1);renderT();}
 
 // Thumbnail HTML for a stored receipt entry — resolves URLs, pending refs, PDFs
 function rcptThumb(raw, size, clickRef) {
@@ -2941,7 +2807,7 @@ async function saveE(rid){
   const amtNum=parseFloat(a);
   const dupX=S.expenses.find(x=>(x.merchant||'').trim().toLowerCase()===m.toLowerCase() && x.date===d && Math.abs((x.amount||0)-amtNum)<0.005);
   if (dupX && !confirm('Possible duplicate:\n'+(dupX.merchant||'')+' \u2014 '+fd(dupX.date)+' \u2014 '+fmt(dupX.amount,expCurrency(dupX))+'\n\nAdd this expense anyway?')) return;
-  const e={id:uid('E'),reportId:rid,merchant:m,date:d,amount:parseFloat(a),category:$('eCt').value,notes:$('eNo').value.trim(),taxIncluded:!!($('tI')&&$('tI').checked),currency:eCurVal||undefined,cadCharged:(isForeign&&cadCharged>0)?r2(cadCharged):undefined,fxRate:(isForeign&&cadCharged>0&&fxRate>0)?fxRate:undefined,receipts:[...window._rec],rcptGroups:(window._recGroups&&window._recGroups.length)?window._recGroups.map(g=>({...g})):undefined,_ts:Date.now()};
+  const e={id:uid('E'),reportId:rid,merchant:m,date:d,amount:parseFloat(a),category:$('eCt').value,notes:$('eNo').value.trim(),taxIncluded:!!($('tI')&&$('tI').checked),currency:eCurVal||undefined,cadCharged:(isForeign&&cadCharged>0)?r2(cadCharged):undefined,fxRate:(isForeign&&cadCharged>0&&fxRate>0)?fxRate:undefined,receipts:[...window._rec],_ts:Date.now()};
   S.expenses.push(e);
   S._pendingRemote=null;   // local add wins over any remote snapshot queued while the modal was open
   closeM();
@@ -2954,7 +2820,7 @@ function delE(id){if(!confirm('Remove this expense?'))return;const ex=S.expenses
 
 function mEditE(eid) {
   const e=S.expenses.find(e=>e.id===eid); if(!e) return;
-  window._modalRid=e.reportId; window._rec=[...(e.receipts||[])]; window._recGroups=(e.rcptGroups||[]).map(g=>({...g}));
+  window._modalRid=e.reportId; window._rec=[...(e.receipts||[])];
   const cats=['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Other'];
   const catOpts=cats.map(c=>'<option'+(e.category===c?' selected':'')+'>'+c+'</option>').join('');
   const openReports=S.reports.filter(r=>r.status==='Open');
@@ -3028,7 +2894,6 @@ async function saveEditE(eid) {
   e.origCurrency= undefined;
   e.origAmount  = undefined;
   e.receipts    = [...window._rec];
-  e.rcptGroups  = (window._recGroups && window._recGroups.length) ? window._recGroups.map(g=>({...g})) : undefined;
   e.reportId    = newReportId;
   e._ts         = Date.now();
   S._pendingRemote=null;   // local edit wins over any remote snapshot queued while the modal was open
@@ -3564,25 +3429,18 @@ async function expR(rid, auto){
     return;
   }
 
-  // Collect receipt lines — resolve pending refs to their local base64 where possible.
-  // For a converted PDF, the page images embed normally; the kept-original PDF entry
-  // is skipped (it would otherwise produce a redundant placeholder card).
+  // Collect receipt lines — resolve pending refs to their local base64 where possible
   const lines=[];
-  exps.forEach((e,i)=>{
-    const gm = groupIndexMap(e.rcptGroups, (e.receipts||[]).length);
-    (e.receipts||[]).forEach((raw,ri)=>{
-      const inf = gm.get(ri);
-      if(inf && inf.role==='orig') return;           // kept original — pages already embedded
-      const src = rcptSrc(raw);
-      if(!src) return;
-      const isPdf  = isPdfRef(src);
-      const isImg  = !isPdf && (src.startsWith('data:image') || src.startsWith('https://') || src.startsWith('http://'));
-      if(isPdf || isImg) {
-        const ext  = isPdf ? 'pdf' : 'jpg';
-        lines.push({src, isPdf, expIdx:i, name:r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(ri+1)+'.'+ext, path:sp});
-      }
-    });
-  });
+  exps.forEach((e,i)=>(e.receipts||[]).forEach((raw,ri)=>{
+    const src = rcptSrc(raw);
+    if(!src) return;
+    const isPdf  = isPdfRef(src);
+    const isImg  = !isPdf && (src.startsWith('data:image') || src.startsWith('https://') || src.startsWith('http://'));
+    if(isPdf || isImg) {
+      const ext  = isPdf ? 'pdf' : 'jpg';
+      lines.push({src, isPdf, expIdx:i, name:r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(ri+1)+'.'+ext, path:sp});
+    }
+  }));
 
   return showExportModal(r, fname, blob, lines, fn, sp, rid, auto);
 }
