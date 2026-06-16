@@ -254,6 +254,38 @@ tr.trc:active td{background:var(--bg)}
   .stp2{grid-template-columns:1fr}
 }
 @media(min-width:701px){.bnn,.hbg{display:none}.sbov{display:none!important}}
+/* ===== Desktop dashboard — Concept A (Quiet intake). All rules gated to >=701px; mobile is untouched. ===== */
+.dTop,.dDrop{display:none}
+.dTax{display:contents}
+.adx{position:relative;display:inline-flex}
+.adxB{background:var(--g);color:#fff;border:1px solid var(--g);border-right-color:rgba(255,255,255,.35);border-radius:var(--rsm) 0 0 var(--rsm);padding:9px 15px;font-size:13.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;font-family:var(--font)}
+.adxB svg{width:15px;height:15px}
+.adxC{background:var(--g);color:#fff;border:1px solid var(--g);border-left:none;border-radius:0 var(--rsm) var(--rsm) 0;padding:0 10px;cursor:pointer;font-size:11px;line-height:1}
+.adxB:hover,.adxC:hover{background:var(--gdk)}
+.adxM{position:absolute;top:42px;right:0;background:var(--sf);border:1px solid var(--bd2);border-radius:var(--r);min-width:208px;box-shadow:var(--shlg);overflow:hidden;display:none;z-index:60}
+.adx.open .adxM{display:block}
+.adxI{display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:13px;cursor:pointer;color:var(--tx)}
+.adxI:hover{background:var(--bg)}
+.adxI svg{width:15px;height:15px;color:var(--tx2);flex-shrink:0}
+@media(min-width:701px){
+  .hero{display:none}
+  .secH.ovH{display:none}
+  .dTop{display:flex;align-items:center;gap:16px;order:0;margin:0 4px}
+  .dTopH{font-size:22px;font-weight:700;letter-spacing:-.4px;margin:0;color:var(--tx)}
+  .dTopE{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--tx3);margin-bottom:2px}
+  .dTopSp{flex:1}
+  .stats{order:1}
+  .dDrop{display:flex;align-items:center;gap:12px;order:2;border:1.5px dashed var(--bd2);border-radius:var(--r);background:repeating-linear-gradient(45deg,transparent,transparent 12px,rgba(0,0,0,.012) 12px,rgba(0,0,0,.012) 24px);padding:12px 18px;color:var(--tx2);font-size:13px;cursor:pointer;transition:border-color .15s,background .15s}
+  .dDrop b{color:var(--tx);font-weight:600}
+  .dDropI{width:20px;height:20px;flex-shrink:0;opacity:.7}
+  .dDropL{margin-left:auto;font-size:12px;color:var(--bl);font-weight:600}
+  .dDrop:hover,.dDrop.over{border-color:var(--g);background:var(--gbg);color:var(--gdk)}
+  .dDrop:hover b,.dDrop.over b{color:var(--gdk)}
+  .secH.inbH{order:3}.card.inbC{order:4}
+  .secH.recH{order:5}.card.recC{order:6}
+  .dTax{display:flex;flex-direction:column;gap:18px;order:7}
+  body[data-view="dashboard"] .fw{display:none}
+}
 @media(max-width:400px){.r2{grid-template-columns:1fr}}
 #loginScreen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
 .lbox{background:var(--sf);border:1px solid var(--bd2);border-radius:16px;width:100%;max-width:380px;padding:36px 32px;box-shadow:var(--shlg)}
@@ -581,7 +613,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.1.1',
+  APP_VERSION:    'v3.1.2',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -1330,6 +1362,33 @@ document.addEventListener('keydown', e=>{
 
 function boot() {
   $('app').style.display='none';
+  setupDesktopIntake();
+}
+/* Concept A: drop a receipt anywhere on the desktop dashboard, or Ctrl+V to paste one.
+   All handlers no-op unless the app is shown, the view is dashboard, and width >= 701px. */
+function setupDesktopIntake(){
+  const onDash=()=>window.innerWidth>=701 && S.view==='dashboard' && $('app') && $('app').style.display!=='none';
+  const strip=()=>document.querySelector('.dDrop');
+  const hasFiles=e=>e.dataTransfer && [...(e.dataTransfer.types||[])].includes('Files');
+  ['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{
+    if(!onDash()||!hasFiles(e))return;
+    e.preventDefault(); const s=strip(); if(s)s.classList.add('over');
+  }));
+  document.addEventListener('dragleave',e=>{ if(e.relatedTarget===null){ const s=strip(); if(s)s.classList.remove('over'); }});
+  document.addEventListener('drop',e=>{
+    if(!onDash())return;
+    if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){
+      e.preventDefault(); const s=strip(); if(s)s.classList.remove('over');
+      dashIngestFiles(e.dataTransfer.files);
+    }
+  });
+  document.addEventListener('paste',e=>{
+    if(!onDash())return;
+    const items=e.clipboardData && e.clipboardData.items; if(!items)return;
+    for(const it of items){ if((it.type||'').startsWith('image/')){ const f=it.getAsFile(); if(f){ e.preventDefault(); dashIngestFiles([f]); return; } } }
+  });
+  document.addEventListener('click',e=>{ if(!e.target.closest('.adx')) closeAddx(); });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAddx(); });
 }
 
 /* ══════════════════════════════════════════════════════ ADMIN AUTH */
@@ -2056,6 +2115,7 @@ function placeBnPill(){
 window.addEventListener('resize',placeBnPill);
 window.addEventListener('orientationchange',()=>setTimeout(placeBnPill,120));
 function render(){
+  document.body.dataset.view=S.view;
   $('navRC').textContent=S.reports.length; $('navEC').textContent=S.expenses.length;
   const m=$('mainC');
   if(S.view==='dashboard')     m.innerHTML=vDash();
@@ -2122,6 +2182,37 @@ function statTotalHtml(exps){
 /* ── DASHBOARD (v2.2.15 capture-first home) ── */
 function dashSnap(cam){ ensureReport(rid=>fabDoSnap('smart',rid,cam)); }
 function dashManual(){ ensureReport(rid=>mAE(rid)); }
+
+/* Desktop "Add expense" split-button menu (Concept A) */
+function toggleAddx(e){ if(e)e.stopPropagation(); const a=$('adx'); if(a) a.classList.toggle('open'); }
+function closeAddx(){ const a=$('adx'); if(a) a.classList.remove('open'); }
+function addxPick(kind){
+  closeAddx();
+  if(kind==='manual'){ dashManual(); return; }
+  if(kind==='paste'){ dashPaste(); return; }
+  ensureReport(rid=>fabDoSnap('smart',rid)); /* upload → file picker → SmartScan */
+}
+/* Route dropped / pasted receipt files through the existing SmartScan pipeline */
+function dashIngestFiles(fileList){
+  const files=[...fileList].filter(f=>(f.type||'').startsWith('image/')||f.type==='application/pdf');
+  if(!files.length){ toast('Drop an image or PDF receipt','#BA7517'); return; }
+  if(files.length>1) toast('Scanning the first receipt — add the others one at a time');
+  const fr=new FileReader();
+  fr.onload=ev=>ensureReport(rid=>doSmartScan(ev.target.result,rid));
+  fr.readAsDataURL(files[0]);
+}
+async function dashPaste(){
+  try{
+    if(navigator.clipboard && navigator.clipboard.read){
+      const items=await navigator.clipboard.read();
+      for(const it of items){
+        const type=(it.types||[]).find(t=>t.startsWith('image/'));
+        if(type){ const blob=await it.getType(type); dashIngestFiles([blob]); return; }
+      }
+    }
+  }catch(_){ /* permission denied or unsupported — fall back to keyboard paste */ }
+  toast('Press Ctrl+V to paste your receipt');
+}
 function catIco(c){ return ({'Auto Expense':'🚗','Travel & Buying':'✈️','Travel & Selling':'✈️','Samples':'📦','Mobile':'📱','Meals & Entertainment':'🍽️','Office':'🗂️','Computer':'💻'})[c]||'🧾'; }
 function vDash(){
   const open=S.reports.filter(r=>r.status==='Open').length;
@@ -2155,7 +2246,7 @@ function vDash(){
     const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);
     inbox+='<div class="inb" onclick="showView(\'close-month\',\''+r.id+'\')"><div class="inbI" style="background:var(--gbg)">&#10003;</div><div class="inbT"><b>'+esc(r.name)+' ready to close</b><span>'+ex.length+' expense'+(ex.length!==1?'s':'')+' &middot; '+fmt(tx.tot,rptCurrency(r))+'</span></div><span class="inbChev">&rsaquo;</span></div>';
   });
-  const inboxHtml='<div class="secH">Needs your attention</div><div class="card">'+
+  const inboxHtml='<div class="secH inbH">Needs your attention</div><div class="card inbC">'+
     (inbox||'<div class="inb" style="cursor:default"><div class="inbI" style="background:var(--gbg)">&#127881;</div><div class="inbT"><b>You&rsquo;re all caught up</b><span>Nothing needs review right now</span></div></div>')+'</div>';
 
   /* recent expenses with sync state */
@@ -2165,7 +2256,7 @@ function vDash(){
     ?'<span class="secLink" onclick="showView(\'report-detail\',\''+openReps[0].id+'\')">View report &rsaquo;</span>'
     :'<span class="secLink" onclick="showView(\'expenses\')">All &rsaquo;</span>';
   const hdrSub=openReps.length===1?'<span class="secSub">&mdash; '+esc(openReps[0].name)+'</span>':'';
-  const recHtml='<div class="secH">Recent expenses '+hdrSub+hdrLink+'</div><div class="card">'+
+  const recHtml='<div class="secH recH">Recent expenses '+hdrSub+hdrLink+'</div><div class="card recC">'+
     (recent.length===0
       ?'<div class="empty"><div class="eic">&#128179;</div>No expenses yet &mdash; snap your first receipt above.</div>'
       :recent.map(e=>{
@@ -2176,15 +2267,29 @@ function vDash(){
       }).join(''))+'</div>';
 
   /* overview stats */
-  return hero+inboxHtml+recHtml+
-  '<div class="secH">Overview</div>'+
+  const dTop='<div class="dTop"><div><div class="dTopE">'+esc(today)+'</div><h1 class="dTopH">Dashboard</h1></div><div class="dTopSp"></div>'+
+    '<div class="adx" id="adx">'+
+      '<button class="adxB" onclick="toggleAddx(event)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add expense</button>'+
+      '<button class="adxC" onclick="toggleAddx(event)" aria-label="More ways to add">&#9662;</button>'+
+      '<div class="adxM">'+
+        '<div class="adxI" onclick="addxPick(\'upload\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>Upload a file</div>'+
+        '<div class="adxI" onclick="addxPick(\'paste\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Paste an image</div>'+
+        '<div class="adxI" onclick="addxPick(\'manual\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Enter manually</div>'+
+      '</div>'+
+    '</div></div>';
+  const dDrop='<div class="dDrop" onclick="addxPick(\'upload\')"><svg class="dDropI" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>'+
+    '<div><b>Drop receipts anywhere</b> &mdash; drag a PDF or image from your files, or <span style="color:var(--bl);font-weight:600">browse</span></div>'+
+    '<span class="dDropL" onclick="event.stopPropagation();dashManual()">Enter manually</span></div>';
+  return dTop+hero+inboxHtml+recHtml+
+  '<div class="secH ovH">Overview</div>'+
   '<div class="stats">'+
     '<div class="stat"><div class="slbl">Grand Total (incl. tax)</div><div class="sval">'+statTotalHtml(S.expenses)+'</div></div>'+
     '<div class="stat"><div class="slbl">Open Reports</div><div class="sval cb">'+open+'</div></div>'+
     '<div class="stat"><div class="slbl">Awaiting Payment</div><div class="sval ca">'+aw+'</div></div>'+
     '<div class="stat"><div class="slbl">Total Paid</div><div class="sval cg">'+statTotalHtml(pX)+'</div></div>'+
   '</div>'+
-  taxBox(S.expenses);
+  dDrop+
+  '<div class="dTax">'+taxBox(S.expenses)+'</div>';
 }
 
 /* REPORTS */
