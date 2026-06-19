@@ -189,9 +189,20 @@ tr.trc:active td{background:var(--bg)}
 .ckr input[type=checkbox]{width:16px;height:16px;accent-color:var(--g);cursor:pointer;flex-shrink:0}
 .ckr label{font-size:13px;color:var(--tx);cursor:pointer;margin:0}
 .tp{background:var(--bg);border:1px solid var(--bd);border-radius:var(--rsm);padding:10px 13px;font-size:12px}
-.tpr{display:flex;justify-content:space-between;padding:3px 0;color:var(--tx2)}
+.tpr{display:flex;justify-content:space-between;align-items:center;padding:3px 0;color:var(--tx2)}
 .tpr.bold{font-weight:700;color:var(--tx);padding-top:6px;border-top:1px solid var(--bd);margin-top:3px}
 .tpr.rec{color:var(--g)}
+.tmw{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 8px;flex-wrap:wrap}
+.tmw .tml{font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px}
+.seg{display:inline-flex;border:1px solid var(--bd2);border-radius:var(--rsm);overflow:hidden}
+.seg .tmb{font-family:var(--font);font-size:12px;font-weight:600;padding:6px 12px;border:0;border-right:1px solid var(--bd);background:var(--sf);color:var(--tx2);cursor:pointer}
+.seg .tmb:last-child{border-right:0}
+.seg .tmb.on{background:var(--gbg);color:var(--gdk)}
+.ted{width:104px;font-size:14px;padding:5px 8px;border:1px solid var(--bd2);border-radius:6px;text-align:right;font-family:var(--font);background:var(--sf);color:var(--tx);-webkit-appearance:none;appearance:none}
+.ted:focus{outline:none;border-color:var(--g)}
+.tphd{font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.tflag{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:var(--ambg);color:var(--amdk);margin-left:6px;vertical-align:middle}
+.tphint{font-size:11px;color:var(--tx3);margin-top:7px;line-height:1.45}
 .dz{border:2px dashed var(--bd2);border-radius:var(--rsm);padding:22px 16px;text-align:center;cursor:pointer}
 .dz:active,.dz.ov{background:var(--bg);border-color:var(--g)}
 .dz p{font-size:12px;color:var(--tx2);margin-top:5px}
@@ -509,7 +520,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.1.3</span>
+      <span class="vbm" id="vBdgM">v3.1.4</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -589,7 +600,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.1.3</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.1.4</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -615,7 +626,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.1.3',
+  APP_VERSION:    'v3.1.4',
   APP_RELEASED:   'June 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -640,11 +651,19 @@ let CU = null;
 const TAX = {
   GST: 0.05, QST: 0.09975,
   MEALS: ['Meals & Entertainment'], EXEMPT: [],
-  calc(amt, cat, inc, cur, ff) {
+  calc(amt, cat, inc, cur, ff, ov) {
     const a = Number(amt)||0, c = cat||'Other';
     const meal = this.MEALS.includes(c), xmt = this.EXEMPT.includes(c);
     /* Foreign-currency supply (outside Canada): no GST/QST, no ITC/ITR */
     if (ff || (cur && cur!=='CAD')) return {sub:a,gst:0,qst:0,tot:a,gR:0,qR:0,xmt:true,meal:false,foreign:true};
+    /* Manual tax overrides (CAD only) — receipt carries no tax, or amounts entered by hand */
+    const mode = ov && ov.mode;
+    if (mode==='none') return {sub:a,gst:0,qst:0,tot:a,gR:0,qR:0,xmt:true,meal:false,notax:true};
+    if (mode==='custom') {
+      const g = Math.max(0, Number(ov.gst)||0), q = Math.max(0, Number(ov.qst)||0);
+      const rf = meal ? 0.5 : 1;
+      return {sub:r2(a-g-q),gst:r2(g),qst:r2(q),tot:r2(a),gR:r2(g*rf),qR:r2(q*rf),xmt:false,meal,custom:true};
+    }
     if (xmt||a===0) return {sub:a,gst:0,qst:0,tot:a,gR:0,qR:0,xmt:true,meal:false};
     let sub,gst,qst;
     if (inc) { sub=a/(1+this.GST+this.QST); gst=sub*this.GST; qst=sub*this.QST; }
@@ -1312,7 +1331,13 @@ function expHasCad(e){ return !!(e && expCurrency(e)!=='CAD' && Number(e.cadChar
 function expEffCur(e){ return expHasCad(e) ? 'CAD' : expCurrency(e); }
 function expEffAmt(e){ return expHasCad(e) ? r2(Number(e.cadCharged)) : (Number(e.amount)||0); }
 function expEffForeign(e){ return expCurrency(e)!=='CAD'; }
-function expTax(e){ return TAX.calc(expEffAmt(e), e.category, e.taxIncluded||false, expEffCur(e), expEffForeign(e)); }
+function expTaxOv(e){
+  if (!e || expEffForeign(e)) return null;       // foreign supply ignores overrides (no QC tax regardless)
+  if (e.taxMode==='none')   return {mode:'none'};
+  if (e.taxMode==='custom') return {mode:'custom', gst:Number(e.gstO)||0, qst:Number(e.qstO)||0};
+  return null;
+}
+function expTax(e){ return TAX.calc(expEffAmt(e), e.category, e.taxIncluded||false, expEffCur(e), expEffForeign(e), expTaxOv(e)); }
 function migrateExp(e){
   if (e && Number(e.origAmount)>0 && e.origCurrency && e.origCurrency!=='CAD' && !(Number(e.cadCharged)>0)){
     const cadVal=Number(e.amount)||0, fgnVal=Number(e.origAmount)||0;
@@ -2803,19 +2828,7 @@ function mAE(rid, preImg, scanned) {
     '<div class="fld"><label>Currency</label><select class="fse" id="eCur" onchange="updT()"><option value="">— Use report default —</option>'+currencyOpts(ovCur||'__none__')+'</select></div></div>'+
     '<div class="r2"><div class="fld"><label>Category</label><select class="fse" id="eCt" onchange="updT()">'+catOpts+'</select></div>'+
     '<div class="fld"><label>Notes</label><input class="fi2" id="eNo" placeholder="Optional&hellip;" value="'+esc(sc.notes||'')+'"/></div></div>'+
-    '<div class="ckr" id="incRow"><input type="checkbox" id="tI" onchange="updT()"'+(sc.taxIncluded?' checked':'')+'/><label for="tI">Amount already includes GST + QST</label></div>'+
-    '<div class="tp" id="tPr" style="display:none">'+
-      '<div style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Qu&eacute;bec Tax Breakdown</div>'+
-      '<div class="tpr"><span>Subtotal (pre-tax)</span><span id="tp1">&mdash;</span></div>'+
-      '<div class="tpr"><span>GST 5%</span><span id="tp2">&mdash;</span></div>'+
-      '<div class="tpr"><span>QST 9.975%</span><span id="tp3">&mdash;</span></div>'+
-      '<div class="tpr" id="tpM" style="display:none"><span style="color:var(--am)">&#9888; Meals &amp; Entertainment &mdash; 50% ITC/ITR only</span><span></span></div>'+
-      '<div class="tpr" id="tpF" style="display:none"><span style="color:var(--bl)">&#127758; Foreign expense &mdash; no GST/QST &middot; no ITC/ITR</span><span></span></div>'+
-      '<div class="tpr bold"><span>Total incl. tax</span><span id="tp4">&mdash;</span></div>'+
-      '<div class="tpr rec"><span>GST recoverable (ITC)</span><span id="tp5">&mdash;</span></div>'+
-      '<div class="tpr rec"><span>QST recoverable (ITR)</span><span id="tp6">&mdash;</span></div>'+
-    '</div>'+
-    fxBlock(sc.cadCharged, sc.fxRate)+
+    taxModeBlock('auto', sc.taxIncluded)+
     '<div class="fld"><label>Receipts</label>'+
       '<div class="dz" id="dz" onclick="$(\'fi4\').click()" ondragover="event.preventDefault();this.classList.add(\'ov\')" ondragleave="this.classList.remove(\'ov\')" ondrop="onDp(event)">'+
         '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="display:block;margin:0 auto;color:var(--tx2)"><path d="M12 16V8M12 8l-3 3M12 8l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.4"/></svg>'+
@@ -2829,8 +2842,56 @@ function mAE(rid, preImg, scanned) {
   '</div>'+
   '<div class="mf"><button class="btn" onclick="closeM()">Cancel</button><button class="btn p" onclick="saveE(\''+rid+'\')">Add Expense</button></div>'+
   '</div></div>';
-  setTimeout(()=>{ if(sc.amount) updT(); if(!sc.merchant) $('eM')?.focus(); }, 100);
+  setTimeout(()=>{ window._taxMode='auto'; window._cGst=null; window._cQst=null; buildTaxRows('auto'); if(sc.amount) updT(); if(!sc.merchant) $('eM')?.focus(); }, 100);
   if(preImg) renderT();
+}
+
+/* Shared markup for the tax-mode control + breakdown panel (Add and Edit modals). */
+function taxModeBlock(mode, inc){
+  mode = mode||'auto';
+  const labels = {auto:'Auto', none:'No tax', custom:'Custom'};
+  const seg = ['auto','none','custom'].map(m =>
+    '<button type="button" data-m="'+m+'" class="tmb'+(m===mode?' on':'')+'" onclick="setTaxMode(\''+m+'\')">'+labels[m]+'</button>'
+  ).join('');
+  return ''+
+    '<div class="tmw" id="tmw"><span class="tml">Tax treatment</span><span class="seg">'+seg+'</span></div>'+
+    '<div class="ckr" id="incRow"><input type="checkbox" id="tI" onchange="updT()"'+(inc?' checked':'')+'/><label for="tI">Amount already includes GST + QST</label></div>'+
+    '<div class="tp" id="tPr" style="display:none">'+
+      '<div class="tphd" id="tpHd">Qu&eacute;bec Tax Breakdown</div>'+
+      '<div class="tpr"><span>Subtotal (pre-tax)</span><span id="tp1">&mdash;</span></div>'+
+      '<div class="tpr" id="rGst"><span>GST 5%</span><span id="tp2">&mdash;</span></div>'+
+      '<div class="tpr" id="rQst"><span>QST 9.975%</span><span id="tp3">&mdash;</span></div>'+
+      '<div class="tpr" id="tpM" style="display:none"><span style="color:var(--am)">&#9888; Meals &amp; Entertainment &mdash; 50% ITC/ITR only</span><span></span></div>'+
+      '<div class="tpr" id="tpF" style="display:none"><span style="color:var(--bl)">&#127758; Foreign expense &mdash; no GST/QST &middot; no ITC/ITR</span><span></span></div>'+
+      '<div class="tpr bold"><span>Total incl. tax</span><span id="tp4">&mdash;</span></div>'+
+      '<div class="tpr rec"><span>GST recoverable (ITC)</span><span id="tp5">&mdash;</span></div>'+
+      '<div class="tpr rec"><span>QST recoverable (ITR)</span><span id="tp6">&mdash;</span></div>'+
+      '<div class="tphint" id="tpHint" style="display:none"></div>'+
+    '</div>';
+}
+function setTaxMode(m){
+  window._taxMode = m;
+  const w=$('tmw');
+  if(w) w.querySelectorAll('.tmb').forEach(b=>b.classList.toggle('on', b.getAttribute('data-m')===m));
+  buildTaxRows(m);
+  updT();
+}
+/* Swap the GST/QST rows between read-only spans (auto/none) and editable inputs (custom). */
+function buildTaxRows(m){
+  const rG=$('rGst'), rQ=$('rQst'); if(!rG||!rQ) return;
+  if(m==='custom'){
+    if($('cGst')) return;   // already editable — keep the user's typed values
+    const a=parseFloat(($('eA')&&$('eA').value)||'0')||0;
+    const inc=!!($('tI')&&$('tI').checked);
+    const sub=inc?a/(1+TAX.GST+TAX.QST):a;
+    const g=(window._cGst!=null)?window._cGst:r2(sub*TAX.GST);
+    const q=(window._cQst!=null)?window._cQst:r2(sub*TAX.QST);
+    rG.innerHTML='<span>GST</span><input class="ted" id="cGst" type="number" min="0" step="0.01" inputmode="decimal" value="'+g+'" oninput="updT()"/>';
+    rQ.innerHTML='<span>QST</span><input class="ted" id="cQst" type="number" min="0" step="0.01" inputmode="decimal" value="'+q+'" oninput="updT()"/>';
+  } else {
+    rG.innerHTML='<span>GST 5%</span><span id="tp2">&mdash;</span>';
+    rQ.innerHTML='<span>QST 9.975%</span><span id="tp3">&mdash;</span>';
+  }
 }
 
 function updT(){
@@ -2839,23 +2900,44 @@ function updT(){
   const i=!!($('tI')&&$('tI').checked);
   const cur=curUnit();
   const foreign = cur!=='CAD';
-  const incRow=$('incRow'); if(incRow) incRow.style.display=foreign?'none':'flex';
+  const mode = foreign ? 'auto' : (window._taxMode||'auto');
+  const tmw=$('tmw'); if(tmw) tmw.style.display=foreign?'none':'flex';
+  const incRow=$('incRow'); if(incRow) incRow.style.display=(foreign||mode!=='auto')?'none':'flex';
   const fgn=$('fgnNote'); if(fgn) fgn.style.display=foreign?'block':'none';
   const cb=$('cadBlock'); if(cb) cb.style.display=foreign?'block':'none';
   const p=$('tPr');
   if(foreign){ if(p) p.style.display='none'; updCount(cur); return; }
   if(!p)return;
-  if(a<=0){p.style.display='none';return;}
+  if(a<=0 && mode!=='custom'){p.style.display='none';return;}
   p.style.display='block';
-  const tx=TAX.calc(a,c,i,cur);
+  let ov=null;
+  if(mode==='none') ov={mode:'none'};
+  else if(mode==='custom'){
+    const g=parseFloat(($('cGst')&&$('cGst').value)||'0')||0;
+    const q=parseFloat(($('cQst')&&$('cQst').value)||'0')||0;
+    window._cGst=g; window._cQst=q;
+    ov={mode:'custom',gst:g,qst:q};
+  }
+  const tx=TAX.calc(a,c,i,cur,false,ov);
   $('tp1').textContent=fmt(tx.sub,cur);
-  $('tp2').textContent=tx.xmt?'Exempt':fmt(tx.gst,cur);
-  $('tp3').textContent=tx.xmt?'Exempt':fmt(tx.qst,cur);
+  if(mode!=='custom'){
+    const g2=$('tp2'), q2=$('tp3');
+    if(g2) g2.textContent=tx.xmt?'—':fmt(tx.gst,cur);
+    if(q2) q2.textContent=tx.xmt?'—':fmt(tx.qst,cur);
+  }
   $('tp4').textContent=fmt(tx.tot,cur);
   $('tp5').textContent=tx.xmt?'—':fmt(tx.gR,cur);
   $('tp6').textContent=tx.xmt?'—':fmt(tx.qR,cur);
   $('tpM').style.display=tx.meal?'flex':'none';
   const fEl=$('tpF'); if(fEl) fEl.style.display='none';
+  const hd=$('tpHd'); if(hd) hd.innerHTML='Qu&eacute;bec Tax Breakdown'+(mode==='none'?' <span class="tflag">NO TAX</span>':mode==='custom'?' <span class="tflag">CUSTOM</span>':'');
+  const hint=$('tpHint');
+  if(hint){
+    let h='';
+    if(mode==='none') h='No GST/QST on this receipt — nothing recoverable.';
+    else if(mode==='custom') h='GST/QST entered from the receipt; subtotal is the remainder.'+(tx.meal?' Meals: 50% recoverable.':'');
+    hint.textContent=h; hint.style.display=h?'block':'none';
+  }
 }
 function curUnit(){
   let cur=($('eCur')&&$('eCur').value)||'';
@@ -2949,7 +3031,10 @@ async function saveE(rid){
   const amtNum=parseFloat(a);
   const dupX=S.expenses.find(x=>(x.merchant||'').trim().toLowerCase()===m.toLowerCase() && x.date===d && Math.abs((x.amount||0)-amtNum)<0.005);
   if (dupX && !confirm('Possible duplicate:\n'+(dupX.merchant||'')+' \u2014 '+fd(dupX.date)+' \u2014 '+fmt(dupX.amount,expCurrency(dupX))+'\n\nAdd this expense anyway?')) return;
-  const e={id:uid('E'),reportId:rid,merchant:m,date:d,amount:parseFloat(a),category:$('eCt').value,notes:$('eNo').value.trim(),taxIncluded:!!($('tI')&&$('tI').checked),currency:eCurVal||undefined,cadCharged:(isForeign&&cadCharged>0)?r2(cadCharged):undefined,fxRate:(isForeign&&cadCharged>0&&fxRate>0)?fxRate:undefined,receipts:[...window._rec],_ts:Date.now()};
+  const tMode = (!isForeign && window._taxMode && window._taxMode!=='auto') ? window._taxMode : undefined;
+  const gO = (tMode==='custom') ? r2(parseFloat($('cGst')?.value)||0) : undefined;
+  const qO = (tMode==='custom') ? r2(parseFloat($('cQst')?.value)||0) : undefined;
+  const e={id:uid('E'),reportId:rid,merchant:m,date:d,amount:parseFloat(a),category:$('eCt').value,notes:$('eNo').value.trim(),taxIncluded:!!($('tI')&&$('tI').checked),taxMode:tMode,gstO:gO,qstO:qO,currency:eCurVal||undefined,cadCharged:(isForeign&&cadCharged>0)?r2(cadCharged):undefined,fxRate:(isForeign&&cadCharged>0&&fxRate>0)?fxRate:undefined,receipts:[...window._rec],_ts:Date.now()};
   S.expenses.push(e);
   S._pendingRemote=null;   // local add wins over any remote snapshot queued while the modal was open
   closeM();
@@ -2976,19 +3061,7 @@ function mEditE(eid) {
     '<div class="fld"><label>Currency</label><select class="fse" id="eCur" onchange="updT()"><option value="">— Use report default —</option>'+currencyOpts(e.currency||'__none__')+'</select></div></div>'+
     '<div class="r2"><div class="fld"><label>Category</label><select class="fse" id="eCt" onchange="updT()">'+catOpts+'</select></div>'+
     '<div class="fld"><label>Notes</label><input class="fi2" id="eNo" placeholder="Optional&hellip;" value="'+esc(e.notes||'')+'"/></div></div>'+
-    '<div class="ckr" id="incRow"><input type="checkbox" id="tI" onchange="updT()"'+(e.taxIncluded?' checked':'')+'/><label for="tI">Amount already includes GST + QST</label></div>'+
-    '<div class="tp" id="tPr" style="display:none">'+
-      '<div style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Qu&eacute;bec Tax Breakdown</div>'+
-      '<div class="tpr"><span>Subtotal (pre-tax)</span><span id="tp1">&mdash;</span></div>'+
-      '<div class="tpr"><span>GST 5%</span><span id="tp2">&mdash;</span></div>'+
-      '<div class="tpr"><span>QST 9.975%</span><span id="tp3">&mdash;</span></div>'+
-      '<div class="tpr" id="tpM" style="display:none"><span style="color:var(--am)">&#9888; Meals &amp; Entertainment &mdash; 50% ITC/ITR only</span><span></span></div>'+
-      '<div class="tpr" id="tpF" style="display:none"><span style="color:var(--bl)">&#127758; Foreign expense &mdash; no GST/QST &middot; no ITC/ITR</span><span></span></div>'+
-      '<div class="tpr bold"><span>Total incl. tax</span><span id="tp4">&mdash;</span></div>'+
-      '<div class="tpr rec"><span>GST recoverable (ITC)</span><span id="tp5">&mdash;</span></div>'+
-      '<div class="tpr rec"><span>QST recoverable (ITR)</span><span id="tp6">&mdash;</span></div>'+
-    '</div>'+
-    fxBlock(e.cadCharged, e.fxRate)+
+    taxModeBlock(e.taxMode||'auto', e.taxIncluded)+
     (true
       ? '<div class="fld"><label>Report</label>'+
           '<select class="fse" id="eRep">'+reportOpts+'</select>'+
@@ -3008,7 +3081,7 @@ function mEditE(eid) {
   '</div>'+
   '<div class="mf"><button class="btn" onclick="closeM()">Cancel</button><button class="btn p" onclick="saveEditE(\''+eid+'\')">Save Changes</button></div>'+
   '</div></div>';
-  setTimeout(()=>{ updT(); renderT(); $('eM')?.focus(); }, 100);
+  setTimeout(()=>{ window._taxMode=e.taxMode||'auto'; window._cGst=(e.taxMode==='custom')?(Number(e.gstO)||0):null; window._cQst=(e.taxMode==='custom')?(Number(e.qstO)||0):null; buildTaxRows(window._taxMode); updT(); renderT(); $('eM')?.focus(); }, 100);
 }
 
 async function saveEditE(eid) {
@@ -3030,6 +3103,10 @@ async function saveEditE(eid) {
   e.category    = $('eCt')?.value || e.category;
   e.notes       = ($('eNo')?.value||'').trim();
   e.taxIncluded = !!($('tI')&&$('tI').checked);
+  const tMode2 = (!isForeign2 && window._taxMode && window._taxMode!=='auto') ? window._taxMode : undefined;
+  e.taxMode = tMode2;
+  e.gstO = (tMode2==='custom') ? r2(parseFloat($('cGst')?.value)||0) : undefined;
+  e.qstO = (tMode2==='custom') ? r2(parseFloat($('cQst')?.value)||0) : undefined;
   e.currency    = $('eCur')?.value || undefined;
   e.cadCharged  = (isForeign2 && cadCharged2>0) ? r2(cadCharged2) : undefined;
   e.fxRate      = (isForeign2 && cadCharged2>0 && fxRate2>0) ? fxRate2 : undefined;
