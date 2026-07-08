@@ -264,6 +264,19 @@ tr.trc:active td{background:var(--bg)}
   .pt{font-size:18px}
   .stp2{grid-template-columns:1fr}
 }
+/* ===== v3.1.6 — mobile dashboard reorder: hero → Overview → Attention → Recent → tax.
+   CSS-only; DOM untouched. All rules view-scoped per the v3.1.2 lesson. .dTax needs an
+   explicit flex column here because its base display:contents ignores `order`. ===== */
+@media(max-width:700px){
+  body[data-view="dashboard"] .hero{order:0}
+  body[data-view="dashboard"] .secH.ovH{order:1}
+  body[data-view="dashboard"] .stats{order:2}
+  body[data-view="dashboard"] .secH.inbH{order:3}
+  body[data-view="dashboard"] .card.inbC{order:4}
+  body[data-view="dashboard"] .secH.recH{order:5}
+  body[data-view="dashboard"] .card.recC{order:6}
+  body[data-view="dashboard"] .dTax{display:flex;flex-direction:column;gap:18px;order:7}
+}
 @media(min-width:701px){.bnn,.hbg{display:none}.sbov{display:none!important}}
 /* ===== Desktop dashboard — Concept A (Quiet intake). All rules gated to >=701px; mobile is untouched. ===== */
 .dTop,.dDrop{display:none}
@@ -330,6 +343,50 @@ tr.trc:active td{background:var(--bg)}
 .adbl{background:var(--rdbg);color:var(--rd);border:1px solid #F7C1C1;font-size:12px;padding:4px 10px;border-radius:var(--rsm);cursor:pointer;font-family:var(--font);font-weight:600}
 .adbl:active{background:#F7C1C1}
 .adempty{text-align:center;padding:28px;color:var(--tx3);font-size:13px}
+/* ===== v3.1.7 — tabbed admin panel + error logs + password reset ===== */
+.adTabs{max-width:640px;margin:16px auto 0;padding:0 20px;display:flex;gap:6px;width:100%;box-sizing:border-box}
+.adTab{flex:1;background:var(--sf);border:1px solid var(--bd);color:var(--tx2);font-size:13px;font-weight:700;padding:9px 12px;border-radius:var(--rsm);cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:7px;transition:transform .12s ease,background .12s ease}
+.adTab:active{transform:scale(.97)}
+.adTab.on{background:var(--tx);border-color:var(--tx);color:#fff}
+.adTabDot{background:var(--rd);color:#fff;font-size:10px;font-weight:700;min-width:17px;height:17px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+.adTab.on .adTabDot{background:#fff;color:var(--rd)}
+.adPane{display:none}
+.adPane.on{display:block;animation:vtIn .26s var(--spring) both}
+.elBadge{margin-left:auto;background:var(--rdbg);color:var(--rd);font-size:11px;font-weight:700;padding:2px 9px;border-radius:12px}
+.elBadge.zero{background:var(--gbg);color:var(--gdk)}
+.elChips{display:flex;gap:7px;padding:12px 18px 0;flex-wrap:wrap}
+.elChip{font-size:11.5px;font-weight:700;padding:4px 11px;border-radius:16px;border:1px solid var(--bd);background:var(--sf);color:var(--tx2);cursor:pointer;font-family:var(--font)}
+.elChip.on{background:var(--tx);border-color:var(--tx);color:#fff}
+.elChip i{font-style:normal;opacity:.75;font-weight:600;margin-left:3px}
+.elList{padding:8px 0 0}
+.elRow{border-bottom:1px solid var(--bd)}
+.elRow:last-child{border-bottom:none}
+.elTop{display:flex;align-items:flex-start;gap:11px;padding:12px 18px;cursor:pointer;transition:background .12s}
+.elTop:active{background:var(--bg)}
+.elIc{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:1px}
+.elIc.err{background:var(--rdbg);color:var(--rd)}
+.elIc.stall{background:var(--ambg);color:var(--amdk)}
+.elIc.ok{background:var(--gbg);color:var(--gdk)}
+.elMain{flex:1;min-width:0}
+.elMsg{font-size:13px;font-weight:600;line-height:1.35;word-break:break-word}
+.elMeta{font-size:11.5px;color:var(--tx2);margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.elArea{background:var(--blbg);color:var(--bl);font-size:10px;font-weight:700;padding:1px 7px;border-radius:9px;letter-spacing:.3px;text-transform:uppercase}
+.elX{background:var(--s2);color:var(--tx2);font-size:10px;font-weight:700;padding:1px 7px;border-radius:9px}
+.elChev{color:var(--tx3);font-size:15px;flex-shrink:0;transition:transform .2s var(--spring);margin-top:5px}
+.elRow.open .elChev{transform:rotate(90deg)}
+.elDet{display:none;padding:0 18px 14px 59px}
+.elRow.open .elDet{display:block;animation:vtIn .26s var(--spring) both}
+.elStack{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rsm);padding:10px 12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;line-height:1.55;color:var(--tx2);white-space:pre-wrap;word-break:break-word;max-height:150px;overflow-y:auto}
+.elDetGrid{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-size:12px;margin:10px 0;color:var(--tx2)}
+.elDetGrid b{color:var(--tx);font-weight:600}
+.elActs{display:flex;gap:8px;margin-top:11px}
+.btnResolve{background:var(--gbg)!important;color:var(--gdk)!important;border:1px solid #9FE1CB!important}
+.elRow.resolved .elMsg{color:var(--tx2);font-weight:500}
+.elFoot{padding:11px 18px;border-top:1px solid var(--bd);font-size:11.5px;color:var(--tx3);display:flex;align-items:center;gap:8px}
+.elFoot .btn{margin-left:auto}
+.adRst{background:var(--blbg);color:var(--bl);border:1px solid #B4D3EE;font-size:12px;padding:4px 10px;border-radius:var(--rsm);cursor:pointer;font-family:var(--font);font-weight:600}
+.adRst:active{background:#B4D3EE}
+.adRst[disabled]{background:var(--gbg);color:var(--gdk);border-color:#9FE1CB;cursor:default}
 /* ═══ v2.2.7 mobile polish ═══ */
 :root{--spring:cubic-bezier(.32,1.3,.45,1)}
 .main>*{flex-shrink:0}                                   /* fix: flex column squashing+clipping tall cards */
@@ -463,33 +520,55 @@ tr.trc:active td{background:var(--bg)}
   <div class="adtb">
     <div class="logo">RD <em>Expense</em> <span style="font-size:11px;font-weight:400;color:var(--tx2);margin-left:6px">Admin</span></div>
     <div style="flex:1"></div>
-    <button class="btn sm" onclick="closeAdmin()">← Back to Login</button>
+    <button class="btn sm" id="admBackBtn" onclick="closeAdmin()">← Back to Login</button>
     <button class="btn sm" style="color:var(--rd)" onclick="adminLogout()">Sign Out</button>
   </div>
+  <div class="adTabs">
+    <button class="adTab on" id="adTabLogs" onclick="adGoTab('logs')">🐞 Error Logs <span class="adTabDot" id="adTabDot" style="display:none">0</span></button>
+    <button class="adTab" id="adTabUsers" onclick="adGoTab('users')">👥 Users</button>
+  </div>
   <div class="admain">
-    <div class="adcard">
-      <div class="adch">👥 User Accounts</div>
-      <div class="adcb">
-        <div id="adUserList"><div class="adempty">Loading users…</div></div>
-      </div>
-    </div>
-    <div class="adcard">
-      <div class="adch">➕ Create New User</div>
-      <div class="adcb" style="display:flex;flex-direction:column;gap:12px">
-        <div class="lerr" id="adErr"></div>
-        <div class="r2">
-          <div class="fld"><label>Display Name</label><input class="fi2" id="adName" type="text" placeholder="Jane Smith"/></div>
-          <div class="fld"><label>Email</label><input class="fi2" id="adEmail" type="email" placeholder="jane@company.com"/></div>
+    <div class="adPane on" id="adPaneLogs">
+      <div class="adcard">
+        <div class="adch">🐞 Error Logs <span class="elBadge zero" id="elBadge">…</span></div>
+        <div class="elChips">
+          <button class="elChip on" id="elChipAll" onclick="elSetFilter('all')">All <i id="elCAll">0</i></button>
+          <button class="elChip" id="elChipNew" onclick="elSetFilter('new')">New <i id="elCNew">0</i></button>
+          <button class="elChip" id="elChipStall" onclick="elSetFilter('stall')">Stalls <i id="elCStall">0</i></button>
+          <button class="elChip" id="elChipResolved" onclick="elSetFilter('resolved')">Resolved <i id="elCRes">0</i></button>
         </div>
-        <div class="fld"><label>Temporary Password</label><input class="fi2" id="adPass" type="password" placeholder="Min 8 characters"/></div>
-        <button class="btn p" id="adCreateBtn" onclick="adminCreateUser()">Create User Account</button>
+        <div class="elList" id="elList"><div class="adempty">Loading logs…</div></div>
+        <div class="elFoot">
+          <span>Resolved logs auto-purge after 90 days</span>
+          <button class="btn sm btnResolve" onclick="adminResolveAll()">✓ Resolve All</button>
+        </div>
       </div>
     </div>
-    <div class="adcard">
-      <div class="adch" style="color:var(--rd)">⚠️ Admin Login</div>
-      <div class="adcb" style="font-size:13px;color:var(--tx2);line-height:1.6">
-        Admin credentials are separate from user accounts. The admin email and password are set directly in Firebase Authentication. 
-        To change the admin password, go to <strong>Firebase Console → Authentication → Users</strong>.
+    <div class="adPane" id="adPaneUsers">
+      <div class="adcard">
+        <div class="adch">👥 User Accounts</div>
+        <div class="adcb">
+          <div id="adUserList"><div class="adempty">Loading users…</div></div>
+        </div>
+      </div>
+      <div class="adcard">
+        <div class="adch">➕ Create New User</div>
+        <div class="adcb" style="display:flex;flex-direction:column;gap:12px">
+          <div class="lerr" id="adErr"></div>
+          <div class="r2">
+            <div class="fld"><label>Display Name</label><input class="fi2" id="adName" type="text" placeholder="Jane Smith"/></div>
+            <div class="fld"><label>Email</label><input class="fi2" id="adEmail" type="email" placeholder="jane@company.com"/></div>
+          </div>
+          <div class="fld"><label>Temporary Password</label><input class="fi2" id="adPass" type="password" placeholder="Min 8 characters"/></div>
+          <button class="btn p" id="adCreateBtn" onclick="adminCreateUser()">Create User Account</button>
+        </div>
+      </div>
+      <div class="adcard">
+        <div class="adch" style="color:var(--rd)">⚠️ Admin Login</div>
+        <div class="adcb" style="font-size:13px;color:var(--tx2);line-height:1.6">
+          Admin credentials are separate from user accounts. The admin email and password are set directly in Firebase Authentication. 
+          To change the admin password, go to <strong>Firebase Console → Authentication → Users</strong>.
+        </div>
       </div>
     </div>
   </div>
@@ -520,7 +599,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.1.5</span>
+      <span class="vbm" id="vBdgM">v3.1.7</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -600,7 +679,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.1.5</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">June 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.1.7</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -626,8 +705,8 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.1.5',
-  APP_RELEASED:   'June 2026',
+  APP_VERSION:    'v3.1.7',
+  APP_RELEASED:   'July 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
   // can be as low as 5/min). We pace proactively to stay under it; a 429 still
@@ -770,6 +849,58 @@ function toastAct(title, sub, eid) {
   t._t=setTimeout(hideToastA, 6000);
 }
 function hideToastA(){ const t=$('toastA'); if(t){ clearTimeout(t._t); t.classList.remove('show'); } }
+
+/* ══════════════════════════════════════════════════════ ERROR LOG (v3.1.7)
+   Client-side error telemetry → Firestore `errorLogs`. Writes ride offline
+   persistence (queue while offline, sync on reconnect). Any signed-in user can
+   create; only the admin reads/resolves (enforced in Firestore rules).
+   Dedupe: the same area+message within 60s increments `count` on the existing
+   doc instead of creating a new one; a session cap stops runaway loops. */
+const ELOG = { seen:{}, capPerKey:10 };
+function logError(area, err, ctx, kind){
+  try{
+    if(!FB || !FB.db || !CU) return;                       // pre-auth / pre-init: nothing to attach it to
+    const msg  = ((err && (err.message || String(err))) || 'unknown error').slice(0,300);
+    const key  = area + '|' + msg;
+    const now  = Date.now();
+    const prev = ELOG.seen[key];
+    if(prev && prev.n >= ELOG.capPerKey) return;           // runaway loop guard
+    const col = FB.db.collection('errorLogs');
+    if(prev && (now - prev.ts) < 60000 && prev.id){
+      prev.ts = now; prev.n++;
+      col.doc(prev.id).set({ count: firebase.firestore.FieldValue.increment(1), tsClient: now }, { merge:true }).catch(()=>{});
+      return;
+    }
+    const ref = col.doc();
+    ELOG.seen[key] = { ts: now, id: ref.id, n: (prev ? prev.n : 0) + 1 };
+    ref.set({
+      ts:         firebase.firestore.FieldValue.serverTimestamp(),
+      tsClient:   now,
+      uid:        CU.uid,
+      email:      CU.email || '',
+      appVersion: CFG.APP_VERSION,
+      view:       document.body.getAttribute('data-view') || '',
+      area:       area || 'unknown',
+      kind:       kind || 'error',                          // error | stall | crash
+      message:    msg,
+      stack:      ((err && err.stack) ? String(err.stack) : '').slice(0,2000),
+      userAgent:  (navigator.userAgent || '').slice(0,200),
+      online:     !!navigator.onLine,
+      context:    ctx ? JSON.stringify(ctx).slice(0,1000) : '',
+      count:      1,
+      status:     'new'
+    }).catch(()=>{});
+  }catch(_){ /* the logger itself must never throw */ }
+}
+function logStall(area, msg, ctx){ logError(area, { message: msg, stack: '' }, ctx, 'stall'); }
+/* Global safety net — anything uncaught anywhere in the app */
+window.addEventListener('error', ev => {
+  if(ev && ev.error) logError('uncaught', ev.error, null, 'crash');
+});
+window.addEventListener('unhandledrejection', ev => {
+  const r = ev && ev.reason;
+  logError('uncaught', (r && r.message) ? r : { message: String(r || 'unhandled rejection'), stack: '' }, null, 'crash');
+});
 function undoAutoFile(){
   const eid=window._taEid; hideToastA(); if(!eid) return;
   const ex=S.expenses.find(e=>e.id===eid); if(!ex) return;
@@ -1001,6 +1132,7 @@ async function _doSave() {
     if (anyPending) setTimeout(()=>retryPendingUploads(), 600);
   } catch (e) {
     console.error('Save failed', e);
+    logError('firestore_save', e, { reports: S.reports.length, expenses: S.expenses.length });
     updSyncChip('err');
     const msg = e.code === 'storage/unauthorized'
       ? 'Storage permission denied — check Firebase Storage rules'
@@ -1048,6 +1180,7 @@ async function load() {
     if (need.size) setTimeout(()=>retryPendingUploads(), 1500);
   } catch(e) {
     console.error('Load failed',e);
+    logError('firestore_load', e);
     updSyncChip('err');
   }
 }
@@ -1106,6 +1239,11 @@ async function hydratePending(attempt) {
   render();
   const stillMissing = [...need].some(id => !S._pendingBlobs[id]);
   if (stillMissing && attempt < 3) setTimeout(()=>hydratePending(attempt+1), 2000);
+  /* v3.1.7 stall watchdog: 4 passes (~6s) couldn't assemble a needed receipt — the
+     "stuck loading" case. Logged once (deduped) so the admin sees it. */
+  if (stillMissing && attempt >= 3)
+    logStall('receipt_hydrate', 'Receipt stuck loading — could not assemble after 4 passes',
+      { missing: [...need].filter(id => !S._pendingBlobs[id]).slice(0,5) });
   // Any device holding the blob can finish the Storage upload — if the originating
   // phone never comes back online, this device upgrades the receipt itself. Small
   // delay so the originator usually wins the race.
@@ -1180,7 +1318,7 @@ async function retryPendingUploads(attempt) {
   if (S._retryBusy) return;
   S._retryBusy = true;
   attempt = attempt || 0;
-  let healed = 0, remaining = 0;
+  let healed = 0, remaining = 0, lastUpErr = null;
   try {
   for (const e of S.expenses) {
     if (!e.receipts) continue;
@@ -1197,7 +1335,7 @@ async function retryPendingUploads(attempt) {
         delete S._pendingBlobs[rid];
         await deletePendingDocs(rid);
         healed++;
-      } catch(err) { remaining++; /* still offline / still blocked — leave pending for next time */ }
+      } catch(err) { remaining++; lastUpErr = err; /* still offline / still blocked — leave pending for next time */ }
     }
   }
   if (healed > 0) {
@@ -1216,6 +1354,10 @@ async function retryPendingUploads(attempt) {
   if (remaining > 0 && attempt < 3) {
     setTimeout(()=>retryPendingUploads(attempt+1), [10000,30000,90000][attempt]);
   }
+  /* v3.1.7: retries exhausted while online with a real upload error — receipts stay
+     safely pending (2-min self-heal loop continues) but the admin should know. */
+  if (remaining > 0 && attempt >= 3 && lastUpErr && navigator.onLine)
+    logError('storage_upload', lastUpErr, { remaining, note: 'retry burst exhausted; self-heal loop continues' });
 }
 
 // Best-effort cloud cleanup when an expense/report is deleted — removes Storage files
@@ -1467,15 +1609,174 @@ function adminLogout() {
 }
 
 function closeAdmin() {
+  /* v3.1.7: reached from the app (admin dashboard row) → just close the overlay
+     and keep the session; reached from the login screen → sign out as before. */
+  if (window._admFromApp) {
+    window._admFromApp = false;
+    $('adminScreen').style.display='none';
+    const b=$('admBackBtn'); if(b) b.textContent='← Back to Login';
+    return;
+  }
   FB.auth.signOut();
   $('adminScreen').style.display='none';
+}
+
+/* v3.1.7 — open the admin panel from inside the app (admin-only dashboard row) */
+function openAdminFromApp(){
+  window._admFromApp = true;
+  const b=$('admBackBtn'); if(b) b.textContent='← Back to App';
+  openAdminPanel();
 }
 
 /* ══════════════════════════════════════════════════════ ADMIN PANEL */
 async function openAdminPanel() {
   const panel=$('adminScreen');
   panel.style.display='flex'; panel.style.flexDirection='column';
+  adGoTab('logs');
+  adminLoadLogs();
   await adminLoadUsers();
+}
+
+/* v3.1.7 — admin section tabs */
+function adGoTab(id){
+  $('adPaneLogs').classList.toggle('on', id==='logs');
+  $('adPaneUsers').classList.toggle('on', id==='users');
+  $('adTabLogs').classList.toggle('on', id==='logs');
+  $('adTabUsers').classList.toggle('on', id==='users');
+}
+
+/* ══════════════════════════════════════════════════════ ERROR LOGS — ADMIN VIEW (v3.1.7) */
+let ADM_LOGS = [], ADM_FILTER = 'all';
+const EL_PURGE_MS = 90*24*3600*1000;   // resolved logs older than 90 days are lazily purged
+
+function elAgo(t){
+  if(!t) return '—';
+  const d = Date.now()-t;
+  if(d < 60000)        return 'just now';
+  if(d < 3600000)      return Math.floor(d/60000)+' min ago';
+  if(d < 86400000)     return Math.floor(d/3600000)+' h ago';
+  if(d < 7*86400000)   return Math.floor(d/86400000)+' day'+(d>=2*86400000?'s':'')+' ago';
+  return new Date(t).toLocaleDateString('en-CA');
+}
+
+async function adminLoadLogs(){
+  const list=$('elList');
+  if(list) list.innerHTML='<div class="adempty">Loading logs…</div>';
+  try{
+    const snap = await FB.db.collection('errorLogs').orderBy('tsClient','desc').limit(200).get();
+    const now = Date.now();
+    ADM_LOGS = [];
+    const purge = [];
+    snap.forEach(d => {
+      const l = d.data()||{};
+      if(l.status==='resolved' && l.tsClient && (now - l.tsClient) > EL_PURGE_MS){ purge.push(d.id); return; }
+      ADM_LOGS.push({ id:d.id, ...l });
+    });
+    purge.forEach(id => FB.db.collection('errorLogs').doc(id).delete().catch(()=>{}));
+    elRender();
+  }catch(e){
+    if(list) list.innerHTML='<div class="adempty" style="color:var(--rd)">Failed to load logs: '+esc(e.message||e)+'</div>';
+  }
+}
+
+function elSetFilter(f){
+  ADM_FILTER=f;
+  ['All','New','Stall','Resolved'].forEach(k=>{
+    const el=$('elChip'+k); if(el) el.classList.toggle('on', f===k.toLowerCase());
+  });
+  elRender();
+}
+
+function elIcon(l){
+  if(l.status==='resolved') return '<div class="elIc ok">✓</div>';
+  return l.kind==='stall' ? '<div class="elIc stall">⏱</div>' : '<div class="elIc err">✕</div>';
+}
+
+function elRender(){
+  const list=$('elList'); if(!list) return;
+  let rows = ADM_LOGS.filter(l=>{
+    if(ADM_FILTER==='new')      return l.status!=='resolved';
+    if(ADM_FILTER==='stall')    return l.kind==='stall';
+    if(ADM_FILTER==='resolved') return l.status==='resolved';
+    return true;
+  });
+  rows = rows.slice().sort((a,b)=>{
+    const s=(a.status==='resolved'?1:0)-(b.status==='resolved'?1:0);
+    return s!==0 ? s : (b.tsClient||0)-(a.tsClient||0);
+  });
+  list.innerHTML = rows.length ? rows.map(l=>{
+    const ctxTxt = l.context ? esc(l.context) : '—';
+    const dev = esc((l.userAgent||'').slice(0,90)) + (l.online===false?' · offline':'');
+    return '<div class="elRow'+(l.status==='resolved'?' resolved':'')+'" id="elr_'+l.id+'">'+
+      '<div class="elTop" onclick="var r=$(\'elr_'+l.id+'\');if(r)r.classList.toggle(\'open\')">'+
+        elIcon(l)+
+        '<div class="elMain">'+
+          '<div class="elMsg">'+esc(l.message||'(no message)')+'</div>'+
+          '<div class="elMeta"><span class="elArea">'+esc(l.area||'?')+'</span>'+
+            ((l.count||1)>1?'<span class="elX">×'+l.count+'</span>':'')+
+            '<span>'+esc(l.email||'—')+'</span><span>'+esc(l.appVersion||'')+'</span><span>'+elAgo(l.tsClient)+'</span></div>'+
+        '</div><span class="elChev">&rsaquo;</span>'+
+      '</div>'+
+      '<div class="elDet">'+
+        '<div class="elDetGrid"><b>Device</b><span>'+dev+'</span><b>View</b><span>'+esc(l.view||'—')+'</span><b>Context</b><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px">'+ctxTxt+'</span></div>'+
+        (l.stack?'<div class="elStack">'+esc(l.stack)+'</div>':'')+
+        '<div class="elActs">'+(l.status!=='resolved'
+          ? '<button class="btn sm btnResolve" onclick="adminResolveLog(\''+l.id+'\')">✓ Mark Resolved</button>'
+          : '<button class="btn sm" onclick="adminReopenLog(\''+l.id+'\')">↺ Reopen</button>')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('') : '<div class="adempty">'+(ADM_FILTER==='all'?'No errors logged — all systems healthy 🎉':'No logs match this filter')+'</div>';
+  const nNew = ADM_LOGS.filter(l=>l.status!=='resolved').length;
+  const b=$('elBadge');
+  if(b){ b.textContent = nNew ? nNew+' new' : 'all clear'; b.classList.toggle('zero', !nNew); }
+  const d=$('adTabDot');
+  if(d){ d.textContent=nNew; d.style.display = nNew ? 'inline-flex' : 'none'; }
+  const set=(id,v)=>{ const el=$(id); if(el) el.textContent=v; };
+  set('elCAll', ADM_LOGS.length);
+  set('elCNew', nNew);
+  set('elCStall', ADM_LOGS.filter(l=>l.kind==='stall').length);
+  set('elCRes', ADM_LOGS.filter(l=>l.status==='resolved').length);
+}
+
+async function adminResolveLog(id){
+  const l=ADM_LOGS.find(x=>x.id===id); if(!l) return;
+  l.status='resolved'; elRender();
+  try{ await FB.db.collection('errorLogs').doc(id).set({ status:'resolved', resolvedAt: firebase.firestore.FieldValue.serverTimestamp() },{merge:true}); }
+  catch(e){ l.status='new'; elRender(); toast('Could not update log: '+(e.message||e),'#A32D2D'); }
+}
+async function adminReopenLog(id){
+  const l=ADM_LOGS.find(x=>x.id===id); if(!l) return;
+  l.status='new'; elRender();
+  try{ await FB.db.collection('errorLogs').doc(id).set({ status:'new' },{merge:true}); }
+  catch(e){ l.status='resolved'; elRender(); toast('Could not update log: '+(e.message||e),'#A32D2D'); }
+}
+async function adminResolveAll(){
+  const open=ADM_LOGS.filter(l=>l.status!=='resolved');
+  if(!open.length) return;
+  if(!confirm('Mark all '+open.length+' unresolved log'+(open.length>1?'s':'')+' as resolved?')) return;
+  open.forEach(l=>l.status='resolved'); elRender();
+  try{
+    const batch=FB.db.batch();
+    open.forEach(l=>batch.set(FB.db.collection('errorLogs').doc(l.id),{ status:'resolved', resolvedAt: firebase.firestore.FieldValue.serverTimestamp() },{merge:true}));
+    await batch.commit();
+    toast('All logs resolved ✓');
+  }catch(e){ toast('Resolve all failed: '+(e.message||e),'#A32D2D'); adminLoadLogs(); }
+}
+
+/* v3.1.7 — admin sends the user a Firebase password-reset email (no server code;
+   the user sets their own new password via the emailed link). */
+async function adminResetPassword(email, uid){
+  const b=$('adRst_'+uid);
+  try{
+    if(b){ b.disabled=true; b.textContent='Sending…'; }
+    await FB.auth.sendPasswordResetEmail(email);
+    if(b){ b.textContent='✓ Sent'; setTimeout(()=>{ if(b){ b.disabled=false; b.textContent='🔑 Reset'; } },5000); }
+    toast('Password reset email sent to '+email+' ✓');
+  }catch(e){
+    if(b){ b.disabled=false; b.textContent='🔑 Reset'; }
+    toast('Reset failed: '+(e.message||e),'#A32D2D');
+  }
 }
 
 async function adminLoadUsers() {
@@ -1491,6 +1792,7 @@ async function adminLoadUsers() {
         '<div class="adav">'+ini+'</div>'+
         '<div><div class="adun">'+esc(u.displayName||'—')+'</div><div class="adem">'+esc(u.email)+'</div></div>'+
         '<div class="adact">'+
+          '<button class="adRst" id="adRst_'+doc.id+'" onclick="adminResetPassword(\''+esc(u.email)+'\',\''+doc.id+'\')">🔑 Reset</button>'+
           '<button class="adbl" onclick="adminDeleteUser(\''+doc.id+'\',\''+esc(u.email)+'\')">Delete</button>'+
         '</div>'+
       '</div>';
@@ -1767,6 +2069,7 @@ async function doSmartScan(imgData, rid) {
 
   } catch(err) {
     console.error('SmartScan failed', err);
+    logError('smartscan', err, { mode: 'single' });
     closeM();
     const msg = err.message||String(err);
     toast('SmartScan failed: '+msg.slice(0,80)+' — opening manual form', '#A32D2D');
@@ -1969,6 +2272,7 @@ async function startBatch(files, rid){
       }
     } catch(err){
       console.error('Batch item failed:', r.name, err);
+      if(err.etype!=='rate') logError('smartscan', err, { mode: 'batch', file: r.name });
       r.status='err'; r.etype=err.etype||'other'; r.emsg=err.message||'scan failed'; r.parsed=err.parsed||null;
       if(logEl) logEl.innerHTML += '<div style="color:var(--rd)">✗ '+esc(r.name)+': '+esc(r.emsg)+'</div>';
     }
@@ -2054,6 +2358,7 @@ async function batchRetryOne(idx){
   } catch(err){
     r._retrying=false;
     if(err.etype==='rate'){ r.status='err'; r.etype='rate'; r.emsg=err.message; renderBatchResults(); toast('Still rate limited — try again shortly','#BA7517'); return; }
+    logError('smartscan', err, { mode: 'batch-retry', file: r.name });
     // read / other → route to the manual edit form (approval #2)
     toast('Couldn’t scan — opening manual entry','#BA7517');
     closeM();
@@ -2271,6 +2576,12 @@ function vDash(){
     return last&&last.slice(0,7)<curMonth;
   });
   let inbox='';
+  /* v3.1.7 — admin-only: surface unresolved app errors first. Count fed by the
+     errorLogs listener started at admin login; regular users never see this. */
+  if(CU&&CU.isAdmin&&S._admErrCount>0){
+    const u=S._admErrUsers||0;
+    inbox+='<div class="inb" onclick="openAdminFromApp()"><div class="inbI" style="background:var(--rdbg)">&#128030;</div><div class="inbT"><b>'+S._admErrCount+' app error'+(S._admErrCount>1?'s':'')+' reported</b><span>'+(u?u+' user'+(u>1?'s':'')+' affected · ':'')+'tap to review in Admin Panel</span></div><span class="inbChev">&rsaquo;</span></div>';
+  }
   if(noRcpt.length) inbox+='<div class="inb" onclick="showView(\'expenses\')"><div class="inbI" style="background:var(--ambg)">&#129534;</div><div class="inbT"><b>'+noRcpt.length+' expense'+(noRcpt.length>1?'s':'')+' missing receipt'+(noRcpt.length>1?'s':'')+'</b><span>'+esc(noRcpt.slice(0,3).map(e=>e.merchant||'(no merchant)').join(' · '))+'</span></div><span class="inbChev">&rsaquo;</span></div>';
   if(pendCnt) inbox+='<div class="inb" onclick="retryPendingUploads();toast(\'Retrying photo uploads&hellip;\')"><div class="inbI" style="background:var(--blbg)">&#9203;</div><div class="inbT"><b>'+pendCnt+' photo'+(pendCnt>1?'s':'')+' waiting to upload</b><span>Tap to retry now</span></div><span class="inbChev">&rsaquo;</span></div>';
   stale.slice(0,3).forEach(r=>{
@@ -3173,7 +3484,7 @@ function pRec(raw){
     try {
       const b=new Blob([Uint8Array.from(atob(src.split(',')[1]),c=>c.charCodeAt(0))],{type:'application/pdf'});
       window.open(URL.createObjectURL(b),'_blank');
-    } catch(e){ toast('Could not open PDF','#A32D2D'); }
+    } catch(e){ logError('receipt_open', e); toast('Could not open PDF','#A32D2D'); }
     return;
   }
   if(isPdf) { window.open(src,'_blank'); return; }
@@ -3655,6 +3966,7 @@ async function expR(rid, auto){
     );
     blob=new Blob([xlsxBytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   } catch(err) {
+    logError('excel_export', err, { report: (window._expR&&window._expR.name)||'' });
     toast('Export failed: '+(err.message||err),'#A32D2D');
     return;
   }
@@ -3741,6 +4053,7 @@ async function doExportPDF() {
     toast('Receipts PDF downloaded ✓');
   } catch(e) {
     console.error('PDF failed',e);
+    logError('pdf_export', e, { report: (window._expR&&window._expR.name)||'' });
     toast('PDF generation failed: '+(e.message||e),'#A32D2D');
   }
 }
@@ -3757,6 +4070,7 @@ async function doExportBoth() {
     toast('Excel + Receipts PDF downloaded ✓');
   } catch(e) {
     console.error('Export both failed',e);
+    logError('pdf_export', e, { report: (window._expR&&window._expR.name)||'', mode: 'both' });
     toast('Export failed: '+(e.message||e),'#A32D2D');
   }
 }
@@ -4163,6 +4477,7 @@ function importExcel() {
 
     } catch(err) {
       console.error('Import error',err);
+      logError('import', err);
       toast('Import failed: '+(err.message||err),'#A32D2D');
     }
   };
@@ -4251,6 +4566,18 @@ window.addEventListener('load', () => {
       render();
       updSyncChip('synced');
       startRealtimeSync();
+      /* v3.1.7 — admin only: live unresolved-error count for the dashboard row.
+         Single-field where() needs no composite index; read allowed by admin rule. */
+      if (isAdmin && !S._unsubErr) {
+        S._unsubErr = FB.db.collection('errorLogs').where('status','==','new').onSnapshot(snap=>{
+          const c = snap.size;
+          const users = new Set(); snap.forEach(d=>{ const x=d.data(); if(x&&x.email) users.add(x.email); });
+          const changed = c !== S._admErrCount;
+          S._admErrCount = c; S._admErrUsers = users.size;
+          if (changed && document.body.getAttribute('data-view')==='dashboard'
+              && $('adminScreen').style.display !== 'flex') render();
+        }, ()=>{});
+      }
       // Self-heal loop: retry pending receipt uploads every 2 minutes while any exist.
       if (!S._retryTimer) S._retryTimer = setInterval(()=>{
         if (CU && S.expenses.some(e=>(e.receipts||[]).some(rc=>rc&&rc.startsWith(PENDING_PREFIX)))) retryPendingUploads();
@@ -4258,6 +4585,8 @@ window.addEventListener('load', () => {
     } else {
       stopRealtimeSync();
       if (S._retryTimer) { clearInterval(S._retryTimer); S._retryTimer = null; }
+      if (S._unsubErr) { try { S._unsubErr(); } catch(_){} S._unsubErr = null; }
+      S._admErrCount = 0; S._admErrUsers = 0;
       CU = null;
       S.reports=[]; S.expenses=[]; S._pendingBlobs={}; S._healed={};
       $('app').style.display = 'none';
