@@ -613,7 +613,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.1.8</span>
+      <span class="vbm" id="vBdgM">v3.1.9</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -693,7 +693,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.1.8</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.1.9</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -719,7 +719,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.1.8',
+  APP_VERSION:    'v3.1.9',
   APP_RELEASED:   'July 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -3788,7 +3788,7 @@ async function expR(rid, auto){
   const expCurs = [...new Set(exps.map(e=>expEffCur(e)))].sort(curSort);
   const multiCurrency = expCurs.length > 1 || (expCurs.length===1 && expCurs[0]!==rCur);
 
-  const NL=5, NR=5;
+  const NL=5, NR=7; /* v3.1.9 — +ITC (GST) & ITR (QST) split columns */
   const NC1=NL+catList.length+NR+(multiCurrency ? expCurs.length*3 : 0);
   const lastC1=colAddr(NC1-1);
 
@@ -3819,6 +3819,8 @@ async function expR(rid, auto){
     sc('TOTAL',        XST.GRAND_R),
     sc('GST (5%)',     XST.COL_HDR_R),
     sc('QST (9.975%)', XST.COL_HDR_R),
+    sc('ITC (GST)',    XST.RECOV_R),
+    sc('ITR (QST)',    XST.RECOV_R),
     sc('ITC Recov.',   XST.RECOV_R),
     sc('Net After ITC',XST.NET_R),
     ...(multiCurrency ? expCurs.flatMap(cur=>[
@@ -3834,7 +3836,7 @@ async function expR(rid, auto){
     sc('GL Account', XST.COL_HDR),
     bc(XST.COL_HDR), bc(XST.COL_HDR), bc(XST.COL_HDR), bc(XST.COL_HDR),
     ...catList.map(cat=>sc(CAT_GL[cat]||'—', XST.CAT_HDR)),
-    bc(XST.COL_HDR_R), bc(XST.COL_HDR_R), bc(XST.COL_HDR_R), bc(XST.COL_HDR_R), bc(XST.COL_HDR_R),
+    bc(XST.COL_HDR_R), bc(XST.COL_HDR_R), bc(XST.COL_HDR_R), bc(XST.COL_HDR_R), bc(XST.COL_HDR_R), bc(XST.COL_HDR_R), bc(XST.COL_HDR_R),
     ...(multiCurrency ? expCurs.flatMap(()=>[bc(XST.COL_HDR_R),bc(XST.COL_HDR_R),bc(XST.COL_HDR_R)]) : []),
   ]);
 
@@ -3854,6 +3856,8 @@ async function expR(rid, auto){
       nc(et.tot, R),
       nc(et.xmt?0:et.gst, R),
       nc(et.xmt?0:et.qst, R),
+      nc(et.gR, R),
+      nc(et.qR, R),
       nc(r2(et.gR+et.qR), R),
       nc(r2(et.tot-et.gR-et.qR), R),
       ...(multiCurrency ? expCurs.flatMap(cur=>{
@@ -3874,6 +3878,8 @@ async function expR(rid, auto){
     nc(stx.tot,         XST.GRAND_R),
     nc(stx.gst,         XST.GRAND_R),
     nc(stx.qst,         XST.GRAND_R),
+    nc(stx.gR,          XST.GRAND_R),
+    nc(stx.qR,          XST.GRAND_R),
     nc(r2(stx.gR+stx.qR), XST.GRAND_R),
     nc(r2(stx.tot-stx.gR-stx.qR), XST.GRAND_R),
     ...(multiCurrency ? expCurs.flatMap(cur=>{
@@ -3890,7 +3896,7 @@ async function expR(rid, auto){
       return nc(ct.gst, XST.CAT_SUB_R);
     }),
     nc(stx.gst,XST.CAT_SUB_R), bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
-    bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
+    bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
     ...(multiCurrency ? expCurs.flatMap(()=>[bc(XST.CAT_SUB_R),bc(XST.CAT_SUB_R),bc(XST.CAT_SUB_R)]) : []),
   ]);
 
@@ -3901,18 +3907,29 @@ async function expR(rid, auto){
       return nc(ct.qst, XST.CAT_SUB_R);
     }),
     nc(stx.qst,XST.CAT_SUB_R), bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
-    bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
+    bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R), bc(XST.CAT_SUB_R),
     ...(multiCurrency ? expCurs.flatMap(()=>[bc(XST.CAT_SUB_R),bc(XST.CAT_SUB_R),bc(XST.CAT_SUB_R)]) : []),
   ]);
 
   sheet1rows.push([
-    bc(XST.RECOV_L), sc('ITC Recoverable',XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L),
+    bc(XST.RECOV_L), sc('GST Recoverable (ITC)',XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L),
     ...catList.map(cat=>{
       const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
-      return nc(r2(ct.gR+ct.qR), XST.RECOV_R);
+      return nc(ct.gR, XST.RECOV_R);
     }),
-    nc(r2(stx.gR+stx.qR),XST.RECOV_R), bc(XST.RECOV_R), bc(XST.RECOV_R),
-    bc(XST.RECOV_R), bc(XST.RECOV_R),
+    nc(stx.gR,XST.RECOV_R), bc(XST.RECOV_R), bc(XST.RECOV_R),
+    bc(XST.RECOV_R), bc(XST.RECOV_R), bc(XST.RECOV_R), bc(XST.RECOV_R),
+    ...(multiCurrency ? expCurs.flatMap(()=>[bc(XST.RECOV_R),bc(XST.RECOV_R),bc(XST.RECOV_R)]) : []),
+  ]);
+
+  sheet1rows.push([
+    bc(XST.RECOV_L), sc('QST Recoverable (ITR)',XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L),
+    ...catList.map(cat=>{
+      const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
+      return nc(ct.qR, XST.RECOV_R);
+    }),
+    nc(stx.qR,XST.RECOV_R), bc(XST.RECOV_R), bc(XST.RECOV_R),
+    bc(XST.RECOV_R), bc(XST.RECOV_R), bc(XST.RECOV_R), bc(XST.RECOV_R),
     ...(multiCurrency ? expCurs.flatMap(()=>[bc(XST.RECOV_R),bc(XST.RECOV_R),bc(XST.RECOV_R)]) : []),
   ]);
 
@@ -3923,11 +3940,11 @@ async function expR(rid, auto){
       return nc(r2(ct.tot-ct.gR-ct.qR), XST.NET_R);
     }),
     nc(r2(stx.tot-stx.gR-stx.qR),XST.NET_R), bc(XST.NET_R), bc(XST.NET_R),
-    bc(XST.NET_R), bc(XST.NET_R),
+    bc(XST.NET_R), bc(XST.NET_R), bc(XST.NET_R), bc(XST.NET_R),
     ...(multiCurrency ? expCurs.flatMap(()=>[bc(XST.NET_R),bc(XST.NET_R),bc(XST.NET_R)]) : []),
   ]);
 
-  const s1colWidths=[14,11,24,22,9,...catList.map(()=>14),13,10,12,12,14,...(multiCurrency?expCurs.flatMap(()=>[13,11,11]):[])];
+  const s1colWidths=[14,11,24,22,9,...catList.map(()=>14),13,10,12,11,11,12,14,...(multiCurrency?expCurs.flatMap(()=>[13,11,11]):[])];
 
   /* SHEET: TAX SUMMARY */
   const sheet3rows=[];
@@ -4447,7 +4464,8 @@ function importExcel() {
         if(num===''||num===null||num===undefined) break;
         const numStr=String(num).trim();
         if(!numStr||numStr==='TOTAL'||numStr==='GST (5%)'||numStr==='QST (9.975%)'||
-           numStr==='ITC Recoverable'||numStr==='Net After ITC'||numStr==='TOTALS') break;
+           numStr==='ITC Recoverable'||numStr==='GST Recoverable (ITC)'||numStr==='QST Recoverable (ITR)'||
+           numStr==='Net After ITC'||numStr==='TOTALS') break;
 
         const dateVal=row[1]; let dateStr=today;
         if(dateVal){
