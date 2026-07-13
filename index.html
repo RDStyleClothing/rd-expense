@@ -614,7 +614,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.1.10</span>
+      <span class="vbm" id="vBdgM">v3.1.11</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -694,7 +694,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.1.10</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.1.11</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -720,7 +720,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.1.10',
+  APP_VERSION:    'v3.1.11',
   APP_RELEASED:   'July 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -2603,6 +2603,11 @@ function vDash(){
     const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);
     inbox+='<div class="inb" onclick="showView(\'close-month\',\''+r.id+'\')"><div class="inbI" style="background:var(--gbg)">&#10003;</div><div class="inbT"><b>'+esc(r.name)+' ready to close</b><span>'+ex.length+' expense'+(ex.length!==1?'s':'')+' &middot; '+fmt(tx.tot,rptCurrency(r))+'</span></div><span class="inbChev">&rsaquo;</span></div>';
   });
+  /* v3.1.11 — closed reports whose bundle was never downloaded */
+  S.reports.filter(r=>r.status!=='Open'&&!bundleFresh(r)).slice(0,3).forEach(r=>{
+    const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);
+    inbox+='<div class="inb" onclick="showView(\'close-month\',\''+r.id+'\')"><div class="inbI" style="background:var(--ambg);color:var(--amdk)">&#11015;</div><div class="inbT"><b>'+esc(r.name)+' &mdash; bundle not downloaded</b><span>'+(r.statusAt&&r.statusAt['Approved']?'Approved '+fd(r.statusAt['Approved'])+' &middot; ':'')+ex.length+' expense'+(ex.length!==1?'s':'')+' &middot; '+fmt(tx.tot,rptCurrency(r))+'</span></div><span class="inbChev">&rsaquo;</span></div>';
+  });
   const inboxHtml='<div class="secH inbH">Needs your attention</div><div class="card inbC">'+
     (inbox||'<div class="inb" style="cursor:default"><div class="inbI" style="background:var(--gbg)">&#127881;</div><div class="inbT"><b>You&rsquo;re all caught up</b><span>Nothing needs review right now</span></div></div>')+'</div>';
 
@@ -2904,12 +2909,24 @@ function vClose(rid){
   '<div class="secH">Readiness checklist</div><div class="card">'+rows+'</div>'+
   taxBox(c.exps)+
   (mealsTot>0?'<div style="font-size:11px;color:var(--tx3);margin:8px 2px 0">&#9432; Meals &amp; Entertainment '+fmt(r2(mealsTot),rptCurrency(r))+' &mdash; 50% ITC/ITR only (already reflected above)</div>':'')+
+  /* v3.1.11 — close without downloading + exportedAt banner */
+  (locked
+    ?'<div class="card" style="margin-top:16px"><div class="inb" style="cursor:default">'+
+      (bundleFresh(r)
+        ?'<div class="inbI" style="background:var(--gbg)">&#10003;</div><div class="inbT"><b>Bundle downloaded</b><span>Excel + receipts PDF exported '+fd(r.exportedAt)+'</span></div>'
+        :'<div class="inbI" style="background:var(--ambg);color:var(--amdk)">&#11015;</div><div class="inbT"><b>Bundle not downloaded yet</b><span>'+(r.statusAt&&r.statusAt[r.status]?'Closed '+fd(r.statusAt[r.status])+' &mdash; the':'The')+' Excel + receipts PDF haven\u2019t been saved to this device</span></div>')+
+    '</div></div>':'')+
   '<div style="margin-top:16px">'+
     (locked
-      ?'<button class="btn" style="width:100%;justify-content:center" onclick="expR(\''+rid+'\')">&#11015; Export again</button>'
-      :'<button class="btn p" style="width:100%;justify-content:center;padding:13px;font-size:15px'+(ready?'':';opacity:.45;cursor:not-allowed')+'"'+(ready?'':' disabled')+' onclick="closeMonthExport(\''+rid+'\')">&#128230; Generate bundle &middot; Excel + receipts PDF</button>')+
+      ?(bundleFresh(r)
+        ?'<button class="btn" style="width:100%;justify-content:center" onclick="expR(\''+rid+'\')">&#11015; Export again</button>'
+        :'<button class="btn p" style="width:100%;justify-content:center;padding:13px;font-size:15px" onclick="expR(\''+rid+'\')">&#11015; Download bundle &middot; Excel + receipts PDF</button>')
+      :'<button class="btn p" style="width:100%;justify-content:center;padding:13px;font-size:15px'+(ready?'':';opacity:.45;cursor:not-allowed')+'"'+(ready?'':' disabled')+' onclick="closeMonthExport(\''+rid+'\')">&#128230; Close &amp; download bundle &middot; Excel + receipts PDF</button>')+
     '<div style="text-align:center;font-size:11px;color:var(--tx3);margin-top:8px">'+
     (locked?'This report is locked &mdash; revert it from the report page to edit.':(ready?'Downloads both files, then marks the report Approved':'Resolve the items above to enable export'))+'</div>'+
+    (locked?'':
+      '<button class="btn" style="width:100%;justify-content:center;padding:12px;font-size:14px;margin-top:12px;color:var(--gdk);border-color:var(--g);background:var(--gbg)'+(ready?'':';opacity:.45;cursor:not-allowed')+'"'+(ready?'':' disabled')+' onclick="closeMonthOnly(\''+rid+'\')">&#10003; Close month only &mdash; download later</button>'+
+      '<div style="text-align:center;font-size:11px;color:var(--tx3);margin-top:8px">Marks the report Approved and locks it. Export the bundle any time from the report page.</div>')+
   '</div>';
 }
 
@@ -2920,18 +2937,37 @@ async function closeMonthExport(rid){
   toast('Building Excel + receipts PDF&hellip;');
   try{
     await expR(rid, true);
-    if(r.status==='Open'){
-      r.status='Approved';
-      r.statusAt=r.statusAt||{};
-      r.statusAt['Approved']=new Date().toISOString().slice(0,10);
-      await save();
-    }
+    await approveReport(r);
     showView('report-detail', rid);
     toast('Report exported & approved \u2713');
   }catch(e){
     console.error('Close month export failed',e);
     toast('Export failed: '+(e.message||e).slice(0,80),'#A32D2D');
   }
+}
+
+/* v3.1.11 — close the month without downloading; bundle exported later on demand */
+async function closeMonthOnly(rid){
+  const r=S.reports.find(x=>x.id===rid); if(!r) return;
+  const c=closeChecks(rid);
+  if(c.noR.length||c.pend||c.unAck.length||c.dups.length){ toast('Resolve the checklist first','#BA7517'); return; }
+  try{
+    await approveReport(r);
+    showView('report-detail', rid);
+    toast('Month closed \u2713 \u2014 download the bundle any time');
+  }catch(e){
+    console.error('Close month failed',e);
+    toast('Close failed: '+(e.message||e).slice(0,80),'#A32D2D');
+  }
+}
+
+/* v3.1.11 — shared Open → Approved transition */
+async function approveReport(r){
+  if(r.status!=='Open') return;
+  r.status='Approved';
+  r.statusAt=r.statusAt||{};
+  r.statusAt['Approved']=new Date().toISOString().slice(0,10);
+  await save();
 }
 
 /* v3.1.10 — acknowledge "Other" lines for export (scoped to exact expense ids) */
@@ -3048,7 +3084,7 @@ function vDet(rid){
       (r.status==='Open'
         ?'<button class="btn p" onclick="showView(\'close-month\',\''+r.id+'\')">Close month&hellip;</button>'
         :(ns?'<button class="btn p" onclick="advSt(\''+r.id+'\',\''+ns[1]+'\')">'+ns[0]+'</button>':''))+
-      '<button class="btn" onclick="expR(\''+r.id+'\')">&#11015; Export</button>'+
+      '<button class="btn" onclick="expR(\''+r.id+'\')" style="position:relative">&#11015; Export'+(r.status!=='Open'&&!bundleFresh(r)?'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--am);margin-left:5px" title="Bundle not downloaded yet"></span>':'')+'</button>'+
       (!locked?'<button class="btn p" onclick="mAE(\''+r.id+'\')">+ Add</button>':'')+
     '</div>'+
   '</div>'+
@@ -4163,9 +4199,10 @@ function showExportModal(r, fname, blob, lines, fn, sp, rid, auto) {
   '</div></div>';
 }
 
-function doExportExcel() {
+async function doExportExcel() {
   closeM();
   doDownloadXlsx(window._expBlob, window._expFname);
+  await stampExported();
   toast('Excel report downloaded ✓');
 }
 
@@ -4193,12 +4230,28 @@ async function doExportBoth() {
     const pdfBlob = await buildReceiptsPDF(window._expR, window._expLines);
     const pdfName = window._expFname.replace('.xlsx','')+'_Receipts.pdf';
     doDownloadBlob(pdfBlob, pdfName);
+    await stampExported();
     toast('Excel + Receipts PDF downloaded ✓');
   } catch(e) {
     console.error('Export both failed',e);
     logError('pdf_export', e, { report: (window._expR&&window._expR.name)||'', mode: 'both' });
     toast('Export failed: '+(e.message||e),'#A32D2D');
   }
+}
+
+/* v3.1.11 — record that this report's files were downloaded to a device */
+async function stampExported(){
+  try{
+    const r=S.reports.find(x=>x.id===window._expRid); if(!r) return;
+    r.exportedAt=new Date().toISOString().slice(0,10);
+    await save();
+  }catch(e){ console.error('stampExported failed',e); }
+}
+
+/* v3.1.11 — true when the downloaded bundle reflects the closed report
+   (exported on/after the Approved date; guards export-while-Open → edit → close) */
+function bundleFresh(r){
+  return !!(r&&r.exportedAt&&(!r.statusAt||!r.statusAt['Approved']||r.exportedAt>=r.statusAt['Approved']));
 }
 
 // Resolve any receipt image source (Firebase Storage https URL, or a data URL of
