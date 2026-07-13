@@ -111,6 +111,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .btn.p{background:var(--g);color:#fff;border-color:var(--g)}
 .btn.p:active{background:var(--gdk)}
 .btn.sm{font-size:12px;padding:5px 10px}
+.btn.am{background:var(--ambg);border-color:var(--am);color:var(--amdk)}
 .btn:disabled{opacity:.4;pointer-events:none}
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .stat{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:13px 15px}
@@ -613,7 +614,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.1.9</span>
+      <span class="vbm" id="vBdgM">v3.1.10</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -693,7 +694,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.1.9</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.1.10</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -719,7 +720,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.1.9',
+  APP_VERSION:    'v3.1.10',
   APP_RELEASED:   'July 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -2822,13 +2823,17 @@ function vExp(){
 /* REPORT DETAIL */
 /* ══════════════════════════════════════════ v2.2.16 — CLOSE THE MONTH ══ */
 function closeChecks(rid){
+  const r=S.reports.find(x=>x.id===rid);
   const exps=S.expenses.filter(e=>e.reportId===rid);
   const noR =exps.filter(e=>!(e.receipts&&e.receipts.length));
   const pend=exps.reduce((n,e)=>n+((e.receipts||[]).filter(rc=>typeof rc==='string'&&rc.startsWith(PENDING_PREFIX)).length),0);
   const unCat=exps.filter(e=>!e.category||e.category==='Other');
+  /* v3.1.10 — acknowledged "Other" lines (scoped to exact expense ids) */
+  const ackIds=(r&&r.ackOther&&r.ackOther.ids)||[];
+  const unAck=unCat.filter(e=>ackIds.indexOf(e.id)===-1);
   const seen={},dups=[];
   exps.forEach(e=>{const k=((e.merchant||'').trim().toLowerCase())+'|'+(e.date||'')+'|'+Math.round((e.amount||0)*100);if(seen[k])dups.push(e);else seen[k]=1;});
-  return {exps,noR,pend,unCat,dups};
+  return {exps,noR,pend,unCat,unAck,ack:(r&&r.ackOther)||null,dups};
 }
 
 function vClose(rid){
@@ -2848,11 +2853,28 @@ function vClose(rid){
      sub:c.pend?'Tap retry — they sync in the background':'Nothing pending in the upload queue',
      ico:c.pend===0?'&#10003;':'&#9203;',
      act:c.pend?'<button class="btn sm" onclick="retryPendingUploads();toast(\'Retrying photo uploads&hellip;\')">Retry</button>':''},
-    {ok:c.unCat.length===0,
-     label:c.unCat.length===0?'All expenses categorized':c.unCat.length+' expense'+(c.unCat.length>1?'s':'')+' still &ldquo;Other&rdquo;',
-     sub:c.unCat.length?'Assign a real category before export':'No lines left in &ldquo;Other&rdquo;',
-     ico:c.unCat.length===0?'&#10003;':'&#128203;',
-     act:c.unCat.length?'<button class="btn sm" onclick="showView(\'report-detail\',\''+rid+'\')">Review</button>':''},
+    {ok:c.unAck.length===0,
+     amber:c.unCat.length>0&&c.unAck.length===0,
+     label:c.unCat.length===0?'All expenses categorized'
+       :(c.unAck.length===0
+         ?c.unCat.length+' &ldquo;Other&rdquo; expense'+(c.unCat.length>1?'s':'')+' acknowledged'
+         :c.unAck.length+' expense'+(c.unAck.length>1?'s':'')+' still &ldquo;Other&rdquo;'),
+     sub:c.unCat.length===0?'No lines left in &ldquo;Other&rdquo;'
+       :(c.unAck.length===0
+         ?'Will export flagged &mdash; no GL code'+(c.ack&&c.ack.at?' &middot; acknowledged '+esc(c.ack.at):'')
+         :'Assign a real category, or acknowledge to export as-is'),
+     ico:c.unAck.length===0?'&#10003;':'&#128203;',
+     act:c.unCat.length===0?''
+       :(c.unAck.length===0
+         ?(locked?'':'<button class="btn sm" onclick="ackOtherUndo(\''+rid+'\')">Undo</button>')
+         :'<button class="btn sm" onclick="showView(\'report-detail\',\''+rid+'\')">Review</button>'+
+          (locked?'':'<button class="btn sm am" onclick="ackOtherConfirm(\''+rid+'\')">Acknowledge</button>')),
+     extra:(window._ackC===rid&&c.unAck.length>0&&!locked)
+       ?'<div style="background:var(--ambg);border-top:1px solid var(--am);padding:11px 14px;font-size:12px;color:var(--amdk);display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div style="flex:1;min-width:180px"><b>Export '+c.unAck.length+' &ldquo;Other&rdquo; line'+(c.unAck.length>1?'s':'')+' without a GL account?</b><br>They\'ll be flagged amber in the Excel and carry no GL code.</div>'+
+        '<button class="btn sm" onclick="ackOtherCancel()">Cancel</button>'+
+        '<button class="btn sm" style="background:var(--am);border-color:var(--am);color:#fff" onclick="ackOtherDo(\''+rid+'\')">Acknowledge</button></div>'
+       :''},
     {ok:c.dups.length===0,
      label:c.dups.length===0?'No duplicate expenses detected':c.dups.length+' possible duplicate'+(c.dups.length>1?'s':''),
      sub:c.dups.length?esc(c.dups.slice(0,3).map(e=>(e.merchant||'?')+' '+fmt(e.amount,expCurrency(e))).join(' · ')):'Same merchant + date + amount check passed',
@@ -2864,7 +2886,7 @@ function vClose(rid){
   const mealsTot=c.exps.filter(e=>e.category==='Meals & Entertainment').reduce((s,e)=>s+expTax(e).tot,0);
   const ready=left===0&&c.exps.length>0&&!locked;
 
-  const rows=items.map(i=>'<div class="inb" style="cursor:default"><div class="inbI" style="background:'+(i.ok?'var(--gbg)':'var(--ambg)')+'">'+i.ico+'</div><div class="inbT"><b>'+i.label+'</b><span>'+i.sub+'</span></div>'+(i.act||'')+'</div>').join('');
+  const rows=items.map(i=>'<div class="inb" style="cursor:default'+(i.extra?';border-bottom:none':'')+'"><div class="inbI" style="background:'+(i.ok&&!i.amber?'var(--gbg)':'var(--ambg)')+(i.amber?';color:var(--amdk)':'')+'">'+i.ico+'</div><div class="inbT"><b>'+i.label+'</b><span>'+i.sub+'</span></div>'+(i.act?'<div style="display:flex;gap:6px;flex-shrink:0">'+i.act+'</div>':'')+'</div>'+(i.extra||'')).join('');
 
   return '<div class="back" onclick="showView(\'report-detail\',\''+rid+'\')"><svg viewBox="0 0 14 14" fill="none"><path d="M9 11L5 7l4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>'+esc(r.name)+'</div>'+
   '<div class="ph" style="margin-top:6px"><div style="min-width:0;flex:1"><div class="pt">Close month</div>'+
@@ -2894,7 +2916,7 @@ function vClose(rid){
 async function closeMonthExport(rid){
   const r=S.reports.find(x=>x.id===rid); if(!r) return;
   const c=closeChecks(rid);
-  if(c.noR.length||c.pend||c.unCat.length||c.dups.length){ toast('Resolve the checklist first','#BA7517'); return; }
+  if(c.noR.length||c.pend||c.unAck.length||c.dups.length){ toast('Resolve the checklist first','#BA7517'); return; }
   toast('Building Excel + receipts PDF&hellip;');
   try{
     await expR(rid, true);
@@ -2910,6 +2932,26 @@ async function closeMonthExport(rid){
     console.error('Close month export failed',e);
     toast('Export failed: '+(e.message||e).slice(0,80),'#A32D2D');
   }
+}
+
+/* v3.1.10 — acknowledge "Other" lines for export (scoped to exact expense ids) */
+function ackOtherConfirm(rid){ window._ackC=rid; render(); }
+function ackOtherCancel(){ window._ackC=null; render(); }
+async function ackOtherDo(rid){
+  const r=S.reports.find(x=>x.id===rid); if(!r) return;
+  const c=closeChecks(rid);
+  if(!c.unCat.length){ window._ackC=null; render(); return; }
+  r.ackOther={ ids:c.unCat.map(e=>e.id), at:new Date().toISOString().slice(0,10), by:(CU&&CU.email)||'' };
+  window._ackC=null;
+  await save(); render();
+  toast('\u201COther\u201D lines acknowledged \u2713');
+}
+async function ackOtherUndo(rid){
+  const r=S.reports.find(x=>x.id===rid); if(!r) return;
+  delete r.ackOther;
+  window._ackC=null;
+  await save(); render();
+  toast('Acknowledgement removed');
 }
 
 /* fix queue — attach receipts to expenses that are missing them */
@@ -3568,6 +3610,7 @@ const XST = {
   TX_GRAND_L:22, TX_GRAND_R:23,
   RECOV_L:24, RECOV_R:25, NET_L:26, NET_R:27,
   SUM_HDR:28, SUM_LBL:29, SUM_VAL:30, SUM_VAL_R:31,
+  OTHER_HDR:32, OTHER_NOTE:33, /* v3.1.10 — amber flag for acknowledged "Other" lines */
 };
 
 function buildStyles(){
@@ -3663,6 +3706,8 @@ function buildStyles(){
     xf(NF_0, 15, 0,1,L),
     xf(NF_0, 16, 0,1,L),
     xf(NF_CAD,16,0,1,R),
+    xf(NF_0, 13, 9,1,L),  /* v3.1.10 OTHER_HDR — bold amber on amber fill */
+    xf(NF_0,  9, 9,1,L),  /* v3.1.10 OTHER_NOTE — italic amber note */
   ];
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -3815,7 +3860,7 @@ async function expR(rid, auto){
     sc('Merchant', XST.COL_HDR),
     sc('Notes',    XST.COL_HDR),
     sc('Currency', XST.COL_HDR),
-    ...catList.map(cat=>sc(cat, XST.CAT_HDR)),
+    ...catList.map(cat=>sc(cat==='Other'?'Other \u26A0':cat, cat==='Other'?XST.OTHER_HDR:XST.CAT_HDR)),
     sc('TOTAL',        XST.GRAND_R),
     sc('GST (5%)',     XST.COL_HDR_R),
     sc('QST (9.975%)', XST.COL_HDR_R),
@@ -3835,7 +3880,7 @@ async function expR(rid, auto){
   sheet1rows.push([
     sc('GL Account', XST.COL_HDR),
     bc(XST.COL_HDR), bc(XST.COL_HDR), bc(XST.COL_HDR), bc(XST.COL_HDR),
-    ...catList.map(cat=>sc(CAT_GL[cat]||'—', XST.CAT_HDR)),
+    ...catList.map(cat=>sc(CAT_GL[cat]||'—', cat==='Other'?XST.OTHER_HDR:XST.CAT_HDR)),
     bc(XST.COL_HDR_R), bc(XST.COL_HDR_R), bc(XST.COL_HDR_R), bc(XST.COL_HDR_R), bc(XST.COL_HDR_R), bc(XST.COL_HDR_R), bc(XST.COL_HDR_R),
     ...(multiCurrency ? expCurs.flatMap(()=>[bc(XST.COL_HDR_R),bc(XST.COL_HDR_R),bc(XST.COL_HDR_R)]) : []),
   ]);
@@ -3943,6 +3988,17 @@ async function expR(rid, auto){
     bc(XST.NET_R), bc(XST.NET_R), bc(XST.NET_R), bc(XST.NET_R),
     ...(multiCurrency ? expCurs.flatMap(()=>[bc(XST.NET_R),bc(XST.NET_R),bc(XST.NET_R)]) : []),
   ]);
+
+  /* v3.1.10 — footnote for "Other" lines (no GL account) */
+  const otherExps=exps.filter(e=>!e.category||e.category==='Other');
+  if(otherExps.length){
+    const ackTxt=(r.ackOther&&r.ackOther.at)?(' Acknowledged '+r.ackOther.at+(r.ackOther.by?' by '+r.ackOther.by:'')+'.'):'';
+    sheet1rows.push([
+      sc('\u26A0 '+otherExps.length+' line'+(otherExps.length>1?'s':'')+' in \u201COther\u201D \u2014 no GL account assigned.'+ackTxt, XST.OTHER_NOTE),
+      ...Array(NC1-1).fill(bc(XST.OTHER_NOTE)),
+    ]);
+    s1merges.push('A'+sheet1rows.length+':'+lastC1+sheet1rows.length);
+  }
 
   const s1colWidths=[14,11,24,22,9,...catList.map(()=>14),13,10,12,11,11,12,14,...(multiCurrency?expCurs.flatMap(()=>[13,11,11]):[])];
 
