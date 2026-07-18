@@ -614,7 +614,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.1.11</span>
+      <span class="vbm" id="vBdgM">v3.1.12</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -694,7 +694,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.1.11</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.1.12</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -720,7 +720,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.1.11',
+  APP_VERSION:    'v3.1.12',
   APP_RELEASED:   'July 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -744,26 +744,48 @@ let CU = null;
 
 const TAX = {
   GST: 0.05, QST: 0.09975,
+  /* v3.1.12 — provincial regimes (rates verified current 2026; NS 14% since Apr 1 2025).
+     The tax result keeps its historical shape: `gst` = federal/harmonized stream (GST or full
+     HST → ITC-eligible), `qst` = provincial stream (QST → ITR; PST/RST → NOT recoverable).
+     provRec flags whether the provincial stream earns an input refund (QST only).
+     Expenses without a stored province are Québec — all pre-3.1.12 data computes identically. */
+  PROV: {
+    QC:{name:'Qu\u00e9bec',              regime:'gst_qst', fed:0.05, prv:0.09975, fedL:'GST 5%',  prvL:'QST 9.975%', incL:'GST + QST', provRec:true},
+    ON:{name:'Ontario',                  regime:'hst',     fed:0.13, prv:0,       fedL:'HST 13%', prvL:'',           incL:'HST',       provRec:false},
+    NS:{name:'Nova Scotia',              regime:'hst',     fed:0.14, prv:0,       fedL:'HST 14%', prvL:'',           incL:'HST',       provRec:false},
+    NB:{name:'New Brunswick',            regime:'hst',     fed:0.15, prv:0,       fedL:'HST 15%', prvL:'',           incL:'HST',       provRec:false},
+    NL:{name:'Newfoundland & Labrador',  regime:'hst',     fed:0.15, prv:0,       fedL:'HST 15%', prvL:'',           incL:'HST',       provRec:false},
+    PE:{name:'Prince Edward Island',     regime:'hst',     fed:0.15, prv:0,       fedL:'HST 15%', prvL:'',           incL:'HST',       provRec:false},
+    BC:{name:'British Columbia',         regime:'gst_pst', fed:0.05, prv:0.07,    fedL:'GST 5%',  prvL:'PST 7%',     incL:'GST + PST', provRec:false},
+    SK:{name:'Saskatchewan',             regime:'gst_pst', fed:0.05, prv:0.06,    fedL:'GST 5%',  prvL:'PST 6%',     incL:'GST + PST', provRec:false},
+    MB:{name:'Manitoba',                 regime:'gst_pst', fed:0.05, prv:0.07,    fedL:'GST 5%',  prvL:'RST 7%',     incL:'GST + RST', provRec:false},
+    AB:{name:'Alberta',                  regime:'gst',     fed:0.05, prv:0,       fedL:'GST 5%',  prvL:'',           incL:'GST',       provRec:false},
+    NT:{name:'Northwest Territories',    regime:'gst',     fed:0.05, prv:0,       fedL:'GST 5%',  prvL:'',           incL:'GST',       provRec:false},
+    NU:{name:'Nunavut',                  regime:'gst',     fed:0.05, prv:0,       fedL:'GST 5%',  prvL:'',           incL:'GST',       provRec:false},
+    YT:{name:'Yukon',                    regime:'gst',     fed:0.05, prv:0,       fedL:'GST 5%',  prvL:'',           incL:'GST',       provRec:false}
+  },
+  prov(p){ return this.PROV[p] || this.PROV.QC; },
   MEALS: ['Meals & Entertainment'], EXEMPT: [],
-  calc(amt, cat, inc, cur, ff, ov) {
+  calc(amt, cat, inc, cur, ff, ov, prov) {
     const a = Number(amt)||0, c = cat||'Other';
+    const P = this.prov(prov), pc = this.PROV[prov] ? prov : 'QC';
     const meal = this.MEALS.includes(c), xmt = this.EXEMPT.includes(c);
-    /* Foreign-currency supply (outside Canada): no GST/QST, no ITC/ITR */
-    if (ff || (cur && cur!=='CAD')) return {sub:a,gst:0,qst:0,tot:a,gR:0,qR:0,xmt:true,meal:false,foreign:true};
+    /* Foreign-currency supply (outside Canada): no Canadian tax, no ITC/ITR */
+    if (ff || (cur && cur!=='CAD')) return {sub:a,gst:0,qst:0,tot:a,gR:0,qR:0,xmt:true,meal:false,foreign:true,pc};
     /* Manual tax overrides (CAD only) — receipt carries no tax, or amounts entered by hand */
     const mode = ov && ov.mode;
-    if (mode==='none') return {sub:a,gst:0,qst:0,tot:a,gR:0,qR:0,xmt:true,meal:false,notax:true};
+    if (mode==='none') return {sub:a,gst:0,qst:0,tot:a,gR:0,qR:0,xmt:true,meal:false,notax:true,pc};
     if (mode==='custom') {
       const g = Math.max(0, Number(ov.gst)||0), q = Math.max(0, Number(ov.qst)||0);
-      const rf = meal ? 0.5 : 1;
-      return {sub:r2(a-g-q),gst:r2(g),qst:r2(q),tot:r2(a),gR:r2(g*rf),qR:r2(q*rf),xmt:false,meal,custom:true};
+      const rf = meal ? 0.5 : 1, pr = P.provRec ? 1 : 0;
+      return {sub:r2(a-g-q),gst:r2(g),qst:r2(q),tot:r2(a),gR:r2(g*rf),qR:r2(q*rf*pr),xmt:false,meal,custom:true,pc};
     }
-    if (xmt||a===0) return {sub:a,gst:0,qst:0,tot:a,gR:0,qR:0,xmt:true,meal:false};
+    if (xmt||a===0) return {sub:a,gst:0,qst:0,tot:a,gR:0,qR:0,xmt:true,meal:false,pc};
     let sub,gst,qst;
-    if (inc) { sub=a/(1+this.GST+this.QST); gst=sub*this.GST; qst=sub*this.QST; }
-    else { sub=a; gst=a*this.GST; qst=a*this.QST; }
-    const rf = meal ? 0.5 : 1;
-    return {sub:r2(sub),gst:r2(gst),qst:r2(qst),tot:r2(inc?a:sub+gst+qst),gR:r2(gst*rf),qR:r2(qst*rf),xmt:false,meal};
+    if (inc) { sub=a/(1+P.fed+P.prv); gst=sub*P.fed; qst=sub*P.prv; }
+    else { sub=a; gst=a*P.fed; qst=a*P.prv; }
+    const rf = meal ? 0.5 : 1, pr = P.provRec ? 1 : 0;
+    return {sub:r2(sub),gst:r2(gst),qst:r2(qst),tot:r2(inc?a:sub+gst+qst),gR:r2(gst*rf),qR:r2(qst*rf*pr),xmt:false,meal,pc};
   },
   sum(exps) {
     const t = {sub:0,gst:0,qst:0,tot:0,gR:0,qR:0};
@@ -1494,7 +1516,9 @@ function expTaxOv(e){
   if (e.taxMode==='custom') return {mode:'custom', gst:Number(e.gstO)||0, qst:Number(e.qstO)||0};
   return null;
 }
-function expTax(e){ return TAX.calc(expEffAmt(e), e.category, e.taxIncluded||false, expEffCur(e), expEffForeign(e), expTaxOv(e)); }
+/* v3.1.12 — expense province: stored only when not Québec (all pre-3.1.12 docs = QC) */
+function expProv(e){ const p=e&&e.province; return (p && TAX.PROV[p]) ? p : 'QC'; }
+function expTax(e){ return TAX.calc(expEffAmt(e), e.category, e.taxIncluded||false, expEffCur(e), expEffForeign(e), expTaxOv(e), expProv(e)); }
 function migrateExp(e){
   if (e && Number(e.origAmount)>0 && e.origCurrency && e.origCurrency!=='CAD' && !(Number(e.cadCharged)>0)){
     const cadVal=Number(e.amount)||0, fgnVal=Number(e.origAmount)||0;
@@ -2042,7 +2066,7 @@ async function doSmartScan(imgData, rid) {
           role: 'user',
           content: [
             fileBlock,
-            { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true,"confidence":{"merchant":"high|medium|low","date":"high|medium|low","amount":"high|medium|low","currency":"high|medium|low","category":"high|medium|low"}}\nFor each confidence field: "high" only if the value is clearly printed and unambiguous on the receipt; "medium" if inferred or partially legible; "low" if guessed or unreadable.' }
+            { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true,"province":"for Canadian receipts only: 2-letter province code (QC|ON|BC|AB|MB|SK|NS|NB|NL|PE|NT|NU|YT) from the merchant address or tax lines (e.g. a single HST line means an HST province; TVQ/QST means QC; PST means BC/SK/MB), else null","confidence":{"merchant":"high|medium|low","date":"high|medium|low","amount":"high|medium|low","currency":"high|medium|low","category":"high|medium|low"}}\nFor each confidence field: "high" only if the value is clearly printed and unambiguous on the receipt; "medium" if inferred or partially legible; "low" if guessed or unreadable.' }
           ]
         }]
       })
@@ -2107,6 +2131,7 @@ async function autoFileExpense(rid, imgData, sc) {
     notes:       sc.notes || '',
     taxIncluded: !!sc.taxIncluded,
     currency:    (scCur && scCur !== rptCurDef) ? scCur : undefined,
+    province:    (function(){ const p=String(sc.province||'').toUpperCase(); const cc=scCur||rptCurDef; return (cc==='CAD' && TAX.PROV[p] && p!=='QC') ? p : undefined; })(),
     receipts:    [imgData],
     _ts:         Date.now()
   };
@@ -2186,7 +2211,7 @@ async function _scanReceipt(file, dataUrl, rid, rptCurDef, ui){
       body: JSON.stringify({
         model:'claude-haiku-4-5-20251001', max_tokens:400,
         messages:[{ role:'user', content:[ fileBlock,
-          { type:'text', text:'Extract from this receipt or invoice. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true}' }
+          { type:'text', text:'Extract from this receipt or invoice. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00,"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true,"province":"for Canadian receipts only: 2-letter province code (QC|ON|BC|AB|MB|SK|NS|NB|NL|PE|NT|NU|YT) from the merchant address or tax lines (e.g. a single HST line means an HST province; TVQ/QST means QC; PST means BC/SK/MB), else null"}' }
         ]}]
       })
     });
@@ -2228,6 +2253,7 @@ async function _scanReceipt(file, dataUrl, rid, rptCurDef, ui){
     amount: amt,
     category: CATS.includes(parsed.category) ? parsed.category : 'Other',
     currency: (function(){ const c=validCur(parsed.currency); return (c && c!==rptCurDef) ? c : undefined; })(),
+    province: (function(){ const p=String(parsed.province||'').toUpperCase(); const cc=validCur(parsed.currency)||rptCurDef; return (cc==='CAD' && TAX.PROV[p] && p!=='QC') ? p : undefined; })(),
     notes: parsed.notes || '',
     taxIncluded: !!parsed.taxIncluded,
     receipts: [dataUrl],
@@ -2495,7 +2521,12 @@ function taxBoxOne(exps, cur){
     '<div class="txr"><span>Supply outside Canada &mdash; no ITC/ITR recoverable</span><span></span></div>'+
     '<div class="txr tot"><span>Total ('+esc(cur)+')</span><span>'+fmt(t.tot,cur)+'</span></div>'+
   '</div>';
-  return '<div class="txb">'+
+  /* v3.1.12 — all-QC reports keep the exact historical rendering; any non-QC expense
+     switches to generalized federal/provincial labels (HST rides the GST column, PST/RST
+     rides the QST column with no ITR). */
+  const provs=[...new Set(exps.map(expProv))];
+  const qcOnly = provs.length===1 && provs[0]==='QC';
+  if(qcOnly) return '<div class="txb">'+
     '<div class="txh">&#127963; Qu&eacute;bec Tax &mdash; '+esc(cur)+' &mdash; GST 5% + QST 9.975%</div>'+
     '<div class="txr"><span>Subtotal (pre-tax)</span><span>'+fmt(t.sub,cur)+'</span></div>'+
     '<div class="txr"><span>GST &mdash; 5% federal</span><span>'+fmt(t.gst,cur)+'</span></div>'+
@@ -2503,6 +2534,17 @@ function taxBoxOne(exps, cur){
     '<div class="txr sub"><span>Total incl. taxes</span><span>'+fmt(t.tot,cur)+'</span></div>'+
     '<div class="txr rec"><span>GST recoverable (ITC)</span><span style="color:var(--g)">'+ftx(t.gR,cur)+'</span></div>'+
     '<div class="txr rec"><span>QST recoverable (ITR)</span><span style="color:var(--g)">'+ftx(t.qR,cur)+'</span></div>'+
+    '<div class="txr tot"><span>Net after recovery</span><span>'+fmt(r2(t.tot-t.gR-t.qR),cur)+'</span></div>'+
+  '</div>';
+  const pnames=provs.map(p=>TAX.prov(p).name).join(', ');
+  return '<div class="txb">'+
+    '<div class="txh">&#127963; Canadian Tax &mdash; '+esc(cur)+' &mdash; '+esc(pnames)+'</div>'+
+    '<div class="txr"><span>Subtotal (pre-tax)</span><span>'+fmt(t.sub,cur)+'</span></div>'+
+    '<div class="txr"><span>GST / HST &mdash; federal</span><span>'+fmt(t.gst,cur)+'</span></div>'+
+    '<div class="txr"><span>QST / PST &mdash; provincial</span><span>'+fmt(t.qst,cur)+'</span></div>'+
+    '<div class="txr sub"><span>Total incl. taxes</span><span>'+fmt(t.tot,cur)+'</span></div>'+
+    '<div class="txr rec"><span>GST/HST recoverable (ITC)</span><span style="color:var(--g)">'+ftx(t.gR,cur)+'</span></div>'+
+    '<div class="txr rec"><span>QST recoverable (ITR &mdash; PST/RST not recoverable)</span><span style="color:var(--g)">'+ftx(t.qR,cur)+'</span></div>'+
     '<div class="txr tot"><span>Net after recovery</span><span>'+fmt(r2(t.tot-t.gR-t.qR),cur)+'</span></div>'+
   '</div>';
 }
@@ -3158,7 +3200,7 @@ function fxBlock(cad, rate){
   const rv = (Number(rate)>0)? esc(Number(rate)) : '';
   return '<div class="fld" id="fgnNote" style="display:none">'+
     '<div style="font-size:12.5px;color:var(--amdk);background:var(--ambg);border:1px solid #f0dcb6;border-radius:9px;padding:9px 11px;display:flex;gap:8px;align-items:flex-start">'+
-      '<span>&#127758;</span><span><strong>No Qu&eacute;bec tax &mdash; foreign-currency supply.</strong> No GST/QST charged and none recoverable (no ITC/ITR).</span>'+
+      '<span>&#127758;</span><span><strong>No Canadian tax &mdash; foreign-currency supply.</strong> No GST/HST/QST charged and none recoverable (no ITC/ITR).</span>'+
     '</div></div>'+
     '<div class="fld" id="cadBlock" style="display:none;border:1px dashed var(--bd2);border-radius:12px;padding:14px 16px;background:#fff">'+
       '<div style="font-size:12px;font-weight:700;margin-bottom:3px">&#128179; Paid on a CAD credit card? <span id="curPill" style="background:var(--ambg);color:var(--amdk);border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700">&mdash;</span></div>'+
@@ -3255,6 +3297,8 @@ function mAE(rid, preImg, scanned) {
   closeFab(); window._modalRid=rid; window._rec=preImg?[preImg]:[];
   const today=new Date().toISOString().slice(0,10);
   const sc=scanned||{};
+  /* v3.1.12 — validate the scanned province against the regime table (bad/missing → QC) */
+  sc.province=(function(){ const p=String(sc.province||'').toUpperCase(); return TAX.PROV[p]?p:undefined; })();
   // Pre-select SmartScan's detected currency only when it differs from the report default
   const scCur=validCur(sc.currency);
   const ovCur=(scCur && scCur!==rptCurrency(S.reports.find(x=>x.id===rid)))?scCur:null;
@@ -3267,10 +3311,11 @@ function mAE(rid, preImg, scanned) {
     scanBadge+
     '<div class="r2"><div class="fld"><label>Merchant *</label><input class="fi2" id="eM" placeholder="e.g. Air France" autocomplete="off" value="'+esc(sc.merchant||'')+'"/></div><div class="fld"><label>Date *</label><input class="fi2" type="date" id="eD" value="'+esc(sc.date||today)+'"/></div></div>'+
     '<div class="r2"><div class="fld"><label>Amount *</label><input class="fi2" type="number" id="eA" placeholder="0.00" min="0" step="0.01" inputmode="decimal" value="'+esc(sc.amount||'')+'" oninput="updT()"/></div>'+
-    '<div class="fld"><label>Currency</label><select class="fse" id="eCur" onchange="updT()"><option value="">— Use report default —</option>'+currencyOpts(ovCur||'__none__')+'</select></div></div>'+
+    '<div class="fld"><label>Currency</label><select class="fse" id="eCur" onchange="updT()"><option value="" id="defCurOpt">Default &mdash; '+esc(rptCurrency(S.reports.find(x=>x.id===rid)))+'</option>'+currencyOpts(ovCur||'__none__')+'</select></div></div>'+
     '<div class="r2"><div class="fld"><label>Category</label><select class="fse" id="eCt" onchange="updT()">'+catOpts+'</select></div>'+
     '<div class="fld"><label>Notes</label><input class="fi2" id="eNo" placeholder="Optional&hellip;" value="'+esc(sc.notes||'')+'"/></div></div>'+
-    taxModeBlock('auto', sc.taxIncluded)+
+    provinceField(sc.province, !!(scanned && sc.province && sc.province!=='QC'))+
+    taxModeBlock('auto', sc.taxIncluded, sc.province)+
     fxBlock(sc.cadCharged, sc.fxRate)+
     '<div class="fld"><label>Receipts</label>'+
       '<div class="dz" id="dz" onclick="$(\'fi4\').click()" ondragover="event.preventDefault();this.classList.add(\'ov\')" ondragleave="this.classList.remove(\'ov\')" ondrop="onDp(event)">'+
@@ -3289,26 +3334,48 @@ function mAE(rid, preImg, scanned) {
   if(preImg) renderT();
 }
 
-/* Shared markup for the tax-mode control + breakdown panel (Add and Edit modals). */
-function taxModeBlock(mode, inc){
+/* v3.1.12 — province of purchase (CAD expenses only). QC first, rest alphabetical. */
+const PROV_ORDER=['QC','AB','BC','MB','NB','NL','NT','NS','NU','ON','PE','SK','YT'];
+function provOpts(sel){
+  const s = (sel && TAX.PROV[sel]) ? sel : 'QC';
+  return PROV_ORDER.map(p=>'<option value="'+p+'"'+(p===s?' selected':'')+'>'+esc(TAX.PROV[p].name)+'</option>').join('');
+}
+function provinceField(sel, fromScan){
+  return '<div class="r2" id="provRow"><div class="fld"><label>Province</label>'+
+    '<select class="fse" id="eProv" onchange="onProvChg()">'+provOpts(sel)+'</select>'+
+    (fromScan?'<div id="provScan" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--gdk);background:var(--gbg);border-radius:10px;padding:2px 9px;margin-top:4px;align-self:flex-start">&#129302; Detected by SmartScan &mdash; change if wrong</div>':'')+
+    '</div><div class="fld"></div></div>';
+}
+function curProv(){ const p=($('eProv')&&$('eProv').value)||'QC'; return TAX.PROV[p]?p:'QC'; }
+function onProvChg(){
+  const b=$('provScan'); if(b) b.style.display='none';   // user override clears the scan badge
+  buildTaxRows(window._taxMode||'auto', true);           // regimes differ in field count — force rebuild
+  updT();
+}
+
+/* Shared markup for the tax-mode control + breakdown panel (Add and Edit modals).
+   Row semantics: rGst = federal/harmonized line (GST or HST), rQst = provincial line
+   (QST/PST/RST — hidden for HST and GST-only provinces). updT() relabels per province. */
+function taxModeBlock(mode, inc, prov){
   mode = mode||'auto';
+  const P = TAX.prov(prov);
   const labels = {auto:'Auto', none:'No tax', custom:'Custom'};
   const seg = ['auto','none','custom'].map(m =>
     '<button type="button" data-m="'+m+'" class="tmb'+(m===mode?' on':'')+'" onclick="setTaxMode(\''+m+'\')">'+labels[m]+'</button>'
   ).join('');
   return ''+
     '<div class="tmw" id="tmw"><span class="tml">Tax treatment</span><span class="seg">'+seg+'</span></div>'+
-    '<div class="ckr" id="incRow"><input type="checkbox" id="tI" onchange="updT()"'+(inc?' checked':'')+'/><label for="tI">Amount already includes GST + QST</label></div>'+
+    '<div class="ckr" id="incRow"><input type="checkbox" id="tI" onchange="updT()"'+(inc?' checked':'')+'/><label for="tI" id="incLbl">Amount already includes '+P.incL+'</label></div>'+
     '<div class="tp" id="tPr" style="display:none">'+
-      '<div class="tphd" id="tpHd">Qu&eacute;bec Tax Breakdown</div>'+
+      '<div class="tphd" id="tpHd">'+esc(P.name)+' Tax Breakdown</div>'+
       '<div class="tpr"><span>Subtotal (pre-tax)</span><span id="tp1">&mdash;</span></div>'+
-      '<div class="tpr" id="rGst"><span>GST 5%</span><span id="tp2">&mdash;</span></div>'+
-      '<div class="tpr" id="rQst"><span>QST 9.975%</span><span id="tp3">&mdash;</span></div>'+
+      '<div class="tpr" id="rGst"><span>'+P.fedL+'</span><span id="tp2">&mdash;</span></div>'+
+      '<div class="tpr" id="rQst"><span>'+(P.prvL||'')+'</span><span id="tp3">&mdash;</span></div>'+
       '<div class="tpr" id="tpM" style="display:none"><span style="color:var(--am)">&#9888; Meals &amp; Entertainment &mdash; 50% ITC/ITR only</span><span></span></div>'+
-      '<div class="tpr" id="tpF" style="display:none"><span style="color:var(--bl)">&#127758; Foreign expense &mdash; no GST/QST &middot; no ITC/ITR</span><span></span></div>'+
+      '<div class="tpr" id="tpF" style="display:none"><span style="color:var(--bl)">&#127758; Foreign expense &mdash; no Canadian tax &middot; no ITC/ITR</span><span></span></div>'+
       '<div class="tpr bold"><span>Total incl. tax</span><span id="tp4">&mdash;</span></div>'+
-      '<div class="tpr rec"><span>GST recoverable (ITC)</span><span id="tp5">&mdash;</span></div>'+
-      '<div class="tpr rec"><span>QST recoverable (ITR)</span><span id="tp6">&mdash;</span></div>'+
+      '<div class="tpr rec" id="rRec1"><span id="recL1">GST recoverable (ITC)</span><span id="tp5">&mdash;</span></div>'+
+      '<div class="tpr rec" id="rRec2"><span id="recL2">QST recoverable (ITR)</span><span id="tp6">&mdash;</span></div>'+
       '<div class="tphint" id="tpHint" style="display:none"></div>'+
     '</div>';
 }
@@ -3319,22 +3386,30 @@ function setTaxMode(m){
   buildTaxRows(m);
   updT();
 }
-/* Swap the GST/QST rows between read-only spans (auto/none) and editable inputs (custom). */
-function buildTaxRows(m){
+/* Swap the tax rows between read-only spans (auto/none) and editable inputs (custom).
+   Custom inputs follow the province's regime: one field (GST or HST) or two (GST+QST/PST). */
+function buildTaxRows(m, force){
   const rG=$('rGst'), rQ=$('rQst'); if(!rG||!rQ) return;
+  const P = TAX.prov(curProv());
   if(m==='custom'){
-    if($('cGst')) return;   // already editable — keep the user's typed values
+    if($('cGst') && !force) return;   // already editable — keep the user's typed values
     const a=parseFloat(($('eA')&&$('eA').value)||'0')||0;
     const inc=!!($('tI')&&$('tI').checked);
-    const sub=inc?a/(1+TAX.GST+TAX.QST):a;
-    const g=(window._cGst!=null)?window._cGst:r2(sub*TAX.GST);
-    const q=(window._cQst!=null)?window._cQst:r2(sub*TAX.QST);
-    rG.innerHTML='<span>GST</span><input class="ted" id="cGst" type="number" min="0" step="0.01" inputmode="decimal" value="'+g+'" oninput="updT()"/>';
-    rQ.innerHTML='<span>QST</span><input class="ted" id="cQst" type="number" min="0" step="0.01" inputmode="decimal" value="'+q+'" oninput="updT()"/>';
+    const sub=inc?a/(1+P.fed+P.prv):a;
+    const g=(window._cGst!=null && !force)?window._cGst:r2(sub*P.fed);
+    const q=(window._cQst!=null && !force)?window._cQst:r2(sub*P.prv);
+    window._cGst=g; window._cQst=(P.prv>0)?q:0;
+    rG.innerHTML='<span>'+P.fedL.split(' ')[0]+'</span><input class="ted" id="cGst" type="number" min="0" step="0.01" inputmode="decimal" value="'+g+'" oninput="updT()"/>';
+    if(P.prv>0){
+      rQ.innerHTML='<span>'+P.prvL.split(' ')[0]+'</span><input class="ted" id="cQst" type="number" min="0" step="0.01" inputmode="decimal" value="'+q+'" oninput="updT()"/>';
+    } else {
+      rQ.innerHTML='';
+    }
   } else {
-    rG.innerHTML='<span>GST 5%</span><span id="tp2">&mdash;</span>';
-    rQ.innerHTML='<span>QST 9.975%</span><span id="tp3">&mdash;</span>';
+    rG.innerHTML='<span>'+P.fedL+'</span><span id="tp2">&mdash;</span>';
+    rQ.innerHTML=(P.prv>0)?('<span>'+P.prvL+'</span><span id="tp3">&mdash;</span>'):'';
   }
+  rQ.style.display=(P.prv>0)?'flex':'none';
 }
 
 function updT(){
@@ -3343,9 +3418,14 @@ function updT(){
   const i=!!($('tI')&&$('tI').checked);
   const cur=curUnit();
   const foreign = cur!=='CAD';
+  const prov=curProv(), P=TAX.prov(prov);
   const mode = foreign ? 'auto' : (window._taxMode||'auto');
+  /* keep the "Default — XXX" currency option in sync with the (possibly re-picked) report */
+  const dOpt=$('defCurOpt'); if(dOpt){ let rc='CAD'; const selRep=($('eRep')&&$('eRep').value)||window._modalRid; const rr=S.reports.find(x=>x.id===selRep); rc=rr?.currency||'CAD'; dOpt.textContent='Default — '+rc; }
   const tmw=$('tmw'); if(tmw) tmw.style.display=foreign?'none':'flex';
+  const pr=$('provRow'); if(pr) pr.style.display=foreign?'none':'grid';
   const incRow=$('incRow'); if(incRow) incRow.style.display=(foreign||mode!=='auto')?'none':'flex';
+  const incL=$('incLbl'); if(incL) incL.textContent='Amount already includes '+P.incL;
   const fgn=$('fgnNote'); if(fgn) fgn.style.display=foreign?'block':'none';
   const cb=$('cadBlock'); if(cb) cb.style.display=foreign?'block':'none';
   const p=$('tPr');
@@ -3361,7 +3441,7 @@ function updT(){
     window._cGst=g; window._cQst=q;
     ov={mode:'custom',gst:g,qst:q};
   }
-  const tx=TAX.calc(a,c,i,cur,false,ov);
+  const tx=TAX.calc(a,c,i,cur,false,ov,prov);
   $('tp1').textContent=fmt(tx.sub,cur);
   if(mode!=='custom'){
     const g2=$('tp2'), q2=$('tp3');
@@ -3369,16 +3449,33 @@ function updT(){
     if(q2) q2.textContent=tx.xmt?'—':fmt(tx.qst,cur);
   }
   $('tp4').textContent=fmt(tx.tot,cur);
+  /* Recovery rows per regime: fed line is always ITC (GST or full HST);
+     provincial line is ITR for QST, greyed "not recoverable" for PST/RST, hidden otherwise. */
+  const fedTk=P.fedL.split(' ')[0], prvTk=(P.prvL||'').split(' ')[0];
+  const l1=$('recL1'); if(l1) l1.textContent=fedTk+' recoverable (ITC)';
   $('tp5').textContent=tx.xmt?'—':fmt(tx.gR,cur);
-  $('tp6').textContent=tx.xmt?'—':fmt(tx.qR,cur);
+  const r2El=$('rRec2'), l2=$('recL2');
+  if(r2El){
+    if(P.prv<=0){ r2El.style.display='none'; }
+    else if(P.provRec){
+      r2El.style.display='flex'; r2El.className='tpr rec';
+      if(l2) l2.textContent=prvTk+' recoverable (ITR)';
+      $('tp6').textContent=tx.xmt?'—':fmt(tx.qR,cur);
+    } else {
+      r2El.style.display='flex'; r2El.className='tpr';
+      if(l2) l2.textContent=prvTk+' — not recoverable';
+      $('tp6').textContent=tx.xmt?'—':fmt(0,cur);
+    }
+  }
   $('tpM').style.display=tx.meal?'flex':'none';
   const fEl=$('tpF'); if(fEl) fEl.style.display='none';
-  const hd=$('tpHd'); if(hd) hd.innerHTML='Qu&eacute;bec Tax Breakdown'+(mode==='none'?' <span class="tflag">NO TAX</span>':mode==='custom'?' <span class="tflag">CUSTOM</span>':'');
+  const hd=$('tpHd'); if(hd) hd.innerHTML=esc(P.name)+' Tax Breakdown'+(mode==='none'?' <span class="tflag">NO TAX</span>':mode==='custom'?' <span class="tflag">CUSTOM</span>':'');
   const hint=$('tpHint');
   if(hint){
     let h='';
-    if(mode==='none') h='No GST/QST on this receipt — nothing recoverable.';
-    else if(mode==='custom') h='GST/QST entered from the receipt; subtotal is the remainder.'+(tx.meal?' Meals: 50% recoverable.':'');
+    if(mode==='none') h='No tax on this receipt — nothing recoverable.';
+    else if(mode==='custom') h='Tax entered from the receipt; subtotal is the remainder.'+(tx.meal?' Meals: 50% recoverable.':'');
+    else if(P.regime==='gst_pst') h=prvTk+' is a provincial retail tax — no input credit is available on it.';
     hint.textContent=h; hint.style.display=h?'block':'none';
   }
 }
@@ -3477,7 +3574,8 @@ async function saveE(rid){
   const tMode = (!isForeign && window._taxMode && window._taxMode!=='auto') ? window._taxMode : undefined;
   const gO = (tMode==='custom') ? r2(parseFloat($('cGst')?.value)||0) : undefined;
   const qO = (tMode==='custom') ? r2(parseFloat($('cQst')?.value)||0) : undefined;
-  const e={id:uid('E'),reportId:rid,merchant:m,date:d,amount:parseFloat(a),category:$('eCt').value,notes:$('eNo').value.trim(),taxIncluded:!!($('tI')&&$('tI').checked),taxMode:tMode,gstO:gO,qstO:qO,currency:eCurVal||undefined,cadCharged:(isForeign&&cadCharged>0)?r2(cadCharged):undefined,fxRate:(isForeign&&cadCharged>0&&fxRate>0)?fxRate:undefined,receipts:[...window._rec],_ts:Date.now()};
+  const pv=curProv();
+  const e={id:uid('E'),reportId:rid,merchant:m,date:d,amount:parseFloat(a),category:$('eCt').value,notes:$('eNo').value.trim(),taxIncluded:!!($('tI')&&$('tI').checked),taxMode:tMode,gstO:gO,qstO:qO,province:(!isForeign&&pv!=='QC')?pv:undefined,currency:eCurVal||undefined,cadCharged:(isForeign&&cadCharged>0)?r2(cadCharged):undefined,fxRate:(isForeign&&cadCharged>0&&fxRate>0)?fxRate:undefined,receipts:[...window._rec],_ts:Date.now()};
   S.expenses.push(e);
   S._pendingRemote=null;   // local add wins over any remote snapshot queued while the modal was open
   closeM();
@@ -3501,14 +3599,15 @@ function mEditE(eid) {
   '<div class="mb">'+
     '<div class="r2"><div class="fld"><label>Merchant *</label><input class="fi2" id="eM" placeholder="e.g. Air France" autocomplete="off" value="'+esc(e.merchant||'')+'"/></div><div class="fld"><label>Date *</label><input class="fi2" type="date" id="eD" value="'+(e.date||'')+'"/></div></div>'+
     '<div class="r2"><div class="fld"><label>Amount *</label><input class="fi2" type="number" id="eA" placeholder="0.00" min="0" step="0.01" inputmode="decimal" value="'+(e.amount||'')+'" oninput="updT()"/></div>'+
-    '<div class="fld"><label>Currency</label><select class="fse" id="eCur" onchange="updT()"><option value="">— Use report default —</option>'+currencyOpts(e.currency||'__none__')+'</select></div></div>'+
+    '<div class="fld"><label>Currency</label><select class="fse" id="eCur" onchange="updT()"><option value="" id="defCurOpt">Default &mdash; '+esc(rptCurrency(currentReport))+'</option>'+currencyOpts(e.currency||'__none__')+'</select></div></div>'+
     '<div class="r2"><div class="fld"><label>Category</label><select class="fse" id="eCt" onchange="updT()">'+catOpts+'</select></div>'+
     '<div class="fld"><label>Notes</label><input class="fi2" id="eNo" placeholder="Optional&hellip;" value="'+esc(e.notes||'')+'"/></div></div>'+
-    taxModeBlock(e.taxMode||'auto', e.taxIncluded)+
+    provinceField(expProv(e), false)+
+    taxModeBlock(e.taxMode||'auto', e.taxIncluded, expProv(e))+
     fxBlock(e.cadCharged, e.fxRate)+
     (true
       ? '<div class="fld"><label>Report</label>'+
-          '<select class="fse" id="eRep">'+reportOpts+'</select>'+
+          '<select class="fse" id="eRep" onchange="updT()">'+reportOpts+'</select>'+
           '<div style="font-size:11px;color:var(--tx2);margin-top:4px">Pick <strong>Not in Report</strong> to detach (receipt kept). Only open reports are listed. Current: <strong>'+esc(currentReport?.name||'Not in Report')+'</strong></div>'+
         '</div>'
       : '<input type="hidden" id="eRep" value="'+esc(e.reportId)+'"/>')+
@@ -3551,6 +3650,8 @@ async function saveEditE(eid) {
   e.taxMode = tMode2;
   e.gstO = (tMode2==='custom') ? r2(parseFloat($('cGst')?.value)||0) : undefined;
   e.qstO = (tMode2==='custom') ? r2(parseFloat($('cQst')?.value)||0) : undefined;
+  const pv2=curProv();
+  e.province    = (!isForeign2 && pv2!=='QC') ? pv2 : undefined;
   e.currency    = $('eCur')?.value || undefined;
   e.cadCharged  = (isForeign2 && cadCharged2>0) ? r2(cadCharged2) : undefined;
   e.fxRate      = (isForeign2 && cadCharged2>0 && fxRate2>0) ? fxRate2 : undefined;
@@ -3851,6 +3952,14 @@ async function expR(rid, auto){
   const sp='Downloads/'+fn+'/';
   const stx=TAX.sum(exps);
   const fxTot=r2(exps.filter(e=>expEffCur(e)!=='CAD').reduce((s,e)=>s+expEffAmt(e),0));
+  /* v3.1.12 — a report with any non-Québec expense generalizes its tax labels;
+     all-QC reports export byte-identical to v3.1.11. HST rides the GST column,
+     PST/RST rides the QST column (never ITR-recoverable). */
+  const hasNonQC = exps.some(e=>expProv(e)!=='QC');
+  const provsIn  = [...new Set(exps.map(e=>expProv(e)))].map(p=>TAX.prov(p).name).join(', ');
+  const hGst = hasNonQC ? 'GST/HST'       : 'GST (5%)';
+  const hQst = hasNonQC ? 'QST/PST'       : 'QST (9.975%)';
+  const hItc = hasNonQC ? 'ITC (GST/HST)' : 'ITC (GST)';
   const fname=r.name.replace(/[^a-z0-9]/gi,'_')+'_'+CFG.APP_VERSION+'_Report.xlsx';
 
   const allStrings=[];
@@ -3880,7 +3989,7 @@ async function expR(rid, auto){
     ['Report',r.name],
     ['Currency',multiCurrency ? expCurs.join(', ')+' (mixed)' : rCur],
     ['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
-    ['Status',r.status],['Jurisdiction','Québec, Canada — GST 5% + QST 9.975%'],
+    ['Status',r.status],['Jurisdiction',hasNonQC?('Canada — provincial rates per expense ('+provsIn+')'):'Québec, Canada — GST 5% + QST 9.975%'],
     ['Exported',new Date().toLocaleString('en-CA')],['App Version',CFG.APP_VERSION]
   ];
   meta.forEach(([l,v])=>{
@@ -3898,9 +4007,9 @@ async function expR(rid, auto){
     sc('Currency', XST.COL_HDR),
     ...catList.map(cat=>sc(cat==='Other'?'Other \u26A0':cat, cat==='Other'?XST.OTHER_HDR:XST.CAT_HDR)),
     sc('TOTAL',        XST.GRAND_R),
-    sc('GST (5%)',     XST.COL_HDR_R),
-    sc('QST (9.975%)', XST.COL_HDR_R),
-    sc('ITC (GST)',    XST.RECOV_R),
+    sc(hGst,           XST.COL_HDR_R),
+    sc(hQst,           XST.COL_HDR_R),
+    sc(hItc,           XST.RECOV_R),
     sc('ITR (QST)',    XST.RECOV_R),
     sc('ITC Recov.',   XST.RECOV_R),
     sc('Net After ITC',XST.NET_R),
@@ -3971,7 +4080,7 @@ async function expR(rid, auto){
   ]);
 
   sheet1rows.push([
-    bc(XST.CAT_SUB), sc('GST (5%)',XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB),
+    bc(XST.CAT_SUB), sc(hGst,XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB),
     ...catList.map(cat=>{
       const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
       return nc(ct.gst, XST.CAT_SUB_R);
@@ -3982,7 +4091,7 @@ async function expR(rid, auto){
   ]);
 
   sheet1rows.push([
-    bc(XST.CAT_SUB), sc('QST (9.975%)',XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB),
+    bc(XST.CAT_SUB), sc(hQst,XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB), bc(XST.CAT_SUB),
     ...catList.map(cat=>{
       const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
       return nc(ct.qst, XST.CAT_SUB_R);
@@ -3993,7 +4102,7 @@ async function expR(rid, auto){
   ]);
 
   sheet1rows.push([
-    bc(XST.RECOV_L), sc('GST Recoverable (ITC)',XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L),
+    bc(XST.RECOV_L), sc(hasNonQC?'GST/HST Recoverable (ITC)':'GST Recoverable (ITC)',XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L),
     ...catList.map(cat=>{
       const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
       return nc(ct.gR, XST.RECOV_R);
@@ -4004,7 +4113,7 @@ async function expR(rid, auto){
   ]);
 
   sheet1rows.push([
-    bc(XST.RECOV_L), sc('QST Recoverable (ITR)',XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L),
+    bc(XST.RECOV_L), sc(hasNonQC?'QST Recoverable (ITR)':'QST Recoverable (ITR)',XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L), bc(XST.RECOV_L),
     ...catList.map(cat=>{
       const ct=TAX.sum(exps.filter(e=>(e.category||'Other')===cat));
       return nc(ct.qR, XST.RECOV_R);
@@ -4053,7 +4162,7 @@ async function expR(rid, auto){
   }
   function tsBlank(){ sheet3rows.push([bc(),bc()]); tr++; }
 
-  sheet3rows.push([sc('Québec Tax Summary — GST 5% + QST 9.975%',XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR)]);
+  sheet3rows.push([sc(hasNonQC?('Canadian Tax Summary — '+provsIn):'Québec Tax Summary — GST 5% + QST 9.975%',XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR)]);
   s3merges.push('A1:G1'); tr++;
   [[r.name,'Report'],[r.status,'Status'],[(r.startDate||'')+(r.endDate?' to '+r.endDate:''),'Period'],[exps.length,'Items']].forEach(([v,l])=>{
     sheet3rows.push([sc(l,XST.META_LBL),sc(String(v),XST.META_VAL),bc(),bc(),bc(),bc(),bc()]);
@@ -4064,8 +4173,8 @@ async function expR(rid, auto){
   tsHdr('TAX BREAKDOWN',2);
   sheet3rows.push([sc('Item',XST.COL_HDR),sc('Amount (CAD)',XST.COL_HDR_R)]);tr++;
   [[' Subtotal (before tax)',stx.sub,XST.TX_ROW_L,XST.TX_ROW_R],
-   [' GST — 5% (federal)',stx.gst,XST.TX_ALT_L,XST.TX_ALT_R],
-   [' QST — 9.975% (provincial)',stx.qst,XST.TX_ROW_L,XST.TX_ROW_R],
+   [hasNonQC?' GST / HST (federal)':' GST — 5% (federal)',stx.gst,XST.TX_ALT_L,XST.TX_ALT_R],
+   [hasNonQC?' QST / PST (provincial)':' QST — 9.975% (provincial)',stx.qst,XST.TX_ROW_L,XST.TX_ROW_R],
    ...(fxTot>0?[[' of which foreign — no GST/QST (orig. currency)',fxTot,XST.TX_ALT_L,XST.TX_ALT_R]]:[])
   ].forEach(([l,v,sL,sR])=>tsRow(l,v,sL,sR));
   sheet3rows.push([sc('Total including taxes',XST.TX_GRAND_L),nc(stx.tot,XST.TX_GRAND_R)]);tr++;
@@ -4073,8 +4182,8 @@ async function expR(rid, auto){
 
   tsHdr('INPUT TAX CREDITS / REFUNDS',2);
   sheet3rows.push([sc('Item',XST.COL_HDR),sc('Recoverable (CAD)',XST.COL_HDR_R)]);tr++;
-  tsRow(' GST recoverable (ITC — federal)',stx.gR,XST.RECOV_L,XST.RECOV_R);
-  tsRow(' QST recoverable (ITR — provincial)',stx.qR,XST.RECOV_L,XST.RECOV_R);
+  tsRow(hasNonQC?' GST/HST recoverable (ITC — federal)':' GST recoverable (ITC — federal)',stx.gR,XST.RECOV_L,XST.RECOV_R);
+  tsRow(hasNonQC?' QST recoverable (ITR — PST/RST not recoverable)':' QST recoverable (ITR — provincial)',stx.qR,XST.RECOV_L,XST.RECOV_R);
   sheet3rows.push([sc('Total recoverable',XST.TX_GRAND_L),nc(r2(stx.gR+stx.qR),XST.TX_GRAND_R)]);tr++;
   tsBlank();
 
@@ -4084,6 +4193,7 @@ async function expR(rid, auto){
 
   tsHdr('NOTES',2);
   [['Meals & Entertainment','50% ITC/ITR — CRA & Revenu Québec (ARQ)'],
+   ...(hasNonQC?[['Provincial rates','GST/HST per expense province; HST fully ITC-eligible; PST/RST (BC/SK/MB) not recoverable']]:[]),
    ['Foreign expenses','No GST/QST — supply outside Canada; no ITC/ITR recoverable'],
    ['GST rate','5% federal — administered by CRA'],
    ['QST rate','9.975% provincial — administered by ARQ'],
@@ -4098,8 +4208,8 @@ async function expR(rid, auto){
   if(r.statusAt) ['Approved','Awaiting Payment','Paid'].forEach(st=>{ if(r.statusAt[st]) ovMeta.push([st+' on', r.statusAt[st]]); });
   ovMeta.forEach(([l,v])=>sheet4rows.push([sc(l,XST.SUM_LBL),sc(v,XST.SUM_VAL)]));
   sheet4rows.push([bc(),bc()]);
-  [['Subtotal (before tax)',stx.sub],['GST (5%)',stx.gst],['QST (9.975%)',stx.qst],
-   ['Total incl. tax',stx.tot],['GST Recoverable (ITC)',stx.gR],['QST Recoverable (ITR)',stx.qR],
+  [['Subtotal (before tax)',stx.sub],[hGst,stx.gst],[hQst,stx.qst],
+   ['Total incl. tax',stx.tot],[hasNonQC?'GST/HST Recoverable (ITC)':'GST Recoverable (ITC)',stx.gR],['QST Recoverable (ITR)',stx.qR],
    ['Total Recoverable',r2(stx.gR+stx.qR)],['Net Cost (after recovery)',r2(stx.tot-stx.gR-stx.qR)]
   ].forEach(([l,v])=>sheet4rows.push([sc(l,XST.SUM_LBL),nc(v,XST.SUM_VAL_R)]));
   sheet4rows.push([bc(),bc()]);
@@ -4560,9 +4670,9 @@ function importExcel() {
 
       const hdr=rows[hdrIdx].map(h=>String(h).trim());
 
-      const rightCols=new Set(['Currency','TOTAL','GST (5%)','QST (9.975%)','ITC Recov.','Net After ITC',
+      const rightCols=new Set(['Currency','TOTAL','GST (5%)','QST (9.975%)','GST/HST','QST/PST','ITC Recov.','Net After ITC',
         'Amount (entered)','Tax Incl.?','Subtotal','Total',
-        'ITC (GST)','ITR (QST)','Meals Rule','Receipt(s)','']);
+        'ITC (GST)','ITR (QST)','ITC (GST/HST)','Meals Rule','Receipt(s)','']);
 
       const newExps=[];
       const today=new Date().toISOString().slice(0,10);
@@ -4573,6 +4683,7 @@ function importExcel() {
         if(num===''||num===null||num===undefined) break;
         const numStr=String(num).trim();
         if(!numStr||numStr==='TOTAL'||numStr==='GST (5%)'||numStr==='QST (9.975%)'||
+           numStr==='GST/HST'||numStr==='QST/PST'||numStr==='GST/HST Recoverable (ITC)'||
            numStr==='ITC Recoverable'||numStr==='GST Recoverable (ITC)'||numStr==='QST Recoverable (ITR)'||
            numStr==='Net After ITC'||numStr==='TOTALS') break;
 
