@@ -614,7 +614,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.1.14</span>
+      <span class="vbm" id="vBdgM">v3.1.15</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -694,7 +694,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.1.14</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.1.15</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -720,7 +720,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.1.14',
+  APP_VERSION:    'v3.1.15',
   APP_RELEASED:   'July 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -2878,9 +2878,12 @@ function closeChecks(rid){
   /* v3.1.10 — acknowledged "Other" lines (scoped to exact expense ids) */
   const ackIds=(r&&r.ackOther&&r.ackOther.ids)||[];
   const unAck=unCat.filter(e=>ackIds.indexOf(e.id)===-1);
+  /* v3.1.15 — acknowledged missing-receipt lines (scoped to exact expense ids) */
+  const ackNRIds=(r&&r.ackNoReceipt&&r.ackNoReceipt.ids)||[];
+  const unAckNoR=noR.filter(e=>ackNRIds.indexOf(e.id)===-1);
   const seen={},dups=[];
   exps.forEach(e=>{const k=((e.merchant||'').trim().toLowerCase())+'|'+(e.date||'')+'|'+Math.round((e.amount||0)*100);if(seen[k])dups.push(e);else seen[k]=1;});
-  return {exps,noR,pend,unCat,unAck,ack:(r&&r.ackOther)||null,dups};
+  return {exps,noR,pend,unCat,unAck,ack:(r&&r.ackOther)||null,unAckNoR,ackNR:(r&&r.ackNoReceipt)||null,dups};
 }
 
 function vClose(rid){
@@ -2890,11 +2893,28 @@ function vClose(rid){
   const locked=r.status!=='Open';
 
   const items=[
-    {ok:c.noR.length===0,
-     label:c.noR.length===0?'All receipts attached':c.noR.length+' expense'+(c.noR.length>1?'s':'')+' missing receipt'+(c.noR.length>1?'s':''),
-     sub:c.noR.length?esc(c.noR.slice(0,3).map(e=>e.merchant||'(no merchant)').join(' · ')):'Every line has at least one receipt',
-     ico:c.noR.length===0?'&#10003;':'&#129534;',
-     act:c.noR.length?'<button class="btn sm p" onclick="mFixQ(\''+rid+'\')">Fix</button>':''},
+    {ok:c.unAckNoR.length===0,
+     amber:c.noR.length>0&&c.unAckNoR.length===0,
+     label:c.noR.length===0?'All receipts attached'
+       :(c.unAckNoR.length===0
+         ?c.noR.length+' missing receipt'+(c.noR.length>1?'s':'')+' acknowledged'
+         :c.unAckNoR.length+' expense'+(c.unAckNoR.length>1?'s':'')+' missing receipt'+(c.unAckNoR.length>1?'s':'')),
+     sub:c.noR.length===0?'Every line has at least one receipt'
+       :(c.unAckNoR.length===0
+         ?'Will export flagged &mdash; no receipt attached'+(c.ackNR&&c.ackNR.at?' &middot; acknowledged '+esc(c.ackNR.at):'')
+         :esc(c.unAckNoR.slice(0,3).map(e=>e.merchant||'(no merchant)').join(' · '))),
+     ico:c.unAckNoR.length===0?'&#10003;':'&#129534;',
+     act:c.noR.length===0?''
+       :(c.unAckNoR.length===0
+         ?(locked?'':'<button class="btn sm" onclick="ackNoRUndo(\''+rid+'\')">Undo</button>')
+         :'<button class="btn sm p" onclick="mFixQ(\''+rid+'\')">Fix</button>'+
+          (locked?'':'<button class="btn sm am" onclick="ackNoRConfirm(\''+rid+'\')">Acknowledge</button>')),
+     extra:(window._ackNR===rid&&c.unAckNoR.length>0&&!locked)
+       ?'<div style="background:var(--ambg);border-top:1px solid var(--am);padding:11px 14px;font-size:12px;color:var(--amdk);display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div style="flex:1;min-width:180px"><b>Close with '+c.unAckNoR.length+' line'+(c.unAckNoR.length>1?'s':'')+' missing a receipt?</b><br>'+(c.unAckNoR.length>1?'They\u2019ll':'It\u2019ll')+' be flagged amber in the Excel and have no page in the receipts PDF.</div>'+
+        '<button class="btn sm" onclick="ackNoRCancel()">Cancel</button>'+
+        '<button class="btn sm" style="background:var(--am);border-color:var(--am);color:#fff" onclick="ackNoRDo(\''+rid+'\')">Acknowledge</button></div>'
+       :''},
     {ok:c.pend===0,
      label:c.pend===0?'All receipt photos uploaded':c.pend+' photo'+(c.pend>1?'s':'')+' waiting to upload',
      sub:c.pend?'Tap retry — they sync in the background':'Nothing pending in the upload queue',
@@ -2975,7 +2995,7 @@ function vClose(rid){
 async function closeMonthExport(rid){
   const r=S.reports.find(x=>x.id===rid); if(!r) return;
   const c=closeChecks(rid);
-  if(c.noR.length||c.pend||c.unAck.length||c.dups.length){ toast('Resolve the checklist first','#BA7517'); return; }
+  if(c.unAckNoR.length||c.pend||c.unAck.length||c.dups.length){ toast('Resolve the checklist first','#BA7517'); return; }
   toast('Building Excel + receipts PDF&hellip;');
   try{
     await expR(rid, true);
@@ -2992,7 +3012,7 @@ async function closeMonthExport(rid){
 async function closeMonthOnly(rid){
   const r=S.reports.find(x=>x.id===rid); if(!r) return;
   const c=closeChecks(rid);
-  if(c.noR.length||c.pend||c.unAck.length||c.dups.length){ toast('Resolve the checklist first','#BA7517'); return; }
+  if(c.unAckNoR.length||c.pend||c.unAck.length||c.dups.length){ toast('Resolve the checklist first','#BA7517'); return; }
   try{
     await approveReport(r);
     showView('report-detail', rid);
@@ -3028,6 +3048,26 @@ async function ackOtherUndo(rid){
   const r=S.reports.find(x=>x.id===rid); if(!r) return;
   delete r.ackOther;
   window._ackC=null;
+  await save(); render();
+  toast('Acknowledgement removed');
+}
+
+/* v3.1.15 — acknowledge missing-receipt lines for export (scoped to exact expense ids) */
+function ackNoRConfirm(rid){ window._ackNR=rid; render(); }
+function ackNoRCancel(){ window._ackNR=null; render(); }
+async function ackNoRDo(rid){
+  const r=S.reports.find(x=>x.id===rid); if(!r) return;
+  const c=closeChecks(rid);
+  if(!c.noR.length){ window._ackNR=null; render(); return; }
+  r.ackNoReceipt={ ids:c.noR.map(e=>e.id), at:new Date().toISOString().slice(0,10), by:(CU&&CU.email)||'' };
+  window._ackNR=null;
+  await save(); render();
+  toast('Missing receipts acknowledged \u2713');
+}
+async function ackNoRUndo(rid){
+  const r=S.reports.find(x=>x.id===rid); if(!r) return;
+  delete r.ackNoReceipt;
+  window._ackNR=null;
   await save(); render();
   toast('Acknowledgement removed');
 }
@@ -4144,6 +4184,17 @@ async function expR(rid, auto){
     const ackTxt=(r.ackOther&&r.ackOther.at)?(' Acknowledged '+r.ackOther.at+(r.ackOther.by?' by '+r.ackOther.by:'')+'.'):'';
     sheet1rows.push([
       sc('\u26A0 '+otherExps.length+' line'+(otherExps.length>1?'s':'')+' in \u201COther\u201D \u2014 no GL account assigned.'+ackTxt, XST.OTHER_NOTE),
+      ...Array(NC1-1).fill(bc(XST.OTHER_NOTE)),
+    ]);
+    s1merges.push('A'+sheet1rows.length+':'+lastC1+sheet1rows.length);
+  }
+
+  /* v3.1.15 — footnote for lines missing a receipt */
+  const noRExps=exps.filter(e=>!(e.receipts&&e.receipts.length));
+  if(noRExps.length){
+    const ackTxt2=(r.ackNoReceipt&&r.ackNoReceipt.at)?(' Acknowledged '+r.ackNoReceipt.at+(r.ackNoReceipt.by?' by '+r.ackNoReceipt.by:'')+'.'):'';
+    sheet1rows.push([
+      sc('\u26A0 '+noRExps.length+' line'+(noRExps.length>1?'s':'')+' missing a receipt.'+ackTxt2, XST.OTHER_NOTE),
       ...Array(NC1-1).fill(bc(XST.OTHER_NOTE)),
     ]);
     s1merges.push('A'+sheet1rows.length+':'+lastC1+sheet1rows.length);
