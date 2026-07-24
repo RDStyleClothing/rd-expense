@@ -614,7 +614,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.1.13</span>
+      <span class="vbm" id="vBdgM">v3.1.14</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -694,7 +694,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.1.13</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.1.14</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -720,7 +720,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.1.13',
+  APP_VERSION:    'v3.1.14',
   APP_RELEASED:   'July 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -3219,7 +3219,8 @@ function fxBlock(cad, rate){
 
 function mNR(){
   closeFab();
-  mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div>'+
+  /* v3.1.14 — no backdrop click-to-close (matches Edit/Add Expense; protects typed report details) */
+  mR.innerHTML='<div class="mbg"><div class="modal"><div class="mh2"></div>'+
   '<div class="mhd"><h2>New Report</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
   '<div class="mb">'+
     '<div class="fld"><label>Report Name *</label><input class="fi2" id="rN" placeholder="e.g. RD MENS | June 2026"/></div>'+
