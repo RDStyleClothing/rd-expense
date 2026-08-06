@@ -614,7 +614,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.1.17</span>
+      <span class="vbm" id="vBdgM">v3.2.0</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -694,7 +694,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.1.17</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">July 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.2.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">August 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -720,7 +720,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.1.17',
+  APP_VERSION:    'v3.2.0',
   APP_RELEASED:   'July 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -2500,12 +2500,19 @@ function render(){
   document.body.dataset.view=S.view;
   $('navRC').textContent=S.reports.length; $('navEC').textContent=S.expenses.length;
   const m=$('mainC');
+  /* v3.2.0 — preserve scroll on in-place re-renders (sync echoes, receipt hydration,
+     inline refreshes). Only a genuine navigation — a different view or report —
+     resets to the top. Fixes the "app jumps back to the top while I'm scrolling"
+     bug triggered by onSnapshot echoes and hydratePending retry passes. */
+  const key=S.view+'|'+(S.rid||'');
+  const keep=(S._rKey===key)?m.scrollTop:0;
+  S._rKey=key;
   if(S.view==='dashboard')     m.innerHTML=vDash();
   else if(S.view==='reports')  m.innerHTML=vRep();
   else if(S.view==='expenses') m.innerHTML=vExp();
   else if(S.view==='report-detail') m.innerHTML=vDet(S.rid);
   else if(S.view==='close-month')   m.innerHTML=vClose(S.rid);
-  m.scrollTop=0;
+  m.scrollTop=keep;
 }
 
 // "was $80.00 USD" note shown when an expense records an original foreign price
@@ -2731,9 +2738,7 @@ function rptRowHtml(r){
     '<td><div style="display:flex;gap:4px">'+
       '<button class="ib" title="Rename" onclick="mRenameReport(\''+r.id+'\')">&#9998;</button>'+
       '<button class="ib" onclick="expR(\''+r.id+'\')">&#11015;</button>'+
-      (r.status==='Open'
-        ?'<button class="ib" title="Delete report" onclick="delR(\''+r.id+'\')">&#128465;</button>'
-        :'<button class="ib" title="Closed reports can&#39;t be deleted" style="opacity:.35;cursor:not-allowed" onclick="toast(\'Closed reports can&rsquo;t be deleted\',\'#BA7517\')">&#128465;</button>')+
+      '<button class="ib" onclick="delR(\''+r.id+'\')">&#128465;</button>'+
     '</div></td></tr>';
 }
 function rptCardHtml(r){
@@ -3230,15 +3235,7 @@ function vDet(rid){
       :(r.notes
          ?'<div style="font-size:13px;margin-top:6px;white-space:pre-wrap">'+esc(r.notes)+'</div>'
          :'<div style="font-size:13px;color:var(--tx3);font-style:italic;margin-top:4px">'+(locked?'No notes.':'No notes yet &mdash; tap the pencil to add some.')+'</div>'))+
-  '</div>'+
-  /* v3.1.17 — mobile-accessible delete (Open reports only); opens the safety-gate modal */
-  (locked?'':'<div class="card" style="padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
-    '<div style="flex:1;min-width:180px">'+
-      '<div style="font-size:13px;font-weight:700;color:var(--rd)">Delete this report</div>'+
-      '<div style="font-size:12px;color:var(--tx3);margin-top:2px">Expenses are never deleted &mdash; they move to &ldquo;Not in Report&rdquo;.</div>'+
-    '</div>'+
-    '<button class="btn" style="color:var(--rd);border-color:rgba(163,45,45,.45);background:var(--rdbg);flex-shrink:0" onclick="delR(\''+r.id+'\')">&#128465; Delete&hellip;</button>'+
-  '</div>');
+  '</div>';
 }
 
 /* ══════════════════════════════════════════════════════ MODALS */
@@ -3777,55 +3774,14 @@ function assignOrphan(id,rid){ if(!rid)return; const e=S.expenses.find(x=>x.id==
 /* v3.0.4 — detach a filed expense back to "Not in Report" (reportId cleared; receipt preserved) */
 function unfileE(id){ const e=S.expenses.find(x=>x.id===id); if(!e)return; if(isOrphan(e))return; e.reportId=''; e._ts=Date.now(); save().then(()=>render()); toast('Moved to Not in Report'); }
 /* v3.0.3 — deleting a report no longer deletes its expenses; they detach to "Not in Report" (receipts preserved) */
-/* v3.1.17 — Delete Report safety gate. Replaces native confirm().
-   Rules: only Open reports are deletable (closed months are the tax record);
-   a report holding expenses requires an explicit acknowledgment before the
-   Delete button enables. Expenses are never deleted — they detach to
-   "Not in Report" with receipts intact. */
 function delR(id){
-  const r=S.reports.find(x=>x.id===id); if(!r) return;
-  if(r.status!=='Open'){ toast('Closed reports can\u2019t be deleted','#BA7517'); return; }
-  const ex=S.expenses.filter(e=>e.reportId===id);
-  const n=ex.length, tx=TAX.sum(ex), cur=rptCurrency(r);
-  mR.innerHTML='<div class="mbg" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh2"></div>'+
-  '<div class="mhd"><h2>&#128465; Delete report</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
-  '<div class="mb">'+
-    '<div>'+
-      '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--bd)"><span style="color:var(--tx2)">Report</span><strong>'+esc(r.name)+'</strong></div>'+
-      '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--bd)"><span style="color:var(--tx2)">Expenses</span><strong>'+n+'</strong></div>'+
-      '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0"><span style="color:var(--tx2)">Total + tax</span><strong>'+fmt(tx.tot,cur)+'</strong></div>'+
-    '</div>'+
-    (n>0
-      ?'<div style="background:var(--ambg);border:1px solid #f0dcb6;border-radius:9px;padding:12px 14px;font-size:13px;color:var(--amdk)">'+
-         '<div style="font-weight:700;margin-bottom:5px">&#9888;&#65039; This report contains expenses</div>'+
-         'The report itself is permanently deleted, but its expenses are <strong>not</strong>:'+
-         '<ul style="margin:6px 0 0 18px;display:flex;flex-direction:column;gap:4px">'+
-           '<li>All <strong>'+n+' expense'+(n>1?'s':'')+' move to &ldquo;Not in Report&rdquo;</strong></li>'+
-           '<li>Receipt images stay attached to their expenses</li>'+
-           '<li>They can be re-filed into another report at any time</li>'+
-         '</ul></div>'+
-       '<label style="display:flex;gap:10px;align-items:flex-start;background:var(--s2);border:1px solid var(--bd2);border-radius:9px;padding:12px 14px;cursor:pointer;user-select:none">'+
-         '<input type="checkbox" id="dlAck" style="margin-top:2px;width:17px;height:17px;accent-color:var(--rd);flex:none;cursor:pointer" onchange="$(\'dlGo\').disabled=!this.checked"/>'+
-         '<span><span style="font-size:13px;font-weight:600;display:block">I understand the expenses will be detached</span>'+
-         '<span style="font-size:12px;color:var(--tx2);display:block;margin-top:2px">They will appear under &ldquo;Not in Report&rdquo; and must be re-filed or removed individually.</span></span>'+
-       '</label>'
-      :'<div style="color:var(--tx2);font-size:13px">This report is empty. Deleting it removes only the report shell &mdash; nothing else is affected.</div>')+
-  '</div>'+
-  '<div class="mf"><button class="btn" onclick="closeM()">Cancel</button>'+
-    '<button class="btn" id="dlGo" style="background:var(--rd);border-color:var(--rd);color:#fff"'+(n>0?' disabled':'')+' onclick="doDelReport(\''+id+'\')">Delete report</button></div>'+
-  '</div></div>';
-}
-async function doDelReport(id){
-  const r=S.reports.find(x=>x.id===id); if(!r) return;
-  if(r.status!=='Open') return;                                    // defensive re-check
   const n=S.expenses.filter(e=>e.reportId===id).length;
-  if(n>0 && !$('dlAck')?.checked) return;                          // gate re-check
+  const msg=n?('Delete this report? Its '+n+' expense'+(n>1?'s':'')+' will move to "Not in Report".'):'Delete this report?';
+  if(!confirm(msg))return;
   S.expenses.forEach(e=>{ if(e.reportId===id) e.reportId=''; });
-  S.reports=S.reports.filter(x=>x.id!==id);
-  closeM();
-  if(S.view==='report-detail'&&S.rid===id) showView('reports');    // don't strand a dead detail view
-  await save(); render();
-  toast(n>0?('Report deleted \u00b7 '+n+' expense'+(n>1?'s':'')+' moved to Not in Report'):'Report deleted');
+  S.reports=S.reports.filter(r=>r.id!==id);
+  save().then(()=>render());
+  toast('Report deleted');
 }
 async function advSt(rid, ns) {
   const r = S.reports.find(r=>r.id===rid);
