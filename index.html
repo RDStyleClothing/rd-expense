@@ -614,7 +614,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.2.0</span>
+      <span class="vbm" id="vBdgM">v3.2.1</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -694,7 +694,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.2.0</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">August 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.2.1</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">August 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -720,7 +720,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.2.0',
+  APP_VERSION:    'v3.2.1',
   APP_RELEASED:   'July 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -2987,6 +2987,15 @@ function vClose(rid){
   '<div class="secH">Readiness checklist</div><div class="card">'+rows+'</div>'+
   taxBox(c.exps)+
   (mealsTot>0?'<div style="font-size:11px;color:var(--tx3);margin:8px 2px 0">&#9432; Meals &amp; Entertainment '+fmt(r2(mealsTot),rptCurrency(r))+' &mdash; 50% ITC/ITR only (already reflected above)</div>':'')+
+  /* v3.2.1 — export file name (editable anytime, even after close) */
+  '<div class="secH">Export file name</div><div class="card" style="padding:14px">'+
+    '<div class="fld"><label style="display:flex;align-items:center;gap:8px">Name used for exported files'+
+      '<span style="flex:1"></span>'+
+      '<span id="exNameR_'+rid+'" onclick="exNameReset(\''+rid+'\')" style="font-size:12px;color:var(--bl);cursor:pointer;font-weight:600;display:'+(r.exportName?'inline':'none')+'">Reset to report name</span></label>'+
+    '<input class="fi2" id="exName_'+rid+'" value="'+esc(expNameOf(r))+'" placeholder="'+esc(r.name)+'" oninput="exNameInput(\''+rid+'\')" onblur="exNameCommit(\''+rid+'\')"/></div>'+
+    '<div id="exNameP_'+rid+'" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:var(--tx2);background:var(--bg);border:1px dashed var(--bd2);border-radius:8px;padding:8px 10px;margin-top:8px;line-height:1.7;word-break:break-all">'+exNamePrevHTML(expNameOf(r))+'</div>'+
+    '<div style="font-size:11px;color:var(--tx3);margin-top:8px">Used for the downloaded files and inside the exported Excel &amp; receipts PDF. Leave blank to follow the report name. Can be changed anytime, even after the month is closed.</div>'+
+  '</div>'+
   /* v3.1.11 — close without downloading + exportedAt banner */
   (locked
     ?'<div class="card" style="margin-top:16px"><div class="inb" style="cursor:default">'+
@@ -4043,7 +4052,8 @@ async function expR(rid, auto){
   const r=S.reports.find(r=>r.id===rid); if(!r)return;
   if(typeof JSZip==='undefined'){toast('Export library loading — try again in a moment','#BA7517');return;}
   const exps=sortExps(S.expenses.filter(e=>e.reportId===rid),'date-asc');
-  const fn=r.name.replace(/[^a-z0-9]/gi,'_')+'_Receipts';
+  const exNm=expNameOf(r);                                   /* v3.2.1 */
+  const fn=exFileBase(exNm)+'_Receipts';
   const sp='Downloads/'+fn+'/';
   const stx=TAX.sum(exps);
   const fxTot=r2(exps.filter(e=>expEffCur(e)!=='CAD').reduce((s,e)=>s+expEffAmt(e),0));
@@ -4055,7 +4065,7 @@ async function expR(rid, auto){
   const hGst = hasNonQC ? 'GST/HST'       : 'GST (5%)';
   const hQst = hasNonQC ? 'QST/PST'       : 'QST (9.975%)';
   const hItc = hasNonQC ? 'ITC (GST/HST)' : 'ITC (GST)';
-  const fname=r.name.replace(/[^a-z0-9]/gi,'_')+'_'+CFG.APP_VERSION+'_Report.xlsx';
+  const fname=exFileBase(exNm)+'_'+CFG.APP_VERSION+'_Report.xlsx';
 
   const allStrings=[];
   function si(s){ const str=String(s==null?'':s); if(!allStrings.includes(str))allStrings.push(str); return str; }
@@ -4081,7 +4091,7 @@ async function expR(rid, auto){
   s1merges.push(`A1:${lastC1}1`);
 
   const meta=[
-    ['Report',r.name],
+    ['Report',exNm],
     ['Currency',multiCurrency ? expCurs.join(', ')+' (mixed)' : rCur],
     ['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
     ['Status',r.status],['Jurisdiction',hasNonQC?('Canada — provincial rates per expense ('+provsIn+')'):'Québec, Canada — GST 5% + QST 9.975%'],
@@ -4271,7 +4281,7 @@ async function expR(rid, auto){
 
   sheet3rows.push([sc(hasNonQC?('Canadian Tax Summary — '+provsIn):'Québec Tax Summary — GST 5% + QST 9.975%',XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR),bc(XST.SUM_HDR)]);
   s3merges.push('A1:G1'); tr++;
-  [[r.name,'Report'],[r.status,'Status'],[(r.startDate||'')+(r.endDate?' to '+r.endDate:''),'Period'],[exps.length,'Items']].forEach(([v,l])=>{
+  [[exNm,'Report'],[r.status,'Status'],[(r.startDate||'')+(r.endDate?' to '+r.endDate:''),'Period'],[exps.length,'Items']].forEach(([v,l])=>{
     sheet3rows.push([sc(l,XST.META_LBL),sc(String(v),XST.META_VAL),bc(),bc(),bc(),bc(),bc()]);
     s3merges.push(`B${tr+2}:G${tr+2}`); tr++;
   });
@@ -4311,7 +4321,7 @@ async function expR(rid, auto){
   /* SHEET: SUMMARY */
   const sheet4rows=[];
   sheet4rows.push([sc('Report Summary',XST.SUM_HDR),bc(XST.SUM_HDR)]);
-  const ovMeta=[['Report',r.name],['Category',r.category],['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
+  const ovMeta=[['Report',exNm],['Category',r.category],['Period',(r.startDate||'')+(r.endDate?' to '+r.endDate:'')],
    ['Status',r.status],['Line Items',String(exps.length)]];
   if(r.statusAt) ['Approved','Awaiting Payment','Paid'].forEach(st=>{ if(r.statusAt[st]) ovMeta.push([st+' on', r.statusAt[st]]); });
   ovMeta.forEach(([l,v])=>sheet4rows.push([sc(l,XST.SUM_LBL),sc(v,XST.SUM_VAL)]));
@@ -4361,7 +4371,7 @@ async function expR(rid, auto){
     const isImg  = !isPdf && (src.startsWith('data:image') || src.startsWith('https://') || src.startsWith('http://'));
     if(isPdf || isImg) {
       const ext  = isPdf ? 'pdf' : 'jpg';
-      lines.push({src, isPdf, expIdx:i, name:r.name.replace(/[^a-z0-9]/gi,'_')+'_Line'+(i+1)+'_Receipt'+(ri+1)+'.'+ext, path:sp});
+      lines.push({src, isPdf, expIdx:i, name:exFileBase(exNm)+'_Line'+(i+1)+'_Receipt'+(ri+1)+'.'+ext, path:sp});
     }
   }));
 
@@ -4409,7 +4419,7 @@ function showExportModal(r, fname, blob, lines, fn, sp, rid, auto) {
   '<div class="modal"><div class="mh2"></div>'+
   '<div class="mhd"><h2>&#11015; Export Report</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
   '<div class="mb" style="gap:12px">'+
-    '<div style="font-size:13px;color:var(--tx2)"><strong style="color:var(--tx)">'+esc(r.name)+'</strong> &mdash; choose export format:</div>'+
+    '<div style="font-size:13px;color:var(--tx2)"><strong style="color:var(--tx)">'+esc(expNameOf(r))+'</strong> &mdash; choose export format:</div>'+
     opt('📊','Excel File Only','Expense report as an .xlsx spreadsheet','doExportExcel()',true,false)+
     opt('📄','Receipts PDF Only',hasReceipts?'All receipt images compiled into a single PDF':'No receipts attached to this report — add receipts first','doExportPDF()',false,!hasReceipts)+
     opt('📦','Excel + Receipts PDF',hasReceipts?'Both the spreadsheet and a PDF of all receipts':'No receipts attached to this report — add receipts first','doExportBoth()',false,!hasReceipts)+
@@ -4471,6 +4481,41 @@ async function stampExported(){
    (exported on/after the Approved date; guards export-while-Open → edit → close) */
 function bundleFresh(r){
   return !!(r&&r.exportedAt&&(!r.statusAt||!r.statusAt['Approved']||r.exportedAt>=r.statusAt['Approved']));
+}
+
+/* v3.2.1 — export file name: user-editable name used everywhere in exports
+   (file names, Excel meta rows, receipts-PDF header). Stored as r.exportName
+   only when it differs from r.name; otherwise exports follow the report name. */
+function expNameOf(r){ return (r&&r.exportName)||(r&&r.name)||''; }
+function exFileBase(s){ return String(s||'').replace(/[^a-z0-9]/gi,'_'); }
+function exNamePrevHTML(nm){
+  const base=exFileBase(nm);
+  return '&#128202; <b style="color:var(--gdk)">'+esc(base)+'_'+CFG.APP_VERSION+'_Report.xlsx</b><br>'+
+         '&#128196; <b style="color:var(--gdk)">'+esc(base)+'_'+CFG.APP_VERSION+'_Report_Receipts.pdf</b>';
+}
+function exNameInput(rid){
+  const r=S.reports.find(x=>x.id===rid); if(!r)return;
+  const el=$('exName_'+rid); if(!el)return;
+  const nm=el.value.trim()||r.name;
+  const pv=$('exNameP_'+rid); if(pv) pv.innerHTML=exNamePrevHTML(nm);
+  const rl=$('exNameR_'+rid); if(rl) rl.style.display=(nm!==r.name)?'inline':'none';
+}
+async function exNameCommit(rid){
+  const r=S.reports.find(x=>x.id===rid); if(!r)return;
+  const el=$('exName_'+rid); if(!el)return;
+  const v=el.value.trim();
+  const nv=(v&&v!==r.name)?v:null;                 // null = follow report name
+  const cur=r.exportName||null;
+  if(nv===cur){ if(!v){ el.value=r.name; exNameInput(rid); } return; }
+  if(nv===null) delete r.exportName; else r.exportName=nv;
+  S._pendingRemote=null;
+  await save(); render();
+  toast(nv===null?'Export name follows the report name':'Export file name saved \u2713');
+}
+function exNameReset(rid){
+  const r=S.reports.find(x=>x.id===rid); if(!r)return;
+  const el=$('exName_'+rid); if(el) el.value=r.name;
+  exNameCommit(rid);
 }
 
 // Resolve any receipt image source (Firebase Storage https URL, or a data URL of
@@ -4555,7 +4600,7 @@ async function buildReceiptsPDF(r, lines) {
   doc.setFontSize(16); doc.setFont('helvetica','bold');
   doc.text('RD Expense — Receipt Package', M, 12);
   doc.setFontSize(10); doc.setFont('helvetica','normal');
-  doc.text(r.name, M, 19);
+  doc.text(expNameOf(r), M, 19);   /* v3.2.1 — export name */
   doc.text('Exported: '+new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'}), M, 25);
 
   const exps  = sortExps(S.expenses.filter(e=>e.reportId===r.id),'date-asc');
