@@ -614,7 +614,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.2.1</span>
+      <span class="vbm" id="vBdgM">v3.2.2</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -694,7 +694,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.2.1</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">August 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.2.2</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">August 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -720,7 +720,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.2.1',
+  APP_VERSION:    'v3.2.2',
   APP_RELEASED:   'July 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -2738,12 +2738,12 @@ function rptRowHtml(r){
     '<td><div style="display:flex;gap:4px">'+
       '<button class="ib" title="Rename" onclick="mRenameReport(\''+r.id+'\')">&#9998;</button>'+
       '<button class="ib" onclick="expR(\''+r.id+'\')">&#11015;</button>'+
-      '<button class="ib" onclick="delR(\''+r.id+'\')">&#128465;</button>'+
+      (r.status==='Open'?'<button class="ib" title="Delete report" onclick="delR(\''+r.id+'\')">&#128465;</button>':'')+
     '</div></td></tr>';
 }
 function rptCardHtml(r){
   const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);
-  return'<div class="xcd" onclick="showView(\'report-detail\',\''+r.id+'\')"><div class="xcic">&#128203;</div><div class="xcb"><div class="xcn">'+esc(r.name)+'</div><div class="xcm">'+esc(r.category)+' &middot; '+badge(r.status)+'</div></div><div style="text-align:right"><div class="xca">'+fmt(tx.tot,rptCurrency(r))+'</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">'+ex.length+' lines</div></div></div>';
+  return'<div class="xcd" onclick="showView(\'report-detail\',\''+r.id+'\')"><div class="xcic">&#128203;</div><div class="xcb"><div class="xcn">'+esc(r.name)+'</div><div class="xcm">'+esc(r.category)+' &middot; '+badge(r.status)+'</div></div><div style="text-align:right"><div class="xca">'+fmt(tx.tot,rptCurrency(r))+'</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">'+ex.length+' lines</div>'+(r.status==='Open'?'<div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px"><button class="ib" style="font-size:12px" title="Delete report" onclick="event.stopPropagation();delR(\''+r.id+'\')">&#128465;</button></div>':'')+'</div></div>';
 }
 function rsecHtml(b,reps){
   return '<div class="rsec card'+(RSEC_CLOSED[b.key]?' closed':'')+'">'+
@@ -3784,6 +3784,9 @@ function assignOrphan(id,rid){ if(!rid)return; const e=S.expenses.find(x=>x.id==
 function unfileE(id){ const e=S.expenses.find(x=>x.id===id); if(!e)return; if(isOrphan(e))return; e.reportId=''; e._ts=Date.now(); save().then(()=>render()); toast('Moved to Not in Report'); }
 /* v3.0.3 — deleting a report no longer deletes its expenses; they detach to "Not in Report" (receipts preserved) */
 function delR(id){
+  const r=S.reports.find(x=>x.id===id);
+  if(!r) return;
+  if(r.status!=='Open'){ toast('Only Open reports can be deleted','#A32D2D'); return; }
   const n=S.expenses.filter(e=>e.reportId===id).length;
   const msg=n?('Delete this report? Its '+n+' expense'+(n>1?'s':'')+' will move to "Not in Report".'):'Delete this report?';
   if(!confirm(msg))return;
