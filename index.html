@@ -463,6 +463,9 @@ tr.trc:active td{background:var(--bg)}
 .inbT b{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .inbT span{font-size:11.5px;color:var(--tx2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .inbChev{color:var(--tx3);font-size:16px;flex-shrink:0}
+/* v3.2.4 — dismiss (acknowledge) button on attention reminders */
+.inbX{width:24px;height:24px;border:none;border-radius:50%;background:transparent;color:var(--tx3);font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0}
+.inbX:hover{background:var(--bg);color:var(--tx1)}
 .dexp{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid var(--bd);cursor:pointer;transition:background .12s}
 .dexp:last-child{border-bottom:none}
 .dexp:active{background:var(--bg)}
@@ -618,7 +621,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.2.3</span>
+      <span class="vbm" id="vBdgM">v3.2.4</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -698,7 +701,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.2.3</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">September 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.2.4</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">September 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -724,7 +727,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.2.3',
+  APP_VERSION:    'v3.2.4',
   APP_RELEASED:   'September 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -813,7 +816,11 @@ const S = {
   q:{text:'',cat:'',sort:'date-desc'},
   _saving:false,
   _pendingBlobs:{},
-  _healed:{}
+  _healed:{},
+  /* v3.2.4 — user-dismissed "Needs your attention" reminders. Keyed per item state
+     (see vDash) so a reminder resurfaces when its underlying state changes. Synced
+     in the user doc so a dismissal follows the user across devices. */
+  dismissed:{}
 };
 
 const r2  = n => Math.round(n*100)/100;
@@ -1165,6 +1172,7 @@ async function _doSave() {
     await FB.db.collection('users').doc(CU.uid).set({
       reports:   stripUndef(S.reports),
       expenses:  stripUndef(cloudExpenses()),
+      dismissed: stripUndef(S.dismissed||{}),   /* v3.2.4 — dismissed attention reminders */
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     await Promise.all(blobWrites);
@@ -1198,6 +1206,7 @@ async function load() {
     if(doc.exists) {
       const d = doc.data();
       if(d.reports)  S.reports  = d.reports;
+      if(d.dismissed) S.dismissed = d.dismissed;   /* v3.2.4 — dismissed attention reminders */
       if(d.expenses) {
         S.expenses = d.expenses.map(e => migrateExp({
           ...e,
@@ -1235,6 +1244,7 @@ async function load() {
 async function applyRemoteData(d) {
   if (!d) return;
   if (d.reports)  S.reports  = d.reports;
+  if (d.dismissed) S.dismissed = d.dismissed;   /* v3.2.4 — dismissed attention reminders */
   if (d.expenses) {
     S.expenses = d.expenses.map(e => migrateExp({
       ...e,
@@ -1918,7 +1928,7 @@ document.addEventListener('click', e => {
 async function doSignOut() {
   $('uMenu').classList.remove('open');
   if(!confirm('Sign out of RD Expense?')) return;
-  S.reports=[]; S.expenses=[]; S._pendingBlobs={}; S._healed={};
+  S.reports=[]; S.expenses=[]; S._pendingBlobs={}; S._healed={}; S.dismissed={};
   await FB.auth.signOut();
 }
 
@@ -2627,6 +2637,16 @@ async function dashPaste(){
   toast('Press Ctrl+V to paste your receipt');
 }
 function catIco(c){ return ({'Auto Expense':'🚗','Travel & Buying':'✈️','Travel & Selling':'✈️','Samples':'📦','Mobile':'📱','Meals & Entertainment':'🍽️','Office':'🗂️','Computer':'💻'})[c]||'🧾'; }
+/* v3.2.4 — acknowledge & remove a "Needs your attention" reminder. The key encodes
+   the reminder's current state (see vDash), so it comes back if the state changes. */
+function dismissInb(ev,key){
+  ev.stopPropagation();
+  S.dismissed=S.dismissed||{};
+  S.dismissed[key]=Date.now();
+  render();
+  save();
+  toast('Reminder dismissed — it’ll return if anything changes');
+}
 function vDash(){
   const open=S.reports.filter(r=>r.status==='Open').length;
   const aw=S.reports.filter(r=>r.status==='Awaiting Payment').length;
@@ -2643,7 +2663,10 @@ function vDash(){
   /* inbox — what needs attention */
   const openIds=new Set(S.reports.filter(r=>r.status==='Open').map(r=>r.id));
   const noRcpt=S.expenses.filter(e=>openIds.has(e.reportId)&&!(e.receipts&&e.receipts.length));
-  const pendCnt=S.expenses.reduce((n,e)=>n+((e.receipts||[]).filter(rc=>typeof rc==='string'&&rc.startsWith(PENDING_PREFIX)).length),0);
+  /* v3.2.4 — pending uploads grouped per expense so the reminder can say which
+     expense/report each waiting photo belongs to. */
+  const pendExps=S.expenses.map(e=>({e,rids:(e.receipts||[]).filter(rc=>typeof rc==='string'&&rc.startsWith(PENDING_PREFIX))})).filter(x=>x.rids.length);
+  const pendCnt=pendExps.reduce((n,x)=>n+x.rids.length,0);
   const curMonth=new Date().toISOString().slice(0,7);
   const stale=S.reports.filter(r=>{
     if(r.status!=='Open')return false;
@@ -2653,23 +2676,51 @@ function vDash(){
     return last&&last.slice(0,7)<curMonth;
   });
   let inbox='';
+  /* v3.2.4 — dismissible reminders. Every reminder row gets a stable key derived
+     from its underlying state; tapping ✕ stores the key in S.dismissed (synced in
+     the user doc, so a dismissal follows the user across devices). When the state
+     changes — a new photo goes pending, a report changes status, a new month starts —
+     the key changes, so the reminder resurfaces. _inbKeys collects every candidate
+     key this render so dismissals whose item no longer exists are pruned. */
+  const _inbKeys=new Set();
+  const h32=s=>{let h=0;for(let i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))|0}return (h>>>0).toString(36)};
+  const inbDis=k=>{_inbKeys.add(k);return !!(S.dismissed&&S.dismissed[k]);};
+  const inbXBtn=k=>'<button class="inbX" title="Dismiss this reminder" aria-label="Dismiss this reminder" onclick="dismissInb(event,\''+k+'\')">&#10005;</button>';
   /* v3.1.7 — admin-only: surface unresolved app errors first. Count fed by the
      errorLogs listener started at admin login; regular users never see this. */
   if(CU&&CU.isAdmin&&S._admErrCount>0){
     const u=S._admErrUsers||0;
     inbox+='<div class="inb" onclick="openAdminFromApp()"><div class="inbI" style="background:var(--rdbg)">&#128030;</div><div class="inbT"><b>'+S._admErrCount+' app error'+(S._admErrCount>1?'s':'')+' reported</b><span>'+(u?u+' user'+(u>1?'s':'')+' affected · ':'')+'tap to review in Admin Panel</span></div><span class="inbChev">&rsaquo;</span></div>';
   }
-  if(noRcpt.length) inbox+='<div class="inb" onclick="showView(\'expenses\')"><div class="inbI" style="background:var(--ambg)">&#129534;</div><div class="inbT"><b>'+noRcpt.length+' expense'+(noRcpt.length>1?'s':'')+' missing receipt'+(noRcpt.length>1?'s':'')+'</b><span>'+esc(noRcpt.slice(0,3).map(e=>e.merchant||'(no merchant)').join(' · '))+'</span></div><span class="inbChev">&rsaquo;</span></div>';
-  if(pendCnt) inbox+='<div class="inb" onclick="retryPendingUploads();toast(\'Retrying photo uploads&hellip;\')"><div class="inbI" style="background:var(--blbg)">&#9203;</div><div class="inbT"><b>'+pendCnt+' photo'+(pendCnt>1?'s':'')+' waiting to upload</b><span>Tap to retry now</span></div><span class="inbChev">&rsaquo;</span></div>';
-  stale.slice(0,3).forEach(r=>{
-    const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);
-    inbox+='<div class="inb" onclick="showView(\'close-month\',\''+r.id+'\')"><div class="inbI" style="background:var(--gbg)">&#10003;</div><div class="inbT"><b>'+esc(r.name)+' ready to close</b><span>'+ex.length+' expense'+(ex.length!==1?'s':'')+' &middot; '+fmt(tx.tot,rptCurrency(r))+'</span></div><span class="inbChev">&rsaquo;</span></div>';
+  if(noRcpt.length){
+    const kNR='norcpt:'+h32(noRcpt.map(e=>e.id).sort().join(','));
+    if(!inbDis(kNR)) inbox+='<div class="inb" onclick="showView(\'expenses\')"><div class="inbI" style="background:var(--ambg)">&#129534;</div><div class="inbT"><b>'+noRcpt.length+' expense'+(noRcpt.length>1?'s':'')+' missing receipt'+(noRcpt.length>1?'s':'')+'</b><span>'+esc(noRcpt.slice(0,3).map(e=>e.merchant||'(no merchant)').join(' · '))+'</span></div>'+inbXBtn(kNR)+'<span class="inbChev">&rsaquo;</span></div>';
+  }
+  if(pendCnt){
+    /* v3.2.4 — say WHICH expense (merchant) and report each waiting photo belongs to */
+    const kPD='pend:'+h32(pendExps.flatMap(x=>x.rids).sort().join(','));
+    if(!inbDis(kPD)){
+      const who=pendExps.slice(0,2).map(x=>{
+        const r=S.reports.find(r=>r.id===x.e.reportId);
+        return esc(x.e.merchant||'(no merchant)')+(x.rids.length>1?' ('+x.rids.length+')':'')+(r?' &mdash; '+esc(r.name):'');
+      }).join(' &middot; ')+(pendExps.length>2?' &middot; +'+(pendExps.length-2)+' more':'');
+      inbox+='<div class="inb" onclick="retryPendingUploads();toast(\'Retrying photo uploads&hellip;\')"><div class="inbI" style="background:var(--blbg)">&#9203;</div><div class="inbT"><b>'+pendCnt+' photo'+(pendCnt>1?'s':'')+' waiting to upload</b><span>'+who+' &middot; Tap to retry now</span></div>'+inbXBtn(kPD)+'<span class="inbChev">&rsaquo;</span></div>';
+    }
+  }
+  stale.filter(r=>!inbDis('stale:'+r.id+':'+curMonth)).slice(0,3).forEach(r=>{
+    const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);const k='stale:'+r.id+':'+curMonth;
+    inbox+='<div class="inb" onclick="showView(\'close-month\',\''+r.id+'\')"><div class="inbI" style="background:var(--gbg)">&#10003;</div><div class="inbT"><b>'+esc(r.name)+' ready to close</b><span>'+ex.length+' expense'+(ex.length!==1?'s':'')+' &middot; '+fmt(tx.tot,rptCurrency(r))+'</span></div>'+inbXBtn(k)+'<span class="inbChev">&rsaquo;</span></div>';
   });
   /* v3.1.11 — closed reports whose bundle was never downloaded */
-  S.reports.filter(r=>r.status!=='Open'&&!bundleFresh(r)).slice(0,3).forEach(r=>{
-    const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);
-    inbox+='<div class="inb" onclick="showView(\'close-month\',\''+r.id+'\')"><div class="inbI" style="background:var(--ambg);color:var(--amdk)">&#11015;</div><div class="inbT"><b>'+esc(r.name)+' &mdash; bundle not downloaded</b><span>'+(r.statusAt&&r.statusAt['Approved']?'Approved '+fd(r.statusAt['Approved'])+' &middot; ':'')+ex.length+' expense'+(ex.length!==1?'s':'')+' &middot; '+fmt(tx.tot,rptCurrency(r))+'</span></div><span class="inbChev">&rsaquo;</span></div>';
+  S.reports.filter(r=>r.status!=='Open'&&!bundleFresh(r)&&!inbDis('bundle:'+r.id+':'+r.status)).slice(0,3).forEach(r=>{
+    const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);const k='bundle:'+r.id+':'+r.status;
+    inbox+='<div class="inb" onclick="showView(\'close-month\',\''+r.id+'\')"><div class="inbI" style="background:var(--ambg);color:var(--amdk)">&#11015;</div><div class="inbT"><b>'+esc(r.name)+' &mdash; bundle not downloaded</b><span>'+(r.statusAt&&r.statusAt['Approved']?'Approved '+fd(r.statusAt['Approved'])+' &middot; ':'')+ex.length+' expense'+(ex.length!==1?'s':'')+' &middot; '+fmt(tx.tot,rptCurrency(r))+'</span></div>'+inbXBtn(k)+'<span class="inbChev">&rsaquo;</span></div>';
   });
+  /* v3.2.4 — prune dismissals whose reminder no longer exists in any form, so the
+     synced map can't grow forever. Only prune once real data is loaded. */
+  if(S.dismissed&&(S.reports.length||S.expenses.length)){
+    for(const k in S.dismissed){ if(!_inbKeys.has(k)) delete S.dismissed[k]; }
+  }
   const inboxHtml='<div class="secH inbH">Needs your attention</div><div class="card inbC">'+
     (inbox||'<div class="inb" style="cursor:default"><div class="inbI" style="background:var(--gbg)">&#127881;</div><div class="inbT"><b>You&rsquo;re all caught up</b><span>Nothing needs review right now</span></div></div>')+'</div>';
 
@@ -5041,7 +5092,7 @@ window.addEventListener('load', () => {
       if (S._unsubErr) { try { S._unsubErr(); } catch(_){} S._unsubErr = null; }
       S._admErrCount = 0; S._admErrUsers = 0;
       CU = null;
-      S.reports=[]; S.expenses=[]; S._pendingBlobs={}; S._healed={};
+      S.reports=[]; S.expenses=[]; S._pendingBlobs={}; S._healed={}; S.dismissed={};
       $('app').style.display = 'none';
       $('adminScreen').style.display = 'none';
       $('loginScreen').style.display = 'flex';
