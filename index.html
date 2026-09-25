@@ -621,7 +621,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.2.4</span>
+      <span class="vbm" id="vBdgM">v3.2.5</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -701,7 +701,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.2.4</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">September 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.2.5</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">September 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -727,7 +727,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.2.4',
+  APP_VERSION:    'v3.2.5',
   APP_RELEASED:   'September 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -975,9 +975,9 @@ function badge(s) {
 // Sort currencies: CAD first, USD second, then alphabetical
 function curSort(a,b){ return a==='CAD'?-1:b==='CAD'?1:a==='USD'?-1:b==='USD'?1:a.localeCompare(b); }
 
-const CATS=['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Other'];
+const CATS=['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Warehouse & Shipping','Other'];
 /* GL account numbers per expense category (RD International chart of accounts). 'Other' has no GL mapping. */
-const CAT_GL={'Auto Expense':'70201000','Travel & Buying':'55105000','Travel & Selling':'70101000','Samples':'55103000','Mobile':'80602000','Meals & Entertainment':'70102000','Office':'80403500','Computer':'80406000'};
+const CAT_GL={'Auto Expense':'70201000','Travel & Buying':'55105000','Travel & Selling':'70101000','Samples':'55103000','Mobile':'80602000','Meals & Entertainment':'70102000','Office':'80403500','Computer':'80406000','Warehouse & Shipping':'60303000'};
 
 // Validate a 3-letter currency code coming from untrusted input (e.g. SmartScan output)
 function validCur(c){ if(typeof c!=='string') return null; const u=c.trim().toUpperCase(); return CURRENCIES.some(x=>x.code===u)?u:null; }
@@ -2085,7 +2085,7 @@ async function doSmartScan(imgData, rid) {
           role: 'user',
           content: [
             fileBlock,
-            { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00 (the receipt total BEFORE any tip),"tip":0.00 or null (gratuity from a card/payment slip if visible),"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true,"province":"for Canadian receipts only: 2-letter province code (QC|ON|BC|AB|MB|SK|NS|NB|NL|PE|NT|NU|YT) from the merchant address or tax lines (e.g. a single HST line means an HST province; TVQ/QST means QC; PST means BC/SK/MB), else null","confidence":{"merchant":"high|medium|low","date":"high|medium|low","amount":"high|medium|low","currency":"high|medium|low","category":"high|medium|low"}}\nFor each confidence field: "high" only if the value is clearly printed and unambiguous on the receipt; "medium" if inferred or partially legible; "low" if guessed or unreadable.' }
+            { type:'text', text:'Extract from this receipt. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00 (the receipt total BEFORE any tip),"tip":0.00 or null (gratuity from a card/payment slip if visible),"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Warehouse & Shipping|Other","notes":"brief description","taxIncluded":true,"province":"for Canadian receipts only: 2-letter province code (QC|ON|BC|AB|MB|SK|NS|NB|NL|PE|NT|NU|YT) from the merchant address or tax lines (e.g. a single HST line means an HST province; TVQ/QST means QC; PST means BC/SK/MB), else null","confidence":{"merchant":"high|medium|low","date":"high|medium|low","amount":"high|medium|low","currency":"high|medium|low","category":"high|medium|low"}}\nFor each confidence field: "high" only if the value is clearly printed and unambiguous on the receipt; "medium" if inferred or partially legible; "low" if guessed or unreadable.' }
           ]
         }]
       })
@@ -2231,7 +2231,7 @@ async function _scanReceipt(file, dataUrl, rid, rptCurDef, ui){
       body: JSON.stringify({
         model:'claude-haiku-4-5-20251001', max_tokens:400,
         messages:[{ role:'user', content:[ fileBlock,
-          { type:'text', text:'Extract from this receipt or invoice. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00 (the receipt total BEFORE any tip),"tip":0.00 or null (gratuity from a card/payment slip if visible),"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Other","notes":"brief description","taxIncluded":true,"province":"for Canadian receipts only: 2-letter province code (QC|ON|BC|AB|MB|SK|NS|NB|NL|PE|NT|NU|YT) from the merchant address or tax lines (e.g. a single HST line means an HST province; TVQ/QST means QC; PST means BC/SK/MB), else null"}' }
+          { type:'text', text:'Extract from this receipt or invoice. Reply ONLY with valid JSON, no markdown:\n{"merchant":"store name","date":"YYYY-MM-DD","amount":0.00 (the receipt total BEFORE any tip),"tip":0.00 or null (gratuity from a card/payment slip if visible),"currency":"3-letter ISO currency code on the receipt e.g. CAD, USD, EUR","category":"one of: Auto Expense|Travel & Buying|Travel & Selling|Samples|Mobile|Meals & Entertainment|Office|Computer|Warehouse & Shipping|Other","notes":"brief description","taxIncluded":true,"province":"for Canadian receipts only: 2-letter province code (QC|ON|BC|AB|MB|SK|NS|NB|NL|PE|NT|NU|YT) from the merchant address or tax lines (e.g. a single HST line means an HST province; TVQ/QST means QC; PST means BC/SK/MB), else null"}' }
         ]}]
       })
     });
@@ -2636,7 +2636,7 @@ async function dashPaste(){
   }catch(_){ /* permission denied or unsupported — fall back to keyboard paste */ }
   toast('Press Ctrl+V to paste your receipt');
 }
-function catIco(c){ return ({'Auto Expense':'🚗','Travel & Buying':'✈️','Travel & Selling':'✈️','Samples':'📦','Mobile':'📱','Meals & Entertainment':'🍽️','Office':'🗂️','Computer':'💻'})[c]||'🧾'; }
+function catIco(c){ return ({'Auto Expense':'🚗','Travel & Buying':'✈️','Travel & Selling':'✈️','Samples':'📦','Mobile':'📱','Meals & Entertainment':'🍽️','Office':'🗂️','Computer':'💻','Warehouse & Shipping':'🚚'})[c]||'🧾'; }
 /* v3.2.4 — acknowledge & remove a "Needs your attention" reminder. The key encodes
    the reminder's current state (see vDash), so it comes back if the state changes. */
 function dismissInb(ev,key){
@@ -3364,7 +3364,7 @@ function mRenameReport(rid) {
     '<div class="r2">'+
       '<div class="fld"><label>Category</label>'+
         '<select class="fse" id="rnCat">'+
-          ['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Other']
+          ['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Warehouse & Shipping','Other']
             .map(c=>'<option'+(r.category===c?' selected':'')+'>'+c+'</option>').join('')+
         '</select></div>'+
       '<div class="fld"><label>Currency</label>'+
@@ -3426,7 +3426,7 @@ function mAE(rid, preImg, scanned) {
   // Pre-select SmartScan's detected currency only when it differs from the report default
   const scCur=validCur(sc.currency);
   const ovCur=(scCur && scCur!==rptCurrency(S.reports.find(x=>x.id===rid)))?scCur:null;
-  const cats=['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Other'];
+  const cats=['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Warehouse & Shipping','Other'];
   const catOpts=cats.map(c=>'<option'+(sc.category===c?' selected':'')+'>'+c+'</option>').join('');
   const scanBadge=scanned?'<div style="background:var(--gbg);color:var(--gdk);border-radius:var(--rsm);padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:7px"><span style="font-size:16px">&#129302;</span><span><strong>SmartScan complete</strong> &mdash; review and confirm below</span></div>':'';
   /* v3.1.13 — no backdrop click-to-close (same accidental-dismiss risk as Edit Expense) */
@@ -3743,7 +3743,7 @@ function delE(id){if(!confirm('Remove this expense?'))return;const ex=S.expenses
 function mEditE(eid) {
   const e=S.expenses.find(e=>e.id===eid); if(!e) return;
   window._modalRid=e.reportId; window._rec=[...(e.receipts||[])];
-  const cats=['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Other'];
+  const cats=['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Warehouse & Shipping','Other'];
   const catOpts=cats.map(c=>'<option'+(e.category===c?' selected':'')+'>'+c+'</option>').join('');
   const openReports=S.reports.filter(r=>r.status==='Open');
   const reportOpts='<option value=""'+(isOrphan(e)?' selected':'')+'>&mdash; Not in Report (unfiled) &mdash;</option>'+openReports.map(r=>'<option value="'+r.id+'"'+(r.id===e.reportId?' selected':'')+'>'+esc(r.name)+'</option>').join('');
