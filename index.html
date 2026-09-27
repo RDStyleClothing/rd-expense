@@ -621,7 +621,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.2.7</span>
+      <span class="vbm" id="vBdgM">v3.2.8</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -701,7 +701,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.2.7</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">September 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.2.8</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">September 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -727,7 +727,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.2.7',
+  APP_VERSION:    'v3.2.8',
   APP_RELEASED:   'September 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -1539,7 +1539,12 @@ function expTaxOv(e){
 function expProv(e){ const p=e&&e.province; return (p && TAX.PROV[p]) ? p : 'QC'; }
 /* v3.2.7 — every expense is charged to Company or Division (legacy/auto-filed = Company) */
 function expChg(e){ return (e && e.chargeTo==='Division') ? 'Division' : 'Company'; }
-function chgChip(e){ return expChg(e)==='Division' ? ' <span style="display:inline-block;background:var(--blbg);color:var(--bl);font-size:9px;font-weight:800;letter-spacing:.4px;border-radius:8px;padding:1px 7px;vertical-align:middle">DIVISION</span>' : ''; }
+/* v3.2.8 — every line shows its charge-to in the report view: blue DIVISION, muted COMPANY */
+function chgChip(e){
+  return expChg(e)==='Division'
+    ? ' <span style="display:inline-block;background:var(--blbg);color:var(--bl);font-size:9px;font-weight:800;letter-spacing:.4px;border-radius:8px;padding:1px 7px;vertical-align:middle">DIVISION</span>'
+    : ' <span style="display:inline-block;background:var(--bg);color:var(--tx3);border:1px solid var(--bd);font-size:9px;font-weight:700;letter-spacing:.4px;border-radius:8px;padding:0 6px;vertical-align:middle">COMPANY</span>';
+}
 function expTax(e){ return TAX.calc(expEffAmt(e), e.category, e.taxIncluded||false, expEffCur(e), expEffForeign(e), expTaxOv(e), expProv(e), e.tip); }
 function migrateExp(e){
   if (e && Number(e.origAmount)>0 && e.origCurrency && e.origCurrency!=='CAD' && !(Number(e.cadCharged)>0)){
@@ -3443,7 +3448,7 @@ function mAE(rid, preImg, scanned) {
     tipField(sc.tip)+
     '<div class="r2"><div class="fld"><label>Category</label><select class="fse" id="eCt" onchange="updT()">'+catOpts+'</select></div>'+
     '<div class="fld"><label>Notes</label><input class="fi2" id="eNo" placeholder="Optional&hellip;" value="'+esc(sc.notes||'')+'"/></div></div>'+
-    chargeToField(null)+
+    chargeToField('Company')+
     provinceField(sc.province, !!(scanned && sc.province && sc.province!=='QC'))+
     taxModeBlock('auto', sc.taxIncluded, sc.province)+
     fxBlock(sc.cadCharged, sc.fxRate)+
@@ -3460,7 +3465,7 @@ function mAE(rid, preImg, scanned) {
   '</div>'+
   '<div class="mf"><button class="btn" onclick="closeM()">Cancel</button><button class="btn p" onclick="saveE(\''+rid+'\')">Add Expense</button></div>'+
   '</div></div>';
-  setTimeout(()=>{ window._taxMode='auto'; window._chargeTo=null; window._cGst=null; window._cQst=null; buildTaxRows('auto'); if(sc.amount) updT(); if(!sc.merchant) $('eM')?.focus(); }, 100);
+  setTimeout(()=>{ window._taxMode='auto'; window._chargeTo='Company'; window._cGst=null; window._cQst=null; buildTaxRows('auto'); if(sc.amount) updT(); if(!sc.merchant) $('eM')?.focus(); }, 100);
   if(preImg) renderT();
 }
 
@@ -3474,9 +3479,10 @@ function tipField(val){
     '<div class="fi2" id="tipTot" style="background:var(--bg);border-style:dashed;font-weight:700;display:flex;align-items:center">&mdash;</div>'+
     '<div style="font-size:11px;color:var(--tx3)">Amount + tip &mdash; should match your card</div></div></div>';
 }
-/* v3.2.7 — required "Charge to" control (Company / Division). Add form starts with
-   no selection — the user must choose before saving; Edit pre-selects the stored
-   value (legacy expenses = Company). Division expenses also export to their own file. */
+/* v3.2.7 — required "Charge to" control (Company / Division).
+   v3.2.8 — defaults to Company everywhere; the user flips it to Division when needed.
+   Edit pre-selects the stored value (legacy expenses = Company). Division expenses
+   also export to their own file (see expR). */
 function chargeToField(sel){
   const b=v=>'<button type="button" data-c="'+v+'" class="tmb'+(sel===v?' on':'')+'" onclick="setChargeTo(\''+v+'\')">'+v+'</button>';
   return '<div class="tmw" id="chgW"><span class="tml">Charge to *</span><span class="seg">'+b('Company')+b('Division')+'</span></div>';
@@ -4450,10 +4456,15 @@ async function expR(rid, auto){
   return {blob, fname};
   }  /* end buildWb — v3.2.7 */
 
+  /* v3.2.8 — export shape by report mix:
+     all Company  → one plain report file
+     all Division → ONE file, DIVISION-labelled (no duplicate second file)
+     mixed        → plain full report + second Division-only file */
   const divExps = allExps.filter(e=>expChg(e)==='Division');
-  const full = await buildWb(allExps, false); if(!full) return;
-  const div  = divExps.length ? await buildWb(divExps, true) : null;
-  if(divExps.length && !div) return;   // division build failed — don't ship half an export
+  const allDivision = allExps.length>0 && divExps.length===allExps.length;
+  const full = await buildWb(allExps, allDivision); if(!full) return;
+  const div  = (!allDivision && divExps.length) ? await buildWb(divExps, true) : null;
+  if(!allDivision && divExps.length && !div) return;   // division build failed — don't ship half an export
 
   // Collect receipt lines — resolve pending refs to their local base64 where possible
   const lines=[];
