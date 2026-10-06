@@ -124,6 +124,8 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .chgT{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.4px;border-radius:8px;padding:1px 7px;vertical-align:middle;margin-right:5px}
 .chgT.d{background:var(--blbg);color:var(--bl)}
 .chgT.c{background:var(--bg);color:var(--tx3);border:1px solid var(--bd);font-weight:700;padding:0 6px}
+/* v3.2.10 — mobile cards: charge-to tag sits right under the price */
+.xcg{margin-top:3px}
 .stats.ctS{grid-template-columns:repeat(2,minmax(0,1fr))}
 .stats.s5{grid-template-columns:repeat(5,minmax(0,1fr))}
 .ctYr{font-family:var(--font);font-size:12px;font-weight:700;color:var(--tx);background:var(--sf);border:1px solid var(--bd2);border-radius:8px;padding:2px 8px;cursor:pointer;margin-left:auto}
@@ -636,7 +638,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.2.9</span>
+      <span class="vbm" id="vBdgM">v3.2.10</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -716,7 +718,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.2.9</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">September 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.2.10</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">September 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -742,7 +744,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.2.9',
+  APP_VERSION:    'v3.2.10',
   APP_RELEASED:   'September 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -2956,7 +2958,7 @@ function vExp(){
       const cur=expEffCur(e);
       const tx=expTax(e);
       return'<tr>'+
-        '<td>'+fd(e.date)+'</td><td style="font-weight:600">'+esc(e.merchant)+origNote(e)+'</td>'+
+        '<td>'+fd(e.date)+'</td><td style="font-weight:600">'+esc(e.merchant)+chgChip(e)+origNote(e)+'</td>'+
         '<td style="color:var(--tx2)">'+esc(e.category)+'</td>'+
         '<td>'+fmt(tx.sub,cur)+'</td>'+
         '<td style="color:var(--tx2)">'+(tx.foreign?'N/A':tx.xmt?'Exempt':fmt(tx.gst,cur))+'</td>'+
@@ -2983,7 +2985,7 @@ function vExp(){
     return'<div class="xcd">'+(imgHtml)+
     '<div class="xcb"><div class="xcn">'+esc(e.merchant)+'</div><div class="xcm">'+fd(e.date)+' &middot; '+esc(e.category)+(r?' &middot; <span style="color:var(--bl)">'+esc(r.name)+'</span>':'')+'</div>'+
     '<div style="font-size:11px;color:var(--tx2);margin-top:2px">GST '+(tx.xmt?'exempt':fmt(tx.gst,cur))+' &middot; QST '+(tx.xmt?'exempt':fmt(tx.qst,cur))+'</div></div>'+
-    '<div style="text-align:right"><div class="xca">'+fmt(tx.tot,cur)+'</div><div style="font-size:10px;color:var(--tx3)">'+origNote(e)+'</div>'+((!r||r.status==='Open')?'<div style="display:flex;align-items:center;gap:4px;justify-content:flex-end;margin-top:3px"><button class="ib ed" style="padding:8px 9px" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><span class="avd"></span><button class="ib" style="font-size:12px" title="Move to Not in Report" onclick="unfileE(\''+e.id+'\')">&#128229;</button><button class="ib" style="font-size:12px" title="Delete" onclick="delE(\''+e.id+'\')">&#128465;</button></div>':'')+'</div></div>';}).join('')+'</div>')+
+    '<div style="text-align:right"><div class="xca">'+fmt(tx.tot,cur)+'</div><div class="xcg">'+chgChip(e)+'</div><div style="font-size:10px;color:var(--tx3)">'+origNote(e)+'</div>'+((!r||r.status==='Open')?'<div style="display:flex;align-items:center;gap:4px;justify-content:flex-end;margin-top:3px"><button class="ib ed" style="padding:8px 9px" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><span class="avd"></span><button class="ib" style="font-size:12px" title="Move to Not in Report" onclick="unfileE(\''+e.id+'\')">&#128229;</button><button class="ib" style="font-size:12px" title="Delete" onclick="delE(\''+e.id+'\')">&#128465;</button></div>':'')+'</div></div>';}).join('')+'</div>')+
   '</div>';
 }
 
@@ -3329,9 +3331,9 @@ function vDet(rid){
             :'<img class="xcth" src="'+src0+'" onclick="pRec(\''+esc(img0)+'\')"/>')
         :'<div class="xcic">&#128179;</div>';
       return'<div class="xcd">'+thumb0+
-      '<div class="xcb"><div class="xcn">'+esc(e.merchant)+chgChip(e)+'</div><div class="xcm">'+fd(e.date)+' &middot; '+esc(e.category)+'</div>'+
+      '<div class="xcb"><div class="xcn">'+esc(e.merchant)+'</div><div class="xcm">'+fd(e.date)+' &middot; '+esc(e.category)+'</div>'+
       '<div style="font-size:11px;color:var(--tx2);margin-top:2px">Sub: '+fmt(et.sub,cur)+' &middot; GST: '+(et.foreign?'n/a':et.xmt?'exempt':fmt(et.gst,cur))+' &middot; QST: '+(et.foreign?'n/a':et.xmt?'exempt':fmt(et.qst,cur))+(et.tip>0?' &middot; Tip: '+fmt(et.tip,cur):'')+(et.meal?' &middot; 50% rule':'')+'</div>'+(origNote(e)?'<div style="font-size:11px;color:var(--tx3);margin-top:1px">'+origNote(e)+'</div>':'')+'</div>'+
-      '<div style="text-align:right"><div class="xca">'+fmt(et.tot,cur)+'</div>'+(locked?'':'<div style="display:flex;align-items:center;gap:4px;justify-content:flex-end;margin-top:3px"><button class="ib ed" style="padding:8px 9px" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><span class="avd"></span><button class="ib" style="font-size:12px" title="Delete" onclick="delE(\''+e.id+'\')">&#128465;</button></div>')+'</div></div>';}).join('')+'</div>'+
+      '<div style="text-align:right"><div class="xca">'+fmt(et.tot,cur)+'</div><div class="xcg">'+chgChip(e)+'</div>'+(locked?'':'<div style="display:flex;align-items:center;gap:4px;justify-content:flex-end;margin-top:3px"><button class="ib ed" style="padding:8px 9px" title="Edit" onclick="mEditE(\''+e.id+'\')">&#9998;</button><span class="avd"></span><button class="ib" style="font-size:12px" title="Delete" onclick="delE(\''+e.id+'\')">&#128465;</button></div>')+'</div></div>';}).join('')+'</div>'+
   '</div>'+
   '<div class="card" style="padding:14px 16px">'+
     '<div style="display:flex;align-items:center;gap:8px">'+
