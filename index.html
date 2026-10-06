@@ -117,6 +117,16 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .stat{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:13px 15px}
 .slbl{font-size:10px;color:var(--tx2);margin-bottom:5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .sval{font-size:20px;font-weight:700;letter-spacing:-.5px}
+/* v3.2.9 — Division/Company charge-to total cards (dashboard + report view) */
+.ssub{font-size:11px;color:var(--tx3);margin-top:3px}
+.stat.ctD{border-left:3px solid var(--bl);background:linear-gradient(135deg,var(--blbg) 0%,var(--sf) 55%)}
+.stat.ctC{border-left:3px solid var(--bd2)}
+.chgT{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.4px;border-radius:8px;padding:1px 7px;vertical-align:middle;margin-right:5px}
+.chgT.d{background:var(--blbg);color:var(--bl)}
+.chgT.c{background:var(--bg);color:var(--tx3);border:1px solid var(--bd);font-weight:700;padding:0 6px}
+.stats.ctS{grid-template-columns:repeat(2,minmax(0,1fr))}
+.stats.s5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.ctYr{font-family:var(--font);font-size:12px;font-weight:700;color:var(--tx);background:var(--sf);border:1px solid var(--bd2);border-radius:8px;padding:2px 8px;cursor:pointer;margin-left:auto}
 .cg{color:var(--g)}.cb{color:var(--bl)}.ca{color:var(--am)}
 .card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
 .chd{padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
@@ -274,6 +284,7 @@ tr.trc:active td{background:var(--bg)}
   .toastA{bottom:calc(var(--bn) + var(--safe) + var(--fab) + 18px)}
   .main{padding:14px 12px;min-height:0;padding-bottom:calc(var(--fab) + var(--safe) + 40px)}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stats.s5{grid-template-columns:repeat(2,minmax(0,1fr))}
   .dt{display:none!important}
   .xc{display:flex}
   .ph{flex-direction:column;gap:10px}
@@ -290,6 +301,8 @@ tr.trc:active td{background:var(--bg)}
   body[data-view="dashboard"] .hero{order:0}
   body[data-view="dashboard"] .secH.ovH{order:1}
   body[data-view="dashboard"] .stats{order:2}
+  body[data-view="dashboard"] .secH.ctH{order:2}
+  body[data-view="dashboard"] .stats.ctS{order:2}
   body[data-view="dashboard"] .secH.inbH{order:3}
   body[data-view="dashboard"] .card.inbC{order:4}
   body[data-view="dashboard"] .secH.recH{order:5}
@@ -318,6 +331,8 @@ tr.trc:active td{background:var(--bg)}
   .dTopE{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--tx3);margin-bottom:2px}
   .dTopSp{flex:1}
   body[data-view="dashboard"] .stats{order:1}
+  body[data-view="dashboard"] .secH.ctH{order:1}
+  body[data-view="dashboard"] .stats.ctS{order:1}
   body[data-view="dashboard"] .dDrop{display:flex;align-items:center;gap:12px;order:2;border:1.5px dashed var(--bd2);border-radius:var(--r);background:repeating-linear-gradient(45deg,transparent,transparent 12px,rgba(0,0,0,.012) 12px,rgba(0,0,0,.012) 24px);padding:12px 18px;color:var(--tx2);font-size:13px;cursor:pointer;transition:border-color .15s,background .15s}
   .dDrop b{color:var(--tx);font-weight:600}
   .dDropI{width:20px;height:20px;flex-shrink:0;opacity:.7}
@@ -621,7 +636,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.2.8</span>
+      <span class="vbm" id="vBdgM">v3.2.9</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -701,7 +716,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.2.8</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">September 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.2.9</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">September 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -727,7 +742,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.2.8',
+  APP_VERSION:    'v3.2.9',
   APP_RELEASED:   'September 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -2607,6 +2622,25 @@ function statTotalHtml(exps){
   }).join('');
 }
 
+/* v3.2.9 — Division/Company charge-to totals.
+   CT_YEAR is in-memory only (never written to Firestore); dropdown lists every
+   year that has at least one expense, defaults to the current year. */
+let CT_YEAR=null;
+function ctYears(){ return [...new Set(S.expenses.map(e=>String(e.date||'').slice(0,4)).filter(y=>/^\d{4}$/.test(y)))].sort().reverse(); }
+function ctYear(){
+  const ys=ctYears(); if(!ys.length) return null;
+  if(CT_YEAR&&ys.includes(CT_YEAR)) return CT_YEAR;
+  const cur=String(new Date().getFullYear());
+  return ys.includes(cur)?cur:ys[0];
+}
+function setCtYear(v){ CT_YEAR=String(v); render(); }
+function chgCards(exps,lbl,sub){
+  const d=exps.filter(e=>expChg(e)==='Division'), c=exps.filter(e=>expChg(e)==='Company');
+  const n=x=>x.length+' expense'+(x.length!==1?'s':'')+(sub?' '+sub:'');
+  return '<div class="stat ctD"><div class="slbl"><span class="chgT d">DIVISION</span>'+lbl+'</div><div class="sval cb">'+(d.length?statTotalHtml(d):fmt(0,'CAD'))+'</div><div class="ssub">'+n(d)+'</div></div>'+
+         '<div class="stat ctC"><div class="slbl"><span class="chgT c">COMPANY</span>'+lbl+'</div><div class="sval">'+(c.length?statTotalHtml(c):fmt(0,'CAD'))+'</div><div class="ssub">'+n(c)+'</div></div>';
+}
+
 /* DASHBOARD */
 /* ── DASHBOARD (v2.2.15 capture-first home) ── */
 function dashSnap(cam){ ensureReport(rid=>fabDoSnap('smart',rid,cam)); }
@@ -2733,7 +2767,8 @@ function vDash(){
     (inbox||'<div class="inb" style="cursor:default"><div class="inbI" style="background:var(--gbg)">&#127881;</div><div class="inbT"><b>You&rsquo;re all caught up</b><span>Nothing needs review right now</span></div></div>')+'</div>';
 
   /* recent expenses with sync state */
-  const recent=sortExps(S.expenses,'date-desc').slice(0,5);
+  /* v3.2.9 — only expenses on Open reports; lines from closed/sent reports no longer linger */
+  const recent=sortExps(S.expenses.filter(e=>openIds.has(e.reportId)),'date-desc').slice(0,5);
   const openReps=S.reports.filter(r=>r.status==='Open');
   const hdrLink=openReps.length===1
     ?'<span class="secLink" onclick="showView(\'report-detail\',\''+openReps[0].id+'\')">View report &rsaquo;</span>'
@@ -2741,7 +2776,7 @@ function vDash(){
   const hdrSub=openReps.length===1?'<span class="secSub">&mdash; '+esc(openReps[0].name)+'</span>':'';
   const recHtml='<div class="secH recH">Recent expenses '+hdrSub+hdrLink+'</div><div class="card recC">'+
     (recent.length===0
-      ?'<div class="empty"><div class="eic">&#128179;</div>No expenses yet &mdash; snap your first receipt above.</div>'
+      ?'<div class="empty"><div class="eic">&#128179;</div>No expenses on an open report &mdash; snap your first receipt above.</div>'
       :recent.map(e=>{
         const cur=expEffCur(e);const tx=expTax(e);
         const pend=(e.receipts||[]).some(rc=>typeof rc==='string'&&rc.startsWith(PENDING_PREFIX));
@@ -2763,6 +2798,11 @@ function vDash(){
         '<div class="adxI" onclick="addxPick(\'newreport\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><path d="M12 11v6M9 14h6"/></svg>New report</div>'+
       '</div>'+
     '</div></div>';
+  /* v3.2.9 — Division/Company totals for a selectable year */
+  const _ys=ctYears(), _y=ctYear();
+  const ctHtml=_y?'<div class="secH ctH">Charge-to totals<select class="ctYr" onchange="setCtYear(this.value)">'+
+      _ys.map(y=>'<option value="'+y+'"'+(y===_y?' selected':'')+'>'+y+'</option>').join('')+'</select></div>'+
+    '<div class="stats ctS">'+chgCards(S.expenses.filter(e=>String(e.date||'').slice(0,4)===_y),'Total incl. tax','in '+_y)+'</div>':'';
   const dDrop='<div class="dDrop" onclick="addxPick(\'upload\')"><svg class="dDropI" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>'+
     '<div><b>Drop receipts anywhere</b> &mdash; drag a PDF or image from your files, or <span style="color:var(--bl);font-weight:600">browse</span></div>'+
     '<span class="dDropL" onclick="event.stopPropagation();dashManual()">Enter manually</span></div>';
@@ -2774,6 +2814,7 @@ function vDash(){
     '<div class="stat"><div class="slbl">Awaiting Payment</div><div class="sval ca">'+aw+'</div></div>'+
     '<div class="stat"><div class="slbl">Total Paid</div><div class="sval cg">'+statTotalHtml(pX)+'</div></div>'+
   '</div>'+
+  ctHtml+
   dDrop+
   '<div class="dTax">'+taxBox(S.expenses)+'</div>';
 }
@@ -3227,13 +3268,14 @@ function vDet(rid){
     statsHtml='<div class="stats">'+detCurs.map(c=>{
       const ct=TAX.sum(exps.filter(e=>expEffCur(e)===c));
       return '<div class="stat"><div class="slbl">'+esc(c)+' &mdash; Total incl. tax'+(ct.tip>0?' &amp; tip':'')+'</div><div class="sval">'+fmt(ct.tot,c)+'</div></div>';
-    }).join('')+'</div>';
+    }).join('')+chgCards(exps,'Total','')+'</div>';
   } else {
     const c=detCurs[0]||rptCurrency(r);
-    statsHtml='<div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+
+    statsHtml='<div class="stats s5">'+
       '<div class="stat"><div class="slbl">Total incl. tax'+(tx.tip>0?' &amp; tip':'')+'</div><div class="sval">'+fmt(tx.tot,c)+'</div></div>'+
       '<div class="stat"><div class="slbl">GST + QST</div><div class="sval ca">'+fmt(r2(tx.gst+tx.qst),c)+'</div></div>'+
       '<div class="stat"><div class="slbl">Tax Recoverable</div><div class="sval cg">'+fmt(r2(tx.gR+tx.qR),c)+'</div></div>'+
+      chgCards(exps,'Total','')+
     '</div>';
   }
 
