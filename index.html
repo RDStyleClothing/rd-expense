@@ -528,6 +528,27 @@ tr.trc:active td{background:var(--bg)}
 .brmini.amber{border-color:rgba(186,117,23,.4);color:var(--amdk)}
 .brmini.red{border-color:rgba(163,45,45,.35);color:var(--rd)}
 .brmini:active{transform:scale(.96)}
+
+/* ══ v3.2.11 — RECURRING EXPENSES ══ */
+.recNote{background:var(--blbg);border-radius:var(--rsm);padding:10px 13px;font-size:12.5px;color:var(--tx);line-height:1.5;margin:0 2px 12px}
+.recNote b{color:var(--bl)}
+.rrow{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--bd)}
+.rrow:last-child{border-bottom:none}
+.rrow.rpau .rrC,.rrow.rpau .rrM,.rrow.rpau .rrA{opacity:.45}
+.rrC{width:34px;height:34px;border-radius:9px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.rrM{flex:1;min-width:0}
+.rrM b{display:block;font-size:13.5px}
+.rrM span{display:block;font-size:11.5px;color:var(--tx2);margin-top:1px}
+.rrA{text-align:right;flex-shrink:0}
+.rrA b{display:block;font-size:13.5px}
+.rrA span{font-size:11px;color:var(--tx3)}
+.sw{position:relative;width:38px;height:22px;flex-shrink:0;cursor:pointer}
+.sw input{display:none}
+.swT{position:absolute;inset:0;background:var(--bd2);border-radius:12px;transition:.15s}
+.swT:before{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.sw input:checked+.swT{background:var(--g)}
+.sw input:checked+.swT:before{left:19px}
+.recChip{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--gdk);background:var(--gbg);border-radius:4px;padding:1.5px 6px;margin-right:4px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -638,7 +659,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.2.10</span>
+      <span class="vbm" id="vBdgM">v3.2.11</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -684,6 +705,10 @@ tr.trc:active td{background:var(--bg)}
         <svg viewBox="0 0 15 15" fill="none"><rect x="1" y="3" width="13" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="6.5" x2="14" y2="6.5" stroke="currentColor" stroke-width="1.1"/><circle cx="4" cy="9.5" r="1" fill="currentColor"/></svg>
         All Expenses<span class="npill" id="navEC">0</span>
       </div>
+      <div class="ni" id="nav-recurring" onclick="navTo('recurring')">
+        <svg viewBox="0 0 15 15" fill="none"><path d="M12.5 6.5A5 5 0 003.2 4.6M2.5 8.5a5 5 0 009.3 1.9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M3 2v2.8h2.8M12 13v-2.8H9.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Recurring<span class="npill" id="navRcC">0</span>
+      </div>
       <div class="sbsp"></div>
       <div class="stp">
         <div class="stph">
@@ -718,7 +743,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.2.10</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">September 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.2.11</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">October 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -744,8 +769,8 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.2.10',
-  APP_RELEASED:   'September 2026',
+  APP_VERSION:    'v3.2.11',
+  APP_RELEASED:   'October 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
   // can be as low as 5/min). We pace proactively to stay under it; a 429 still
@@ -829,6 +854,7 @@ const TAX = {
 const S = {
   view:'dashboard', rid:null,
   reports:[], expenses:[],
+  recurring:[],   /* v3.2.11 — per-user recurring expense templates (synced in user doc) */
   fabOpen:false,
   q:{text:'',cat:'',sort:'date-desc'},
   _saving:false,
@@ -1190,6 +1216,7 @@ async function _doSave() {
       reports:   stripUndef(S.reports),
       expenses:  stripUndef(cloudExpenses()),
       dismissed: stripUndef(S.dismissed||{}),   /* v3.2.4 — dismissed attention reminders */
+      recurring: stripUndef(S.recurring||[]),   /* v3.2.11 — recurring expense templates */
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     await Promise.all(blobWrites);
@@ -1224,6 +1251,7 @@ async function load() {
       const d = doc.data();
       if(d.reports)  S.reports  = d.reports;
       if(d.dismissed) S.dismissed = d.dismissed;   /* v3.2.4 — dismissed attention reminders */
+      if(d.recurring) S.recurring = d.recurring;   /* v3.2.11 — recurring expense templates */
       if(d.expenses) {
         S.expenses = d.expenses.map(e => migrateExp({
           ...e,
@@ -1262,6 +1290,7 @@ async function applyRemoteData(d) {
   if (!d) return;
   if (d.reports)  S.reports  = d.reports;
   if (d.dismissed) S.dismissed = d.dismissed;   /* v3.2.4 — dismissed attention reminders */
+  if (d.recurring) S.recurring = d.recurring;   /* v3.2.11 — recurring expense templates */
   if (d.expenses) {
     S.expenses = d.expenses.map(e => migrateExp({
       ...e,
@@ -1936,6 +1965,7 @@ function clearData() {
   S.expenses.forEach(e=>cleanupReceiptRefs(e.receipts));
   S.reports  = [];
   S.expenses = [];
+  S.recurring = [];   /* v3.2.11 */
   S._pendingBlobs = {};
   S._healed = {};
   S._pendingRemote = null;
@@ -1953,7 +1983,7 @@ document.addEventListener('click', e => {
 async function doSignOut() {
   $('uMenu').classList.remove('open');
   if(!confirm('Sign out of RD Expense?')) return;
-  S.reports=[]; S.expenses=[]; S._pendingBlobs={}; S._healed={}; S.dismissed={};
+  S.reports=[]; S.expenses=[]; S.recurring=[]; S._pendingBlobs={}; S._healed={}; S.dismissed={};
   await FB.auth.signOut();
 }
 
@@ -2537,7 +2567,11 @@ window.addEventListener('resize',placeBnPill);
 window.addEventListener('orientationchange',()=>setTimeout(placeBnPill,120));
 function render(){
   document.body.dataset.view=S.view;
+  /* v3.2.11 — run the recurring materializer once per local day (idempotent) */
+  const _rd=new Date().toLocaleDateString('en-CA');
+  if(CU && S._recDay!==_rd){ S._recDay=_rd; setTimeout(()=>processRecurring(),0); }
   $('navRC').textContent=S.reports.length; $('navEC').textContent=S.expenses.length;
+  const _nrc=$('navRcC'); if(_nrc) _nrc.textContent=(S.recurring||[]).filter(t=>t.active!==false).length;
   const m=$('mainC');
   /* v3.2.0 — preserve scroll on in-place re-renders (sync echoes, receipt hydration,
      inline refreshes). Only a genuine navigation — a different view or report —
@@ -2551,6 +2585,7 @@ function render(){
   else if(S.view==='expenses') m.innerHTML=vExp();
   else if(S.view==='report-detail') m.innerHTML=vDet(S.rid);
   else if(S.view==='close-month')   m.innerHTML=vClose(S.rid);
+  else if(S.view==='recurring')     m.innerHTML=vRec();
   m.scrollTop=keep;
 }
 
@@ -2736,6 +2771,18 @@ function vDash(){
     const u=S._admErrUsers||0;
     inbox+='<div class="inb" onclick="openAdminFromApp()"><div class="inbI" style="background:var(--rdbg)">&#128030;</div><div class="inbT"><b>'+S._admErrCount+' app error'+(S._admErrCount>1?'s':'')+' reported</b><span>'+(u?u+' user'+(u>1?'s':'')+' affected · ':'')+'tap to review in Admin Panel</span></div><span class="inbChev">&rsaquo;</span></div>';
   }
+  /* v3.2.11 — recurring expenses auto-added this month (dismissible; key changes
+     with the id set, so it resurfaces each month) */
+  const recAdds=S.expenses.filter(e=>e.recurId&&(e.date||'').slice(0,7)===curMonth);
+  if(recAdds.length){
+    const kRC='recadd:'+curMonth+':'+h32(recAdds.map(e=>e.id).sort().join(','));
+    if(!inbDis(kRC)){
+      const names=recAdds.slice(0,2).map(e=>esc(e.merchant||'(no merchant)')+' '+fmt(expTax(e).tot,expEffCur(e))).join(' &middot; ')+(recAdds.length>2?' &middot; +'+(recAdds.length-2)+' more':'');
+      const reps=[...new Set(recAdds.map(e=>{const r=S.reports.find(r=>r.id===e.reportId);return r?r.name:'Not in Report';}))];
+      const mon=new Date().toLocaleDateString('en-CA',{month:'long'});
+      inbox+='<div class="inb" onclick="showView(\'recurring\')"><div class="inbI" style="background:var(--gbg)">&#128257;</div><div class="inbT"><b>'+recAdds.length+' recurring expense'+(recAdds.length>1?'s':'')+' added for '+mon+'</b><span>'+names+' &mdash; filed to '+esc(reps.join(', '))+'</span></div>'+inbXBtn(kRC)+'<span class="inbChev">&rsaquo;</span></div>';
+    }
+  }
   if(noRcpt.length){
     const kNR='norcpt:'+h32(noRcpt.map(e=>e.id).sort().join(','));
     if(!inbDis(kNR)) inbox+='<div class="inb" onclick="showView(\'expenses\')"><div class="inbI" style="background:var(--ambg)">&#129534;</div><div class="inbT"><b>'+noRcpt.length+' expense'+(noRcpt.length>1?'s':'')+' missing receipt'+(noRcpt.length>1?'s':'')+'</b><span>'+esc(noRcpt.slice(0,3).map(e=>e.merchant||'(no merchant)').join(' · '))+'</span></div>'+inbXBtn(kNR)+'<span class="inbChev">&rsaquo;</span></div>';
@@ -2783,7 +2830,7 @@ function vDash(){
         const cur=expEffCur(e);const tx=expTax(e);
         const pend=(e.receipts||[]).some(rc=>typeof rc==='string'&&rc.startsWith(PENDING_PREFIX));
         const chip=pend?'<span class="syc up"><span class="sycd"></span>Uploading photo</span>':'<span class="syc ok"><span class="sycd"></span>Synced</span>';
-        return '<div class="dexp" onclick="showView(\'report-detail\',\''+e.reportId+'\')"><div class="dexpC">'+catIco(e.category)+'</div><div class="dexpM"><b>'+esc(e.merchant||'(no merchant)')+'</b><span>'+fd(e.date)+' &middot; '+esc(e.category||'Other')+'</span></div><div class="dexpA"><b>'+fmt(tx.tot,cur)+'</b>'+chip+'</div></div>';
+        return '<div class="dexp" onclick="showView(\'report-detail\',\''+e.reportId+'\')"><div class="dexpC">'+catIco(e.category)+'</div><div class="dexpM"><b>'+esc(e.merchant||'(no merchant)')+'</b><span>'+fd(e.date)+' &middot; '+esc(e.category||'Other')+'</span></div><div class="dexpA"><b>'+fmt(tx.tot,cur)+'</b>'+(e.recurId?'<span class="recChip">&#128257; Recurring</span>':'')+chip+'</div></div>';
       }).join(''))+'</div>';
 
   /* overview stats */
@@ -3467,6 +3514,173 @@ function saveR(){
   showView('report-detail',r.id);
 }
 
+/* ═══════════════════════════════════════════════ v3.2.11 — RECURRING EXPENSES
+   Templates live in S.recurring, synced in the user doc like dismissals, one list
+   per user. processRecurring() runs once per local day (kicked from render):
+   every active template whose day has arrived this month materializes as a normal
+   expense — no receipt, so it flows into the missing-receipts reminder like any
+   manual entry. Files to the single Open report, else Not in Report (never guesses
+   between two open reports). Templates are CAD-only.
+   Duplicate guards: t.lastRun ('YYYY-MM', synced) plus a scan for an existing
+   expense carrying this template's recurId in the target month. */
+function recDateFor(t, ym){
+  const p=ym.split('-'), y=Number(p[0]), m=Number(p[1]);
+  const last=new Date(y, m, 0).getDate();                 // day 29–31 clamps to month end
+  const day=Math.min(Math.max(1, Number(t.day)||1), last);
+  return ym+'-'+String(day).padStart(2,'0');
+}
+function recNext(t){
+  const todayS=new Date().toLocaleDateString('en-CA');
+  const ym=todayS.slice(0,7);
+  const due=recDateFor(t, ym);
+  if((t.lastRun||'')<ym && todayS<due) return due;        // still ahead this month
+  const p=ym.split('-'); let y=Number(p[0]), m=Number(p[1])+1;
+  if(m>12){m=1;y++;}
+  return recDateFor(t, y+'-'+String(m).padStart(2,'0'));
+}
+async function processRecurring(){
+  if(!CU || !(S.recurring||[]).length) return;
+  const todayS=new Date().toLocaleDateString('en-CA');
+  const ym=todayS.slice(0,7);
+  const openReps=S.reports.filter(r=>r.status==='Open');
+  const rid=openReps.length===1?openReps[0].id:'';        // 0 or 2+ open → Not in Report
+  let added=0, touched=false;
+  for(const t of S.recurring){
+    if(t.active===false) continue;
+    const due=recDateFor(t, ym);
+    if(todayS<due) continue;                              // not due yet this month
+    if((t.lastRun||'')>=ym) continue;                     // already ran this month
+    if(S.expenses.some(x=>x.recurId===t.id && (x.date||'').slice(0,7)===ym)){ t.lastRun=ym; touched=true; continue; }
+    const e={ id:uid('E'), reportId:rid, merchant:t.merchant||'(no merchant)', date:due,
+      amount:r2(Number(t.amount)||0), category:t.category||'Other',
+      chargeTo:(t.chargeTo==='Division')?'Division':'Company',
+      notes:(t.notes||'').trim()||undefined,
+      taxIncluded:!!t.taxIncluded, taxMode:t.taxMode||undefined,
+      gstO:(t.taxMode==='custom')?t.gstO:undefined, qstO:(t.taxMode==='custom')?t.qstO:undefined,
+      province:(t.province&&t.province!=='QC')?t.province:undefined,
+      recurId:t.id, receipts:[], _ts:Date.now() };
+    S.expenses.push(e); t.lastRun=ym; added++; touched=true;
+  }
+  if(touched){ S._pendingRemote=null; await save(); }     // local adds win, like saveE
+  if(added) render();
+}
+/* Create a template from an expense ("Repeats monthly" toggle in Add/Edit).
+   lastRun seeds so this month never double-adds: the expense itself is the run. */
+function makeRecurringFrom(e){
+  S.recurring=S.recurring||[];
+  const todayS=new Date().toLocaleDateString('en-CA'), ym=todayS.slice(0,7);
+  const eYm=(e.date||todayS).slice(0,7);
+  const t={ id:uid('RT'), active:true, created:Date.now(),
+    merchant:e.merchant, amount:r2(Number(e.amount)||0),
+    day:parseInt((e.date||todayS).slice(8,10),10)||1,
+    category:e.category, chargeTo:(e.chargeTo==='Division')?'Division':'Company',
+    notes:(e.notes||'').trim()||undefined,
+    taxIncluded:!!e.taxIncluded, taxMode:e.taxMode||undefined,
+    gstO:(e.taxMode==='custom')?e.gstO:undefined, qstO:(e.taxMode==='custom')?e.qstO:undefined,
+    province:(e.province&&e.province!=='QC')?e.province:undefined };
+  let lr=''; if(eYm>=ym) lr=eYm; else if(todayS>=recDateFor(t,ym)) lr=ym;
+  if(lr) t.lastRun=lr;
+  e.recurId=t.id;                                         // the expense counts as this month's run
+  S.recurring.push(t);
+}
+function ordDay(d){ d=Number(d)||1; const s=(d%10===1&&d!==11)?'st':(d%10===2&&d!==12)?'nd':(d%10===3&&d!==13)?'rd':'th'; return d+s; }
+function recChgTag(t){
+  return (t.chargeTo==='Division')
+    ? ' <span style="display:inline-block;background:var(--blbg);color:var(--bl);font-size:9px;font-weight:800;letter-spacing:.4px;border-radius:8px;padding:1px 7px;vertical-align:middle">DIVISION</span>'
+    : ' <span style="display:inline-block;background:var(--bg);color:var(--tx3);border:1px solid var(--bd);font-size:9px;font-weight:700;letter-spacing:.4px;border-radius:8px;padding:0 6px;vertical-align:middle">COMPANY</span>';
+}
+/* Recurring page — sidebar → Expenses → Recurring */
+function vRec(){
+  const list=S.recurring||[];
+  const hdr='<div class="ph"><div class="pt">&#128257; Recurring</div><div class="phs"></div><div class="pa"><button class="btn p" onclick="mRec()">+ New Recurring</button></div></div>';
+  const note='<div class="recNote">Added automatically on their day each month, to your open report. <b>Yours only</b> &mdash; each user manages their own list.</div>';
+  const rows=list.map(t=>{
+    const on=t.active!==false;
+    const taxTxt=(t.taxMode==='custom')?'custom taxes':(t.taxMode==='none')?'no tax':('taxes auto ('+esc(t.province||'QC')+')');
+    const sub=esc(t.category||'Other')+' &middot; '+ordDay(t.day)+' of month &middot; '+(on?taxTxt:'paused');
+    const nxt=on?('next: '+fd(recNext(t))):'paused';
+    return '<div class="rrow'+(on?'':' rpau')+'">'+
+      '<div class="rrC">'+catIco(t.category)+'</div>'+
+      '<div class="rrM" style="cursor:pointer" onclick="mRec(\''+t.id+'\')"><b>'+esc(t.merchant||'(no merchant)')+recChgTag(t)+'</b><span>'+sub+'</span></div>'+
+      '<div class="rrA"><b>'+fmt(t.amount,'CAD')+'</b><span>'+nxt+'</span></div>'+
+      '<label class="sw" title="'+(on?'Pause':'Resume')+'"><input type="checkbox"'+(on?' checked':'')+' onchange="recTgl(\''+t.id+'\')"/><span class="swT"></span></label>'+
+      '<button class="ib" title="Edit" onclick="mRec(\''+t.id+'\')">&#9998;</button>'+
+    '</div>';
+  }).join('');
+  return hdr+note+'<div class="card">'+(rows||'<div class="empty"><div class="eic">&#128257;</div>No recurring expenses yet &mdash; add your car lease or insurance once and it&rsquo;s filed every month automatically.</div>')+'</div>';
+}
+function recTgl(id){
+  const t=(S.recurring||[]).find(x=>x.id===id); if(!t) return;
+  t.active=(t.active===false);
+  save().then(()=>render());
+  toast(t.active?'Resumed — runs next month':'Paused — kept, but won’t be added');
+}
+/* Add / Edit Recurring modal */
+function mRec(id){
+  closeFab();
+  const t=id?(S.recurring||[]).find(x=>x.id===id):null;
+  if(id&&!t) return;
+  const cats=['Auto Expense','Travel & Buying','Travel & Selling','Samples','Mobile','Meals & Entertainment','Office','Computer','Warehouse & Shipping','Other'];
+  const curCat=t?(t.category||'Other'):'Auto Expense';
+  const catOpts=cats.map(c=>'<option'+(curCat===c?' selected':'')+'>'+c+'</option>').join('');
+  const curDay=t?(Number(t.day)||1):1;
+  let dayOpts='';
+  for(let d=1;d<=31;d++) dayOpts+='<option value="'+d+'"'+(curDay===d?' selected':'')+'>'+ordDay(d)+(d>=29?' (or last day)':'')+'</option>';
+  mR.innerHTML='<div class="mbg"><div class="modal"><div class="mh2"></div>'+
+  '<div class="mhd"><h2>'+(t?'&#9998; Edit Recurring Expense':'&#128257; New Recurring Expense')+'</h2><button class="ib" onclick="closeM()">&#10005;</button></div>'+
+  '<div class="mb">'+
+    '<div class="r2"><div class="fld"><label>Merchant *</label><input class="fi2" id="rcM" placeholder="e.g. Car Lease" autocomplete="off" value="'+esc(t?(t.merchant||''):'')+'"/></div>'+
+    '<div class="fld"><label>Day of month *</label><select class="fse" id="rcD">'+dayOpts+'</select></div></div>'+
+    '<div class="r2"><div class="fld"><label>Amount * <span style="font-weight:400;color:var(--tx3)">(CAD)</span></label><input class="fi2" type="number" id="rcA" placeholder="0.00" min="0" step="0.01" inputmode="decimal" value="'+(t&&t.amount?t.amount:'')+'"/></div>'+
+    '<div class="fld"><label>Category</label><select class="fse" id="rcC">'+catOpts+'</select></div></div>'+
+    chargeToField(t?(t.chargeTo||'Company'):'Company')+
+    '<div class="fld"><label>Notes</label><input class="fi2" id="rcN" placeholder="Optional &mdash; copied onto each month&rsquo;s expense" value="'+esc(t?(t.notes||''):'')+'"/></div>'+
+    '<div style="font-size:11px;color:var(--tx3)">Taxes compute automatically each month (QC GST/QST'+(t&&(t.taxMode||t.province)?' &mdash; this template keeps the tax settings it was created with':'')+'). Recurring templates are CAD-only.</div>'+
+  '</div>'+
+  '<div class="mf">'+(t?'<button class="btn" style="color:var(--rd);margin-right:auto" onclick="delRec(\''+t.id+'\')">Delete</button>':'')+
+    '<button class="btn" onclick="closeM()">Cancel</button><button class="btn p" onclick="saveRec('+(t?'\''+t.id+'\'':'null')+')">Save</button></div>'+
+  '</div></div>';
+  setTimeout(()=>{ window._chargeTo=t?(t.chargeTo||'Company'):'Company'; $('rcM')?.focus(); },100);
+}
+async function saveRec(id){
+  const m=($('rcM')?.value||'').trim(), a=parseFloat($('rcA')?.value), d=parseInt($('rcD')?.value,10);
+  if(!m||!(a>0)||!d){alert('Merchant, amount and day of month are required.');return;}
+  if(window._chargeTo!=='Company'&&window._chargeTo!=='Division'){alert('Charge to is required — choose Company or Division.');return;}
+  S.recurring=S.recurring||[];
+  let t=id?S.recurring.find(x=>x.id===id):null;
+  const isNew=!t;
+  if(isNew){ t={id:uid('RT'),active:true,created:Date.now()}; S.recurring.push(t); }
+  t.merchant=m; t.amount=r2(a); t.day=d; t.category=$('rcC').value;
+  t.chargeTo=window._chargeTo; t.notes=($('rcN')?.value||'').trim()||undefined;
+  if(isNew){
+    /* a brand-new template whose day already passed starts NEXT month — no backfill */
+    const todayS=new Date().toLocaleDateString('en-CA'), ym=todayS.slice(0,7);
+    if(todayS>=recDateFor(t,ym)) t.lastRun=ym;
+  }
+  closeM();
+  await save();
+  toast('Recurring expense saved ✓');
+  render();
+}
+function delRec(id){
+  if(!confirm('Delete this recurring expense?\nPast expenses it created are untouched.')) return;
+  S.recurring=(S.recurring||[]).filter(x=>x.id!==id);
+  closeM(); save().then(()=>render()); toast('Deleted');
+}
+/* "Repeats monthly" toggle at the bottom of Add/Edit Expense. An expense that was
+   itself created by a template shows a manage link instead. */
+function repeatField(e){
+  if(e&&e.recurId) return '<div class="tmw"><span class="tml">&#128257; Added by a recurring template</span><button type="button" class="btn sm" onclick="closeM();showView(\'recurring\')">Manage recurring</button></div>';
+  return '<div class="tmw"><span class="tml">Repeats monthly</span><label class="sw"><input type="checkbox" id="eRpt" onchange="tglRepeat(this)"/><span class="swT"></span></label></div>'+
+         '<div style="font-size:11px;color:var(--tx3)" id="rptH">Off &mdash; one-time expense</div>';
+}
+function tglRepeat(cb){
+  window._repeat=!!cb.checked;
+  const h=$('rptH'); if(h) h.textContent=cb.checked
+    ?'On — also saved as a recurring template, added on this day every month'
+    :'Off — one-time expense';
+}
+
 function mAE(rid, preImg, scanned) {
   closeFab(); window._modalRid=rid; window._rec=preImg?[preImg]:[];
   const today=new Date().toISOString().slice(0,10);
@@ -3496,6 +3710,7 @@ function mAE(rid, preImg, scanned) {
     provinceField(sc.province, !!(scanned && sc.province && sc.province!=='QC'))+
     taxModeBlock('auto', sc.taxIncluded, sc.province)+
     fxBlock(sc.cadCharged, sc.fxRate)+
+    repeatField()+
     '<div class="fld"><label>Receipts</label>'+
       '<div class="dz" id="dz" onclick="$(\'fi4\').click()" ondragover="event.preventDefault();this.classList.add(\'ov\')" ondragleave="this.classList.remove(\'ov\')" ondrop="onDp(event)">'+
         '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="display:block;margin:0 auto;color:var(--tx2)"><path d="M12 16V8M12 8l-3 3M12 8l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.4"/></svg>'+
@@ -3509,7 +3724,7 @@ function mAE(rid, preImg, scanned) {
   '</div>'+
   '<div class="mf"><button class="btn" onclick="closeM()">Cancel</button><button class="btn p" onclick="saveE(\''+rid+'\')">Add Expense</button></div>'+
   '</div></div>';
-  setTimeout(()=>{ window._taxMode='auto'; window._chargeTo='Company'; window._cGst=null; window._cQst=null; buildTaxRows('auto'); if(sc.amount) updT(); if(!sc.merchant) $('eM')?.focus(); }, 100);
+  setTimeout(()=>{ window._taxMode='auto'; window._chargeTo='Company'; window._repeat=false; window._cGst=null; window._cQst=null; buildTaxRows('auto'); if(sc.amount) updT(); if(!sc.merchant) $('eM')?.focus(); }, 100);
   if(preImg) renderT();
 }
 
@@ -3795,6 +4010,12 @@ async function saveE(rid){
   const pv=curProv();
   const e={id:uid('E'),reportId:rid,merchant:m,date:d,amount:parseFloat(a),category:$('eCt').value,chargeTo:window._chargeTo,notes:$('eNo').value.trim(),taxIncluded:!!($('tI')&&$('tI').checked),taxMode:tMode,gstO:gO,qstO:qO,tip:(!isForeign&&tipV>0)?tipV:undefined,province:(!isForeign&&pv!=='QC')?pv:undefined,currency:eCurVal||undefined,cadCharged:(isForeign&&cadCharged>0)?r2(cadCharged):undefined,fxRate:(isForeign&&cadCharged>0&&fxRate>0)?fxRate:undefined,receipts:[...window._rec],_ts:Date.now()};
   S.expenses.push(e);
+  /* v3.2.11 — "Repeats monthly": also save a recurring template (CAD-only) */
+  if(window._repeat){
+    if(isForeign){ toast('Recurring not saved — templates are CAD-only','#BA7517'); }
+    else { makeRecurringFrom(e); }
+    window._repeat=false;
+  }
   S._pendingRemote=null;   // local add wins over any remote snapshot queued while the modal was open
   closeM();
   toast('Saving…');
@@ -3833,6 +4054,7 @@ function mEditE(eid) {
           '<div style="font-size:11px;color:var(--tx2);margin-top:4px">Pick <strong>Not in Report</strong> to detach (receipt kept). Only open reports are listed. Current: <strong>'+esc(currentReport?.name||'Not in Report')+'</strong></div>'+
         '</div>'
       : '<input type="hidden" id="eRep" value="'+esc(e.reportId)+'"/>')+
+    repeatField(e)+
     '<div class="fld"><label>Receipts</label>'+
       '<div class="dz" id="dz" onclick="$(\'fi4\').click()" ondragover="event.preventDefault();this.classList.add(\'ov\')" ondragleave="this.classList.remove(\'ov\')" ondrop="onDp(event)">'+
         '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="display:block;margin:0 auto;color:var(--tx2)"><path d="M12 16V8M12 8l-3 3M12 8l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.4"/></svg>'+
@@ -3846,7 +4068,7 @@ function mEditE(eid) {
   '</div>'+
   '<div class="mf"><button class="btn" onclick="closeM()">Cancel</button><button class="btn p" onclick="saveEditE(\''+eid+'\')">Save Changes</button></div>'+
   '</div></div>';
-  setTimeout(()=>{ window._taxMode=e.taxMode||'auto'; window._chargeTo=expChg(e); window._cGst=(e.taxMode==='custom')?(Number(e.gstO)||0):null; window._cQst=(e.taxMode==='custom')?(Number(e.qstO)||0):null; buildTaxRows(window._taxMode); updT(); renderT(); $('eM')?.focus(); }, 100);
+  setTimeout(()=>{ window._taxMode=e.taxMode||'auto'; window._chargeTo=expChg(e); window._repeat=false; window._cGst=(e.taxMode==='custom')?(Number(e.gstO)||0):null; window._cQst=(e.taxMode==='custom')?(Number(e.qstO)||0):null; buildTaxRows(window._taxMode); updT(); renderT(); $('eM')?.focus(); }, 100);
 }
 
 async function saveEditE(eid) {
@@ -3886,6 +4108,12 @@ async function saveEditE(eid) {
   e.receipts    = [...window._rec];
   e.reportId    = newReportId;
   e._ts         = Date.now();
+  /* v3.2.11 — "Repeats monthly": also save a recurring template (CAD-only) */
+  if(window._repeat){
+    if(isForeign2){ toast('Recurring not saved — templates are CAD-only','#BA7517'); }
+    else if(!e.recurId){ makeRecurringFrom(e); }
+    window._repeat=false;
+  }
   S._pendingRemote=null;   // local edit wins over any remote snapshot queued while the modal was open
   closeM();
   toast('Saving…');
@@ -5193,7 +5421,7 @@ window.addEventListener('load', () => {
       if (S._unsubErr) { try { S._unsubErr(); } catch(_){} S._unsubErr = null; }
       S._admErrCount = 0; S._admErrUsers = 0;
       CU = null;
-      S.reports=[]; S.expenses=[]; S._pendingBlobs={}; S._healed={}; S.dismissed={};
+      S.reports=[]; S.expenses=[]; S.recurring=[]; S._pendingBlobs={}; S._healed={}; S.dismissed={};
       $('app').style.display = 'none';
       $('adminScreen').style.display = 'none';
       $('loginScreen').style.display = 'flex';
