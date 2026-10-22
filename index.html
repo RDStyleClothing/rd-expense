@@ -659,7 +659,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.2.13</span>
+      <span class="vbm" id="vBdgM">v3.2.14</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -743,7 +743,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.2.13</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">October 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.2.14</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">October 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -769,7 +769,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.2.13',
+  APP_VERSION:    'v3.2.14',
   APP_RELEASED:   'October 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -3677,13 +3677,17 @@ async function saveRec(id){
   t.chargeTo=window._chargeTo; t.notes=($('rcN')?.value||'').trim()||undefined;
   const rv=$('rcR')?$('rcR').value:'__auto__';            /* v3.2.13 — report choice */
   if(rv==='__auto__') delete t.reportId; else t.reportId=rv;
-  if(isNew){
-    /* a brand-new template whose day already passed starts NEXT month — no backfill */
-    const todayS=new Date().toLocaleDateString('en-CA'), ym=todayS.slice(0,7);
-    if(todayS>=recDateFor(t,ym)) t.lastRun=ym;
+  /* v3.2.14 — when the template's day has already passed this month and no
+     expense was created for it yet, ASK instead of silently skipping to next
+     month (the silent skip confused users — template saved, nothing appeared). */
+  const todayS=new Date().toLocaleDateString('en-CA'), ym=todayS.slice(0,7);
+  if(todayS>=recDateFor(t,ym) && !S.expenses.some(x=>x.recurId===t.id&&(x.date||'').slice(0,7)===ym)){
+    if(confirm('The '+ordDay(d)+' has already passed this month.\n\nAdd this month\u2019s expense now as well?\n\nOK — add it now (dated the '+ordDay(d)+')\nCancel — start next month')) delete t.lastRun;
+    else t.lastRun=ym;
   }
   closeM();
   await save();
+  await processRecurring();   /* v3.2.14 — materialize immediately if the user said yes */
   toast('Recurring expense saved ✓');
   render();
 }
