@@ -659,7 +659,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.2.12</span>
+      <span class="vbm" id="vBdgM">v3.2.13</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -743,7 +743,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.2.12</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">October 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.2.13</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">October 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -769,7 +769,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.2.12',
+  APP_VERSION:    'v3.2.13',
   APP_RELEASED:   'October 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -3543,13 +3543,20 @@ async function processRecurring(){
   const todayS=new Date().toLocaleDateString('en-CA');
   const ym=todayS.slice(0,7);
   const openReps=S.reports.filter(r=>r.status==='Open');
-  const rid=openReps.length===1?openReps[0].id:'';        // 0 or 2+ open → Not in Report
+  const autoRid=openReps.length===1?openReps[0].id:'';    // 0 or 2+ open → Not in Report
   let added=0, touched=false;
   for(const t of S.recurring){
     if(t.active===false) continue;
     const due=recDateFor(t, ym);
     if(todayS<due) continue;                              // not due yet this month
     if((t.lastRun||'')>=ym) continue;                     // already ran this month
+    /* v3.2.13 — per-template report choice: undefined = Automatic, '' = Not in
+       Report, id = that report while it is still Open (closed → back to auto). */
+    let rid=autoRid;
+    if(t.reportId!==undefined && t.reportId!==null){
+      if(t.reportId===''){ rid=''; }
+      else rid=openReps.some(r=>r.id===t.reportId)?t.reportId:autoRid;
+    }
     if(S.expenses.some(x=>x.recurId===t.id && (x.date||'').slice(0,7)===ym)){ t.lastRun=ym; touched=true; continue; }
     const e={ id:uid('E'), reportId:rid, merchant:t.merchant||'(no merchant)', date:due,
       amount:r2(Number(t.amount)||0), category:t.category||'Other',
@@ -3589,6 +3596,18 @@ function recChgTag(t){
     ? ' <span style="display:inline-block;background:var(--blbg);color:var(--bl);font-size:9px;font-weight:800;letter-spacing:.4px;border-radius:8px;padding:1px 7px;vertical-align:middle">DIVISION</span>'
     : ' <span style="display:inline-block;background:var(--bg);color:var(--tx3);border:1px solid var(--bd);font-size:9px;font-weight:700;letter-spacing:.4px;border-radius:8px;padding:0 6px;vertical-align:middle">COMPANY</span>';
 }
+/* v3.2.13 — report options for the recurring editor: Automatic / each Open
+   report / Not in Report. A stored choice pointing at a no-longer-open report
+   still shows so saving the modal doesn't silently change it. */
+function recRepOpts(t){
+  const sel=t?t.reportId:undefined;
+  const openReports=S.reports.filter(r=>r.status==='Open');
+  let o='<option value="__auto__"'+((sel===undefined||sel===null)?' selected':'')+'>Automatic &mdash; my open report</option>';
+  openReports.forEach(r=>{ o+='<option value="'+r.id+'"'+(sel===r.id?' selected':'')+'>'+esc(r.name)+'</option>'; });
+  o+='<option value=""'+(sel===''?' selected':'')+'>&mdash; Not in Report (unfiled) &mdash;</option>';
+  if(sel&&sel!=='__auto__'&&!openReports.some(r=>r.id===sel)) o+='<option value="'+esc(sel)+'" selected>'+esc(((S.reports.find(r=>r.id===sel)||{}).name||'(report)')+' — no longer open')+'</option>';
+  return o;
+}
 /* Recurring page — sidebar → Expenses → Recurring */
 function vRec(){
   const list=S.recurring||[];
@@ -3597,7 +3616,9 @@ function vRec(){
   const rows=list.map(t=>{
     const on=t.active!==false;
     const taxTxt=(t.taxMode==='custom')?'custom taxes':(t.taxMode==='none')?'no tax':('taxes auto ('+esc(t.province||'QC')+')');
-    const sub=esc(t.category||'Other')+' &middot; '+ordDay(t.day)+' of month &middot; '+(on?taxTxt:'paused');
+    /* v3.2.13 — show the template's report choice when it isn't Automatic */
+    const tgtR=(t.reportId===undefined||t.reportId===null)?null:(t.reportId===''?'Not in Report':((S.reports.find(r=>r.id===t.reportId)||{}).name||'(report closed)'));
+    const sub=esc(t.category||'Other')+' &middot; '+ordDay(t.day)+' of month'+(tgtR?' &middot; &rarr; '+esc(tgtR):'')+' &middot; '+(on?taxTxt:'paused');
     const nxt=on?('next: '+fd(recNext(t))):'paused';
     return '<div class="rrow'+(on?'':' rpau')+'">'+
       '<div class="rrC">'+catIco(t.category)+'</div>'+
@@ -3634,6 +3655,8 @@ function mRec(id){
     '<div class="r2"><div class="fld"><label>Amount * <span style="font-weight:400;color:var(--tx3)">(CAD)</span></label><input class="fi2" type="number" id="rcA" placeholder="0.00" min="0" step="0.01" inputmode="decimal" value="'+(t&&t.amount?t.amount:'')+'"/></div>'+
     '<div class="fld"><label>Category</label><select class="fse" id="rcC">'+catOpts+'</select></div></div>'+
     chargeToField(t?(t.chargeTo||'Company'):'Company')+
+    '<div class="fld"><label>Add to report</label><select class="fse" id="rcR">'+recRepOpts(t)+'</select>'+
+      '<div style="font-size:11px;color:var(--tx3);margin-top:4px">Automatic files to your single open report (Not in Report when several are open). A chosen report is used while it stays Open; once it closes, back to Automatic.</div></div>'+
     '<div class="fld"><label>Notes</label><input class="fi2" id="rcN" placeholder="Optional &mdash; copied onto each month&rsquo;s expense" value="'+esc(t?(t.notes||''):'')+'"/></div>'+
     '<div style="font-size:11px;color:var(--tx3)">Taxes compute automatically each month (QC GST/QST'+(t&&(t.taxMode||t.province)?' &mdash; this template keeps the tax settings it was created with':'')+'). Recurring templates are CAD-only.</div>'+
   '</div>'+
@@ -3652,6 +3675,8 @@ async function saveRec(id){
   if(isNew){ t={id:uid('RT'),active:true,created:Date.now()}; S.recurring.push(t); }
   t.merchant=m; t.amount=r2(a); t.day=d; t.category=$('rcC').value;
   t.chargeTo=window._chargeTo; t.notes=($('rcN')?.value||'').trim()||undefined;
+  const rv=$('rcR')?$('rcR').value:'__auto__';            /* v3.2.13 — report choice */
+  if(rv==='__auto__') delete t.reportId; else t.reportId=rv;
   if(isNew){
     /* a brand-new template whose day already passed starts NEXT month — no backfill */
     const todayS=new Date().toLocaleDateString('en-CA'), ym=todayS.slice(0,7);
