@@ -155,6 +155,10 @@ tr.trc:active td{background:var(--bg)}
 .bap{background:var(--gbg);color:var(--gdk)}
 .baw{background:var(--ambg);color:var(--amdk)}
 .bpa{background:#EAF3DE;color:#3B6D11}
+/* v3.2.15 — quick "Mark Paid" button (Reports list, Awaiting Payment rows) */
+.mkpd{display:inline-flex;align-items:center;gap:4px;background:var(--s2);color:var(--tx2);border:1px solid var(--bd2);border-radius:20px;font-size:11px;font-weight:700;padding:3px 10px;cursor:pointer;white-space:nowrap;font-family:inherit;transition:background .15s}
+.mkpd:hover{background:#e4dfd4;color:var(--tx)}
+.mkpd:active{transform:scale(.96)}
 .bcl{background:var(--s2);color:var(--tx2)}
 /* v3.1.8 — Reports stage sections */
 .rsecH{display:flex;align-items:center;gap:9px;padding:11px 16px;cursor:pointer;user-select:none;border-bottom:1px solid var(--bd)}
@@ -659,7 +663,7 @@ tr.trc:active td{background:var(--bg)}
     </button>
     <div class="logoW">
       <div class="logo">RD <em>Expense</em></div>
-      <span class="vbm" id="vBdgM">v3.2.14</span>
+      <span class="vbm" id="vBdgM">v3.2.15</span>
     </div>
     <div class="tbs"></div>
     <div class="sc nosync" id="syncChip"><div class="scd"></div><span id="syncLbl">Firebase</span></div>
@@ -743,7 +747,7 @@ tr.trc:active td{background:var(--bg)}
   </div></div>
 
   <div class="vbar">
-    <div><span class="vb" id="vBdg">v3.2.14</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">October 2026</span></div>
+    <div><span class="vb" id="vBdg">v3.2.15</span>RD Expense &middot; Qu&eacute;bec<span style="color:var(--bd2);margin:0 6px">&middot;</span><span id="vDt">October 2026</span></div>
     <div id="vUsr" class="vbar-right" style="color:var(--tx3)">RD International</div>
   </div>
 
@@ -761,6 +765,12 @@ tr.trc:active td{background:var(--bg)}
   <div class="taBts"><button onclick="undoAutoFile()">Undo</button><button onclick="editAutoFile()">Edit</button></div>
 </div>
 
+<!-- v3.2.15: undo toast for quick Mark Paid -->
+<div class="toastA" id="toastU" role="status">
+  <div class="taR"><span class="taCk">&#10003;</span><div class="taT"><b id="tuMsg"></b></div></div>
+  <div class="taBts"><button onclick="undoPaid()">Undo</button></div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -769,7 +779,7 @@ tr.trc:active td{background:var(--bg)}
 <script>
 /* CFG — V2.0 Firebase Edition */
 const CFG = {
-  APP_VERSION:    'v3.2.14',
+  APP_VERSION:    'v3.2.15',
   APP_RELEASED:   'October 2026',
   ADMIN_EMAIL:    'admin@rd-international.ca',
   // Batch SmartScan pacing. The API key's tier caps requests/minute (a new key
@@ -2887,7 +2897,7 @@ function rptRowHtml(r){
     '<td style="color:var(--tx2)">'+esc(r.category)+'</td>'+
     '<td style="font-size:12px;color:var(--tx2)">'+fd(r.startDate)+'&ndash;'+fd(r.endDate)+'</td>'+
     '<td>'+ex.length+'</td><td>'+fmt(tx.sub,rptCurrency(r))+'</td><td style="font-weight:600">'+fmt(tx.tot,rptCurrency(r))+'</td>'+
-    '<td>'+badge(r.status)+'</td>'+
+    '<td><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+badge(r.status)+qpBtn(r)+'</div></td>'+
     '<td><div style="display:flex;gap:4px">'+
       '<button class="ib" title="Rename" onclick="mRenameReport(\''+r.id+'\')">&#9998;</button>'+
       '<button class="ib" onclick="expR(\''+r.id+'\')">&#11015;</button>'+
@@ -2896,7 +2906,7 @@ function rptRowHtml(r){
 }
 function rptCardHtml(r){
   const ex=S.expenses.filter(e=>e.reportId===r.id);const tx=TAX.sum(ex);
-  return'<div class="xcd" onclick="showView(\'report-detail\',\''+r.id+'\')"><div class="xcic">&#128203;</div><div class="xcb"><div class="xcn">'+esc(r.name)+'</div><div class="xcm">'+esc(r.category)+' &middot; '+badge(r.status)+'</div></div><div style="text-align:right"><div class="xca">'+fmt(tx.tot,rptCurrency(r))+'</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">'+ex.length+' lines</div>'+(r.status==='Open'?'<div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px"><button class="ib" style="font-size:12px" title="Delete report" onclick="event.stopPropagation();delR(\''+r.id+'\')">&#128465;</button></div>':'')+'</div></div>';
+  return'<div class="xcd" onclick="showView(\'report-detail\',\''+r.id+'\')"><div class="xcic">&#128203;</div><div class="xcb"><div class="xcn">'+esc(r.name)+'</div><div class="xcm">'+esc(r.category)+' &middot; '+badge(r.status)+'</div></div><div style="text-align:right"><div class="xca">'+fmt(tx.tot,rptCurrency(r))+'</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">'+ex.length+' lines</div>'+(r.status==='Open'?'<div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px"><button class="ib" style="font-size:12px" title="Delete report" onclick="event.stopPropagation();delR(\''+r.id+'\')">&#128465;</button></div>':'')+(r.status==='Awaiting Payment'?'<div style="display:flex;justify-content:flex-end;margin-top:5px">'+qpBtn(r)+'</div>':'')+'</div></div>';
 }
 function rsecHtml(b,reps){
   return '<div class="rsec card'+(RSEC_CLOSED[b.key]?' closed':'')+'">'+
@@ -4173,6 +4183,43 @@ function delR(id){
   S.reports=S.reports.filter(r=>r.id!==id);
   save().then(()=>render());
   toast('Report deleted');
+}
+/* v3.2.15 — quick "Mark Paid" from the Reports list (Awaiting Payment only).
+   No confirm: a 6s Undo toast (toastU) restores Awaiting Payment instead.
+   State ride: existing r.status/r.statusAt fields only — save payload untouched. */
+function qpBtn(r){
+  return r.status==='Awaiting Payment'
+    ? '<button class="mkpd" title="Mark this report Paid" onclick="quickPaid(event,\''+r.id+'\')">&#10003; Mark Paid</button>'
+    : '';
+}
+async function quickPaid(ev, rid){
+  if(ev){ ev.stopPropagation(); ev.preventDefault(); }
+  const r=S.reports.find(r=>r.id===rid);
+  if(!r || r.status!=='Awaiting Payment') return;
+  r.status='Paid';
+  r.statusAt=r.statusAt||{};
+  r.statusAt['Paid']=new Date().toISOString().slice(0,10);
+  window._qpRid=rid;
+  await save();
+  render();
+  const t=$('toastU');
+  if(t){
+    $('tuMsg').textContent='\u201C'+r.name+'\u201D marked Paid';
+    t.classList.add('show'); clearTimeout(t._t);
+    t._t=setTimeout(()=>{ t.classList.remove('show'); window._qpRid=null; },6000);
+  } else toast('Marked Paid');
+}
+async function undoPaid(){
+  const t=$('toastU'); if(t){ clearTimeout(t._t); t.classList.remove('show'); }
+  const rid=window._qpRid; window._qpRid=null;
+  if(!rid) return;
+  const r=S.reports.find(r=>r.id===rid);
+  if(!r || r.status!=='Paid') return;
+  if(r.statusAt) delete r.statusAt['Paid'];
+  r.status='Awaiting Payment';
+  await save();
+  render();
+  toast('Back to Awaiting Payment');
 }
 async function advSt(rid, ns) {
   const r = S.reports.find(r=>r.id===rid);
